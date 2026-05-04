@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { ScreenWrapper } from '../components/ScreenWrapper';
+import AddressAutocompleteField from '../components/AddressAutocompleteField';
 import ImageToggle from '../components/ImageToggle';
 import { useAuth } from '../AuthContext';
 import { isSuperAdminRole, normalizeUserRole } from '../core/tenant/models';
@@ -9,6 +10,7 @@ import { listActiveOrganizations } from '../core/tenant/OrganizationRepository';
 import { listProgramsByOrganization } from '../core/tenant/ProgramRepository';
 import { listCampusesByOrganization } from '../core/tenant/CampusRepository';
 import { THERAPY_ROLE_LABELS, getDisplayRoleLabel } from '../utils/roleTerminology';
+import { formatAddressInput } from '../utils/addressInput';
 import { formatPhoneInput } from '../utils/inputFormat';
 import { getPasswordPolicyError } from '../utils/passwordPolicy';
 import * as Api from '../Api';
@@ -324,7 +326,11 @@ export default function ManagePermissionsScreen(){
   }
 
   function updateUserDraft(userId, field, value) {
-    const nextValue = field === 'phone' ? formatPhoneInput(value) : value;
+    const nextValue = field === 'phone'
+      ? formatPhoneInput(value)
+      : field === 'address'
+        ? formatAddressInput(value)
+        : value;
     setUserDrafts((current) => ({
       ...current,
       [userId]: {
@@ -660,7 +666,7 @@ export default function ManagePermissionsScreen(){
             <TextInput value={draft.phone} onChangeText={(value) => updateUserDraft(userItem.id, 'phone', value)} style={styles.input} placeholder="555-123-4567" autoCapitalize="none" keyboardType="phone-pad" maxLength={12} />
 
             <Text style={styles.fieldLabel}>Address</Text>
-            <TextInput value={draft.address} onChangeText={(value) => updateUserDraft(userItem.id, 'address', String(value || '').slice(0, 300))} style={[styles.input, styles.multilineInput]} placeholder="Address" multiline maxLength={300} />
+            <AddressAutocompleteField value={draft.address} onChangeText={(value) => updateUserDraft(userItem.id, 'address', String(value || '').slice(0, 300))} placeholder="Address" maxLength={300} />
 
             <Text style={styles.fieldLabel}>Role</Text>
             <View style={styles.roleChipWrap}>

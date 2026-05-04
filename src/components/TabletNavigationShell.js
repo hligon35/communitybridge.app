@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Image, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { Alert, Image, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as Updates from 'expo-updates';
 import { useAuth } from '../AuthContext';
 import { useData } from '../DataContext';
 import { useTenant } from '../core/tenant/TenantContext';
-import { ADMIN_SECTION_KEYS, canAccessAdminSection, canAccessAdminWorkspace, isBcbaRole, isOfficeAdminRole, isStaffRole } from '../core/tenant/models';
+import { ADMIN_SECTION_KEYS, canAccessAdminSection, canAccessAdminWorkspace, isAdminRole, isBcbaRole, isOfficeAdminRole, isStaffRole } from '../core/tenant/models';
 import { isChildLinkedToTherapist } from '../features/sessionTracking/utils/dashboardSessionTarget';
 import useIsTabletLayout from '../hooks/useIsTabletLayout';
 import { navigationRef } from '../navigationRef';
@@ -41,6 +41,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
   const labels = tenant?.labels || {};
   const [collapsed, setCollapsed] = useState(false);
   const [quickMenuOpen, setQuickMenuOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [quickLogDraft, setQuickLogDraft] = useState(null);
   const [quickLogBody, setQuickLogBody] = useState('');
   const [quickLogSaving, setQuickLogSaving] = useState(false);
@@ -53,11 +54,21 @@ export default function TabletNavigationShell({ currentRoute, children }) {
   const showQuickAdd = !showAdminWorkspace && isStaff;
   const showBcbaQuickActions = showAdminWorkspace && isBcbaRole(user?.role);
   const showHeaderQuickMenu = showQuickAdd || showBcbaQuickActions;
+  const shortEdge = Math.min(width, useWindowDimensions().height);
+  const longEdge = Math.max(width, useWindowDimensions().height);
+  const isPhoneViewport = Platform.OS !== 'ios' || !Platform.isPad
+    ? shortEdge < 600 && longEdge < 1100
+    : false;
+  const showMobileAdminShell = Boolean(isAdminRole(user?.role) && isPhoneViewport);
   const activeRouteParams = navigationRef?.getCurrentRoute?.()?.params || null;
   const activeRouteChildId = String(activeRouteParams?.childId || '').trim();
 
   useEffect(() => {
     setQuickMenuOpen(false);
+  }, [currentRoute]);
+
+  useEffect(() => {
+    setMobileNavOpen(false);
   }, [currentRoute]);
 
   useEffect(() => {
@@ -246,7 +257,91 @@ export default function TabletNavigationShell({ currentRoute, children }) {
     return [{ label: workspaceLabel, items: therapistItems }];
   }, [isParentWorkspace, isStaff, labels.dashboard, showAdminWorkspace, user?.role, workspaceLabel]);
 
-  if (!isTabletLayout) return children;
+  if (!isTabletLayout && !showMobileAdminShell) return children;
+
+  const renderNavItems = (collapsedItems = false, onItemPress = null) => (
+    <>
+      {navGroups.map((group) => (
+        <View key={group.label} style={styles.group}>
+          {!collapsedItems ? <Text style={styles.groupLabel}>{group.label}</Text> : null}
+          {group.items.map((item) => {
+            const active = currentRoute === (item.target.screen || item.target.root);
+            return (
+              <TouchableOpacity
+                key={item.key}
+                style={[styles.navItem, active ? styles.navItemActive : null]}
+                onPress={() => {
+                  openTarget(item.target);
+                  onItemPress?.();
+                }}
+              >
+                <MaterialIcons name={item.icon} size={20} color={active ? '#0f172a' : '#cbd5e1'} />
+                {!collapsedItems ? <Text style={[styles.navLabel, active ? styles.navLabelActive : null]}>{item.label}</Text> : null}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      ))}
+    </>
+  );
+
+  if (showMobileAdminShell) {
+    return (
+      <View style={styles.mobileShellFrame}>
+        {Platform.OS !== 'web' && insets.top > 0 ? <View style={{ height: insets.top, backgroundColor: '#e2e8f0' }} /> : null}
+        <View style={[styles.contentWrap, styles.mobileContentWrap, { paddingTop: 12, paddingBottom: Math.max(insets.bottom, 12) }]}>
+          <View style={[styles.topBar, styles.mobileTopBar]}>
+            <View style={styles.brandRow}>
+              <LogoTitle width={150} height={48} />
+              <View style={styles.greetingWrap}>
+                <Text style={styles.topEyebrow}>{workspaceLabel}</Text>
+                <Text style={styles.topTitle}>Hello, {greeting}</Text>
+              </View>
+            </View>
+            <View style={styles.headerActions}>
+              <TouchableOpacity style={styles.iconOnlyButton} onPress={() => openTarget({ root: 'Settings', screen: 'Help' })}>
+                <MaterialIcons name="help-outline" size={20} color="#1d4ed8" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.iconOnlyButton} onPress={() => setMobileNavOpen(true)} accessibilityLabel="Open navigation menu">
+                <MaterialIcons name="menu" size={22} color="#1d4ed8" />
+              </TouchableOpacity>
+            </View>
+          </View>
+          <View style={styles.mobileScreenWrap}>{children}</View>
+        </View>
+        <Modal visible={mobileNavOpen} animationType="slide" transparent={false} onRequestClose={() => setMobileNavOpen(false)}>
+          <View style={[styles.mobileNavOverlay, { paddingTop: Math.max(insets.top, 16), paddingBottom: Math.max(insets.bottom, 16) }]}>
+            <View style={styles.mobileNavHeader}>
+              <View>
+                <Text style={styles.mobileNavEyebrow}>{workspaceLabel}</Text>
+                <Text style={styles.mobileNavTitle}>Navigation</Text>
+              </View>
+              <TouchableOpacity style={styles.mobileNavCloseButton} onPress={() => setMobileNavOpen(false)} accessibilityLabel="Close navigation menu">
+                <MaterialIcons name="close" size={24} color="#0f172a" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.mobileNavScroll} contentContainerStyle={styles.mobileNavScrollContent} showsVerticalScrollIndicator>
+              {renderNavItems(false, () => setMobileNavOpen(false))}
+              <View style={styles.mobileUtilitySection}>
+                <TouchableOpacity style={[styles.mobileUtilityButton, updateBusy ? styles.mobileUtilityButtonDisabled : null]} onPress={checkForOtaUpdate} disabled={updateBusy}>
+                  <Image source={checkUpdatesIcon} style={[styles.mobileUtilityIcon, updateBusy ? styles.drawerUtilityIconDisabled : null]} resizeMode="contain" />
+                  <Text style={styles.mobileUtilityText}>{updateBusy ? 'Checking for updates...' : 'Check for updates'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.mobileUtilityButton} onPress={() => { setMobileNavOpen(false); openTarget({ root: 'Settings', screen: 'Help' }); }}>
+                  <MaterialIcons name="help-outline" size={20} color="#1d4ed8" />
+                  <Text style={styles.mobileUtilityText}>Help</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.mobileLogoutButton} onPress={() => { setMobileNavOpen(false); logout?.(); }}>
+                  <MaterialIcons name="logout" size={20} color="#b91c1c" />
+                  <Text style={styles.mobileLogoutText}>Logout</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </Modal>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.shellFrame}>
@@ -260,20 +355,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
             </TouchableOpacity>
           ) : null}
 
-          {navGroups.map((group) => (
-            <View key={group.label} style={styles.group}>
-              {!collapsed ? <Text style={styles.groupLabel}>{group.label}</Text> : null}
-              {group.items.map((item) => {
-                const active = currentRoute === (item.target.screen || item.target.root);
-                return (
-                  <TouchableOpacity key={item.key} style={[styles.navItem, active ? styles.navItemActive : null]} onPress={() => openTarget(item.target)}>
-                    <MaterialIcons name={item.icon} size={20} color={active ? '#0f172a' : '#cbd5e1'} />
-                    {!collapsed ? <Text style={[styles.navLabel, active ? styles.navLabelActive : null]}>{item.label}</Text> : null}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          ))}
+          {renderNavItems(collapsed)}
           <TouchableOpacity style={[styles.drawerUtilityButton, updateBusy ? styles.drawerUtilityButtonDisabled : null]} onPress={checkForOtaUpdate} disabled={updateBusy}>
             <Image source={checkUpdatesIcon} style={[styles.drawerUtilityIcon, updateBusy ? styles.drawerUtilityIconDisabled : null]} resizeMode="contain" />
             {!collapsed ? <Text style={styles.drawerUtilityText}>{updateBusy ? 'Checking…' : 'Check for updates'}</Text> : null}
@@ -364,6 +446,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
 
 const styles = StyleSheet.create({
   shellFrame: { flex: 1, backgroundColor: '#e2e8f0' },
+  mobileShellFrame: { flex: 1, backgroundColor: '#e2e8f0' },
   shell: { flex: 1, flexDirection: 'row', backgroundColor: '#e2e8f0' },
   drawer: { width: 280, backgroundColor: '#0f172a', paddingHorizontal: 16 },
   drawerCollapsed: { width: 92, paddingHorizontal: 10 },
@@ -383,8 +466,10 @@ const styles = StyleSheet.create({
   logoutButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 14, backgroundColor: '#1e293b' },
   logoutText: { color: '#fecaca', fontWeight: '700', marginLeft: 10 },
   contentWrap: { flex: 1, paddingHorizontal: 12, position: 'relative' },
+  mobileContentWrap: { paddingHorizontal: 10 },
   quickMenuDismissLayer: { ...StyleSheet.absoluteFillObject, zIndex: 20 },
   topBar: { minHeight: 70, borderRadius: 18, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e2e8f0', paddingHorizontal: 18, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, zIndex: 30 },
+  mobileTopBar: { paddingHorizontal: 14, alignItems: 'flex-start' },
   brandRow: { flexDirection: 'row', alignItems: 'center' },
   greetingWrap: { marginLeft: 14 },
   topEyebrow: { color: '#2563eb', fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
@@ -398,6 +483,21 @@ const styles = StyleSheet.create({
   quickHeaderMenuItem: { paddingVertical: 10, paddingHorizontal: 14 },
   quickHeaderMenuText: { color: '#0f172a', fontWeight: '700' },
   screenWrap: { flex: 1, borderRadius: 24, overflow: 'hidden', backgroundColor: '#f8fafc' },
+  mobileScreenWrap: { flex: 1, borderRadius: 24, overflow: 'hidden', backgroundColor: '#f8fafc' },
+  mobileNavOverlay: { flex: 1, backgroundColor: '#f8fafc', paddingHorizontal: 16 },
+  mobileNavHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
+  mobileNavEyebrow: { color: '#2563eb', fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
+  mobileNavTitle: { marginTop: 4, fontSize: 28, fontWeight: '800', color: '#0f172a' },
+  mobileNavCloseButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: '#e2e8f0' },
+  mobileNavScroll: { flex: 1 },
+  mobileNavScrollContent: { paddingBottom: 20 },
+  mobileUtilitySection: { marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#dbe2ea' },
+  mobileUtilityButton: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 12, backgroundColor: '#eff6ff', marginBottom: 10 },
+  mobileUtilityButtonDisabled: { opacity: 0.72 },
+  mobileUtilityIcon: { width: 20, height: 20 },
+  mobileUtilityText: { color: '#0f172a', fontWeight: '700', marginLeft: 10 },
+  mobileLogoutButton: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 12, backgroundColor: '#fee2e2' },
+  mobileLogoutText: { color: '#b91c1c', fontWeight: '800', marginLeft: 10 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.45)', justifyContent: 'center', padding: 24 },
   modalCard: { borderRadius: 20, backgroundColor: '#ffffff', padding: 18 },
   modalTitle: { fontSize: 18, fontWeight: '800', color: '#0f172a' },

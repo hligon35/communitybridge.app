@@ -2151,13 +2151,33 @@ export async function mergeDirectory(payload) {
 export async function enrollLearner(payload) {
   requireUser();
 
+  const normalizedGuardians = (Array.isArray(payload?.guardians) ? payload.guardians : [])
+    .map((entry) => {
+      const name = String(entry?.name || '').trim();
+      const email = normalizeEmailInput(entry?.email || '');
+      const phone = String(entry?.phone || '').trim();
+      const relationship = String(entry?.relationship || '').trim().toLowerCase();
+      if (!name && !email && !phone) return null;
+      return {
+        ...(name ? { name } : {}),
+        ...(email ? { email } : {}),
+        ...(phone ? { phone } : {}),
+        ...(relationship ? { relationship } : {}),
+      };
+    })
+    .filter(Boolean);
+  const primaryGuardian = normalizedGuardians.find((entry) => entry?.name) || normalizedGuardians[0] || null;
+
   const learnerName = String(payload?.name || payload?.learnerName || '').trim();
-  const parentName = String(payload?.parentName || payload?.guardianName || '').trim();
-  const parentEmail = normalizeEmailInput(payload?.parentEmail || payload?.guardianEmail || '');
-  const parentPhone = String(payload?.parentPhone || payload?.guardianPhone || '').trim();
+  const parentName = String(payload?.parentName || payload?.guardianName || primaryGuardian?.name || '').trim();
+  const parentEmail = normalizeEmailInput(payload?.parentEmail || payload?.guardianEmail || primaryGuardian?.email || '');
+  const parentPhone = String(payload?.parentPhone || payload?.guardianPhone || primaryGuardian?.phone || '').trim();
   const room = String(payload?.room || '').trim();
   const age = String(payload?.age || '').trim();
   const session = String(payload?.session || '').trim().toUpperCase();
+  const organizationId = String(payload?.organizationId || '').trim();
+  const programId = String(payload?.programId || payload?.branchId || '').trim();
+  const campusId = String(payload?.campusId || '').trim();
   const enrollmentCode = String(payload?.enrollmentCode || '').trim().toUpperCase();
 
   if (!learnerName) {
@@ -2176,7 +2196,12 @@ export async function enrollLearner(payload) {
     throw err;
   }
 
-  const enrollmentContext = await resolveEnrollmentContext({ enrollmentCode });
+  const enrollmentContext = await resolveEnrollmentContext({
+    organizationId,
+    programId,
+    campusId,
+    enrollmentCode,
+  });
   if (!enrollmentContext?.organization?.id || !enrollmentContext?.program?.id || !enrollmentContext?.campus?.id) {
     const err = new Error('The enrollment code did not resolve to an active organization, program, and campus.');
     err.code = 'BB_INVALID_ENROLLMENT_CODE';
@@ -2198,7 +2223,7 @@ export async function enrollLearner(payload) {
     campusName: String(enrollmentContext.campus.name || ''),
     enrollmentCode,
     active: true,
-    parents: [{
+    parents: normalizedGuardians.length ? normalizedGuardians : [{
       name: parentName,
       ...(parentEmail ? { email: parentEmail } : {}),
       ...(parentPhone ? { phone: parentPhone } : {}),

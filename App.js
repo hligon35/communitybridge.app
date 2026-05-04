@@ -263,8 +263,9 @@ function MainShell({ currentRoute }) {
   const isTabletLayout = useIsTabletLayout();
   const { width, height } = useWindowDimensions();
   const role = normalizeUserRole(user?.role);
+  const isPhoneAdminViewport = isAdminRole(role) && Math.min(width, height) < 600 && Math.max(width, height) < 1100;
   const isParentWorkspace = !canAccessAdminWorkspace(role) && !isStaffRole(role);
-  const shouldRequireLandscape = !isParentWorkspace && !isTabletLayout && width < height && Math.max(width, height) >= 640;
+  const shouldRequireLandscape = !isPhoneAdminViewport && !isParentWorkspace && !isTabletLayout && width < height && Math.max(width, height) >= 640;
 
   return (
     <TenantProvider>
@@ -282,7 +283,7 @@ function MainShell({ currentRoute }) {
             <TabletNavigationShell currentRoute={currentRoute}>
               <MainRoutes />
             </TabletNavigationShell>
-            {!isTabletLayout ? <BottomNav navigationRef={navigationRef} currentRoute={currentRoute} /> : null}
+            {!isTabletLayout && !isPhoneAdminViewport ? <BottomNav navigationRef={navigationRef} currentRoute={currentRoute} /> : null}
           </>
         )}
         <UrgentMemoOverlay />

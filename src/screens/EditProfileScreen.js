@@ -2,10 +2,12 @@ import React, { useMemo, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Image, ActivityIndicator } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { ScreenWrapper } from '../components/ScreenWrapper';
+import AddressAutocompleteField from '../components/AddressAutocompleteField';
 import { useAuth } from '../AuthContext';
 import * as Api from '../Api';
 import * as ImagePicker from 'expo-image-picker';
 import { avatarSourceFor } from '../utils/idVisibility';
+import { formatAddressInput } from '../utils/addressInput';
 import { formatPhoneInput } from '../utils/inputFormat';
 
 const IMAGE_PICKER_MEDIA_TYPES = ImagePicker.MediaTypeOptions?.Images ?? ImagePicker.MediaType?.Images;
@@ -17,17 +19,6 @@ function passwordPolicy(pw) {
   const hasSpecial = /[^A-Za-z0-9]/.test(v);
   const score = [hasMinLen, hasUpper, hasSpecial].filter(Boolean).length;
   return { hasMinLen, hasUpper, hasSpecial, score };
-}
-
-function formatAddressInput(input) {
-  let v = String(input || '');
-  // collapse repeated spaces/tabs
-  v = v.replace(/[\t ]{2,}/g, ' ');
-  // normalize commas: "a,b" -> "a, b"
-  v = v.replace(/\s*,\s*/g, ', ');
-  // avoid leading whitespace
-  v = v.replace(/^\s+/g, '');
-  return v;
 }
 
 export default function EditProfileScreen({ navigation }) {
@@ -197,7 +188,7 @@ export default function EditProfileScreen({ navigation }) {
           />
 
           <Text style={styles.label}>Address</Text>
-          <TextInput value={address} onChangeText={(v) => setAddress(formatAddressInput(v))} style={styles.input} placeholder="Address" />
+          <AddressAutocompleteField value={address} onChangeText={(v) => setAddress(formatAddressInput(v))} placeholder="Address" maxLength={300} />
 
           <View style={{ height: 12 }} />
 

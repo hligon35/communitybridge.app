@@ -3,6 +3,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Switch, Text, TextInput, Tou
 import { useNavigation } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { ScreenWrapper } from '../components/ScreenWrapper';
+import AddressAutocompleteField from '../components/AddressAutocompleteField';
 import { useAuth } from '../AuthContext';
 import * as Api from '../Api';
 import { ADMIN_SECTION_KEYS, canAccessAdminSection, hasFullAdminSectionAccess, isBcbaRole } from '../core/tenant/models';
@@ -210,7 +211,7 @@ export default function AdminSettingsHubScreen() {
             <Field label="Support email" value={form.supportEmail} onChangeText={(value) => updateField('supportEmail', value)} placeholder="support@communitybridge.app" keyboardType="email-address" autoCapitalize="none" />
             <Field label="Support phone" value={form.supportPhone} onChangeText={(value) => updateField('supportPhone', value)} placeholder="(555) 123-4567" keyboardType="phone-pad" autoCapitalize="none" />
           </View>
-          <Field label="Organization address" value={form.address} onChangeText={(value) => updateField('address', value)} placeholder="123 Main St, City, ST 00000" multiline />
+          <AddressAutocompleteField label="Organization address" value={form.address} onChangeText={(value) => updateField('address', value)} placeholder="123 Main St, City, ST 00000" />
           <View style={styles.editorGrid}>
             <Field label="Arrival drop zone radius (miles)" value={form.dropZoneMiles} onChangeText={(value) => updateField('dropZoneMiles', value)} placeholder="0.5" keyboardType="decimal-pad" autoCapitalize="none" />
             <View style={styles.switchCard}>

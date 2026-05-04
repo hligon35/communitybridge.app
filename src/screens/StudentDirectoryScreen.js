@@ -1,13 +1,35 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { useAuth } from '../AuthContext';
 import { useData } from '../DataContext';
-import { isBcbaRole, isOfficeAdminRole } from '../core/tenant/models';
+import { useTenant } from '../core/tenant/TenantContext';
+import { isBcbaRole, isOfficeAdminRole, normalizeUserRole, USER_ROLES } from '../core/tenant/models';
 import { avatarSourceFor } from '../utils/idVisibility';
 import { THERAPY_ROLE_LABELS } from '../utils/roleTerminology';
 import * as Api from '../Api';
+
+const GUARDIAN_RELATIONSHIP_OPTIONS = [
+  { value: 'mother', label: 'Mother' },
+  { value: 'father', label: 'Father' },
+  { value: 'guardian', label: 'Guardian' },
+];
+
+function createGuardianDraft(overrides = {}) {
+  return {
+    id: `guardian-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+    relationship: 'guardian',
+    name: '',
+    email: '',
+    phone: '',
+    ...overrides,
+  };
+}
+
+function guardianRelationshipLabel(value) {
+  return GUARDIAN_RELATIONSHIP_OPTIONS.find((item) => item.value === value)?.label || 'Guardian';
+}
 
 function TabButton({ label, active, onPress }) {
   return (
@@ -41,8 +63,13 @@ export default function StudentDirectoryScreen() {
   const navigation = useNavigation();
   const { user } = useAuth();
   const { children = [], parents = [], therapists = [], fetchAndSync } = useData();
+  const { currentOrganization, currentProgram, currentCampus } = useTenant() || {};
   const isBcba = isBcbaRole(user?.role);
   const isOffice = isOfficeAdminRole(user?.role);
+  const normalizedRole = normalizeUserRole(user?.role);
+  const isScopedAdmin = isOffice && normalizedRole !== USER_ROLES.ORG_ADMIN && normalizedRole !== USER_ROLES.SUPER_ADMIN;
+  const scopedEnrollmentCode = String(currentCampus?.enrollmentCode || '').trim().toUpperCase();
+  const enrollmentCodeLocked = Boolean(isScopedAdmin && scopedEnrollmentCode);
   const [query, setQuery] = useState('');
   const [roomFilter, setRoomFilter] = useState('all');
   const [sortKey, setSortKey] = useState('name');
@@ -50,13 +77,12 @@ export default function StudentDirectoryScreen() {
   const [activeTab, setActiveTab] = useState('overview');
   const [enrollOpen, setEnrollOpen] = useState(false);
   const [enrollSaving, setEnrollSaving] = useState(false);
+  const [relationshipMenuGuardianId, setRelationshipMenuGuardianId] = useState('');
   const [enrollDraft, setEnrollDraft] = useState({
     name: '',
-    parentName: '',
     enrollmentCode: '',
     room: '',
-    parentEmail: '',
-    parentPhone: '',
+    guardians: [createGuardianDraft()],
   });
 
   const visibleTabs = useMemo(() => {
@@ -104,6 +130,14 @@ export default function StudentDirectoryScreen() {
     }
   }, [filteredChildren, selectedChildId]);
 
+  useEffect(() => {
+    if (!enrollmentCodeLocked) return;
+    setEnrollDraft((current) => {
+      if (current.enrollmentCode === scopedEnrollmentCode) return current;
+      return { ...current, enrollmentCode: scopedEnrollmentCode };
+    });
+  }, [enrollmentCodeLocked, scopedEnrollmentCode]);
+
   const selectedChild = useMemo(() => filteredChildren.find((child) => child?.id === selectedChildId) || null, [filteredChildren, selectedChildId]);
   const linkedParents = useMemo(() => normalizeInlineParents(selectedChild, parents), [parents, selectedChild]);
   const assignedStaff = useMemo(() => {
@@ -120,21 +154,66 @@ export default function StudentDirectoryScreen() {
     setEnrollDraft((current) => ({ ...current, [key]: value }));
   }
 
+  function updateGuardian(guardianId, key, value) {
+    setEnrollDraft((current) => ({
+      ...current,
+      guardians: (current.guardians || []).map((guardian) => (
+        guardian.id === guardianId ? { ...guardian, [key]: value } : guardian
+      )),
+    }));
+  }
+
+  function addGuardian() {
+    setEnrollDraft((current) => ({
+      ...current,
+      guardians: [...(current.guardians || []), createGuardianDraft()],
+    }));
+  }
+
+  function removeGuardian(guardianId) {
+    setEnrollDraft((current) => {
+      const nextGuardians = (current.guardians || []).filter((guardian) => guardian.id !== guardianId);
+      return {
+        ...current,
+        guardians: nextGuardians.length ? nextGuardians : [createGuardianDraft()],
+      };
+    });
+    setRelationshipMenuGuardianId((current) => (current === guardianId ? '' : current));
+  }
+
   function resetEnrollDraft() {
     setEnrollDraft({
       name: '',
-      parentName: '',
-      enrollmentCode: '',
+      enrollmentCode: enrollmentCodeLocked ? scopedEnrollmentCode : '',
       room: '',
-      parentEmail: '',
-      parentPhone: '',
+      guardians: [createGuardianDraft()],
     });
+    setRelationshipMenuGuardianId('');
   }
 
   async function submitEnrollment() {
     setEnrollSaving(true);
     try {
-      const result = await Api.enrollLearner(enrollDraft);
+      const guardians = (enrollDraft.guardians || [])
+        .map((guardian) => ({
+          relationship: String(guardian?.relationship || 'guardian').trim().toLowerCase(),
+          name: String(guardian?.name || '').trim(),
+          email: String(guardian?.email || '').trim(),
+          phone: String(guardian?.phone || '').trim(),
+        }))
+        .filter((guardian) => guardian.name || guardian.email || guardian.phone);
+      const primaryGuardian = guardians.find((guardian) => guardian.name) || guardians[0] || null;
+      const result = await Api.enrollLearner({
+        ...enrollDraft,
+        guardians,
+        parentName: primaryGuardian?.name || '',
+        parentEmail: primaryGuardian?.email || '',
+        parentPhone: primaryGuardian?.phone || '',
+        enrollmentCode: enrollmentCodeLocked ? scopedEnrollmentCode : enrollDraft.enrollmentCode,
+        organizationId: String(currentOrganization?.id || user?.organizationId || '').trim(),
+        programId: String(currentProgram?.id || user?.programId || user?.branchId || '').trim(),
+        campusId: String(currentCampus?.id || user?.campusId || '').trim(),
+      });
       setSelectedChildId(result?.child?.id || null);
       await fetchAndSync?.({ force: true });
       setEnrollOpen(false);
@@ -302,28 +381,69 @@ export default function StudentDirectoryScreen() {
       </ScrollView>
 
       <Modal visible={enrollOpen} transparent animationType="fade" onRequestClose={() => !enrollSaving && setEnrollOpen(false)}>
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}>
           <View style={styles.modalCard}>
+            <ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalScrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <Text style={styles.modalTitle}>Enroll Learner</Text>
-            <Text style={styles.modalBody}>Use the campus enrollment code plus the family’s matching guardian name so the learner can be claimed later during parent signup.</Text>
+            <Text style={styles.modalBody}>{enrollmentCodeLocked ? `This learner will be enrolled into ${currentCampus?.name || 'the current campus'} using the assigned campus enrollment code.` : 'Use the campus enrollment code plus the family’s matching guardian name so the learner can be claimed later during parent signup.'}</Text>
 
             <Text style={styles.fieldLabel}>Learner name</Text>
             <TextInput value={enrollDraft.name} onChangeText={(value) => updateEnrollDraft('name', value)} placeholder="Learner full name" style={styles.input} editable={!enrollSaving} />
 
-            <Text style={styles.fieldLabel}>Parent or guardian name</Text>
-            <TextInput value={enrollDraft.parentName} onChangeText={(value) => updateEnrollDraft('parentName', value)} placeholder="Parent or guardian full name" style={styles.input} editable={!enrollSaving} />
+            <Text style={styles.fieldLabel}>Guardians</Text>
+            {(enrollDraft.guardians || []).map((guardian, index) => (
+              <View key={guardian.id} style={styles.guardianCard}>
+                <View style={styles.guardianCardHeader}>
+                  <Text style={styles.guardianCardTitle}>Guardian {index + 1}</Text>
+                  {(enrollDraft.guardians || []).length > 1 ? (
+                    <TouchableOpacity onPress={() => removeGuardian(guardian.id)} disabled={enrollSaving} style={styles.guardianRemoveButton}>
+                      <Text style={styles.guardianRemoveButtonText}>Remove</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+
+                <Text style={styles.guardianLabel}>Relationship</Text>
+                <TouchableOpacity style={styles.dropdownButton} onPress={() => setRelationshipMenuGuardianId((current) => current === guardian.id ? '' : guardian.id)} disabled={enrollSaving}>
+                  <Text style={styles.dropdownButtonText}>{guardianRelationshipLabel(guardian.relationship)}</Text>
+                  <Text style={styles.dropdownChevron}>▼</Text>
+                </TouchableOpacity>
+                {relationshipMenuGuardianId === guardian.id ? (
+                  <View style={styles.dropdownMenu}>
+                    {GUARDIAN_RELATIONSHIP_OPTIONS.map((option) => (
+                      <TouchableOpacity
+                        key={option.value}
+                        style={[styles.dropdownOption, guardian.relationship === option.value ? styles.dropdownOptionActive : null]}
+                        onPress={() => {
+                          updateGuardian(guardian.id, 'relationship', option.value);
+                          setRelationshipMenuGuardianId('');
+                        }}
+                        disabled={enrollSaving}
+                      >
+                        <Text style={[styles.dropdownOptionText, guardian.relationship === option.value ? styles.dropdownOptionTextActive : null]}>{option.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                ) : null}
+
+                <Text style={styles.guardianLabel}>Full name</Text>
+                <TextInput value={guardian.name} onChangeText={(value) => updateGuardian(guardian.id, 'name', value)} placeholder="Guardian full name" style={styles.input} editable={!enrollSaving} />
+
+                <Text style={styles.guardianLabel}>Email</Text>
+                <TextInput value={guardian.email} onChangeText={(value) => updateGuardian(guardian.id, 'email', value)} placeholder="Optional" style={styles.input} editable={!enrollSaving} autoCapitalize="none" keyboardType="email-address" />
+
+                <Text style={styles.guardianLabel}>Phone</Text>
+                <TextInput value={guardian.phone} onChangeText={(value) => updateGuardian(guardian.id, 'phone', value)} placeholder="Optional" style={styles.input} editable={!enrollSaving} keyboardType="phone-pad" />
+              </View>
+            ))}
+            <TouchableOpacity style={styles.guardianAddButton} onPress={addGuardian} disabled={enrollSaving}>
+              <Text style={styles.guardianAddButtonText}>Add Guardian</Text>
+            </TouchableOpacity>
 
             <Text style={styles.fieldLabel}>Enrollment code</Text>
-            <TextInput value={enrollDraft.enrollmentCode} onChangeText={(value) => updateEnrollDraft('enrollmentCode', String(value || '').toUpperCase())} placeholder="Campus enrollment code" style={styles.input} editable={!enrollSaving} autoCapitalize="characters" autoCorrect={false} />
+            <TextInput value={enrollDraft.enrollmentCode} onChangeText={(value) => updateEnrollDraft('enrollmentCode', String(value || '').toUpperCase())} placeholder="Campus enrollment code" style={[styles.input, enrollmentCodeLocked ? styles.inputLocked : null]} editable={!enrollSaving && !enrollmentCodeLocked} autoCapitalize="characters" autoCorrect={false} />
 
             <Text style={styles.fieldLabel}>Room</Text>
             <TextInput value={enrollDraft.room} onChangeText={(value) => updateEnrollDraft('room', value)} placeholder="Optional classroom or room" style={styles.input} editable={!enrollSaving} />
-
-            <Text style={styles.fieldLabel}>Parent email</Text>
-            <TextInput value={enrollDraft.parentEmail} onChangeText={(value) => updateEnrollDraft('parentEmail', value)} placeholder="Optional" style={styles.input} editable={!enrollSaving} autoCapitalize="none" keyboardType="email-address" />
-
-            <Text style={styles.fieldLabel}>Parent phone</Text>
-            <TextInput value={enrollDraft.parentPhone} onChangeText={(value) => updateEnrollDraft('parentPhone', value)} placeholder="Optional" style={styles.input} editable={!enrollSaving} keyboardType="phone-pad" />
 
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.secondaryButton} onPress={() => setEnrollOpen(false)} disabled={enrollSaving}>
@@ -333,8 +453,9 @@ export default function StudentDirectoryScreen() {
                 <Text style={styles.primaryButtonText}>{enrollSaving ? 'Saving...' : 'Enroll Learner'}</Text>
               </TouchableOpacity>
             </View>
+            </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </ScreenWrapper>
   );
@@ -351,6 +472,7 @@ const styles = StyleSheet.create({
   subtitle: { marginTop: 8, color: '#475569', lineHeight: 20 },
   filtersCard: { marginTop: 14, borderRadius: 18, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e5e7eb', padding: 16 },
   input: { borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#fff' },
+  inputLocked: { backgroundColor: '#f1f5f9', color: '#475569' },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 12 },
   chipRowSingleLine: { flexDirection: 'row', flexWrap: 'nowrap', marginTop: 12, paddingRight: 8 },
   tabButton: { borderRadius: 999, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#f1f5f9', marginRight: 8, marginBottom: 8 },
@@ -381,8 +503,26 @@ const styles = StyleSheet.create({
   empty: { color: '#64748b' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.42)', alignItems: 'center', justifyContent: 'center', padding: 16 },
   modalCard: { width: '100%', maxWidth: 520, borderRadius: 20, backgroundColor: '#ffffff', padding: 20 },
+  modalScroll: { width: '100%', maxHeight: 620 },
+  modalScrollContent: { paddingBottom: 6 },
   modalTitle: { fontSize: 20, fontWeight: '800', color: '#0f172a' },
   modalBody: { marginTop: 8, color: '#475569', lineHeight: 20 },
   fieldLabel: { marginTop: 12, color: '#0f172a', fontWeight: '700' },
+  guardianCard: { marginTop: 12, borderRadius: 14, borderWidth: 1, borderColor: '#dbeafe', backgroundColor: '#f8fbff', padding: 12 },
+  guardianCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
+  guardianCardTitle: { fontSize: 14, fontWeight: '800', color: '#0f172a' },
+  guardianRemoveButton: { paddingVertical: 4, paddingHorizontal: 8 },
+  guardianRemoveButtonText: { color: '#b91c1c', fontWeight: '700' },
+  guardianLabel: { marginTop: 10, marginBottom: 6, color: '#0f172a', fontWeight: '700' },
+  guardianAddButton: { alignSelf: 'flex-start', marginTop: 12, borderRadius: 10, backgroundColor: '#dbeafe', paddingVertical: 10, paddingHorizontal: 12 },
+  guardianAddButtonText: { color: '#1d4ed8', fontWeight: '800' },
+  dropdownButton: { marginTop: 4, borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  dropdownButtonText: { color: '#0f172a', fontWeight: '600' },
+  dropdownChevron: { color: '#64748b', fontSize: 12 },
+  dropdownMenu: { marginTop: 8, borderRadius: 12, borderWidth: 1, borderColor: '#cbd5e1', backgroundColor: '#fff', overflow: 'hidden' },
+  dropdownOption: { paddingHorizontal: 14, paddingVertical: 12 },
+  dropdownOptionActive: { backgroundColor: '#eff6ff' },
+  dropdownOptionText: { color: '#0f172a', fontWeight: '600' },
+  dropdownOptionTextActive: { color: '#1d4ed8' },
   modalActions: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 18 },
 });
