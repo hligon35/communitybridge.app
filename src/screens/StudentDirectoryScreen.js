@@ -301,18 +301,14 @@ export default function StudentDirectoryScreen() {
   return (
     <ScreenWrapper style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.hero}>
-          <Text style={styles.eyebrow}>Students</Text>
-          <Text style={styles.title}>Central hub for student records</Text>
-          <Text style={styles.subtitle}>Search, filter, sort, and manually enroll a learner without leaving the directory workspace.</Text>
-          {isOffice ? (
-            <TouchableOpacity style={styles.heroButton} onPress={() => setEnrollOpen(true)}>
-              <Text style={styles.heroButtonText}>Enroll Learner</Text>
-            </TouchableOpacity>
-          ) : null}
-        </View>
-
         <View style={styles.filtersCard}>
+          {isOffice ? (
+            <View style={styles.filtersHeader}>
+              <TouchableOpacity style={styles.filtersActionButton} onPress={() => setEnrollOpen(true)}>
+                <Text style={styles.filtersActionButtonText}>Enroll Learner</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
           <TextInput value={query} onChangeText={setQuery} placeholder="Search students" style={styles.input} />
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRowSingleLine}>
             {roomOptions.map((room) => <TabButton key={room} label={room === 'all' ? 'All Rooms' : room} active={roomFilter === room} onPress={() => setRoomFilter(room)} />)}
@@ -464,13 +460,10 @@ export default function StudentDirectoryScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#f8fafc' },
   content: { padding: 16 },
-  hero: { borderRadius: 22, backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe', padding: 18 },
-  heroButton: { marginTop: 14, alignSelf: 'flex-start', borderRadius: 12, backgroundColor: '#2563eb', paddingVertical: 10, paddingHorizontal: 14 },
-  heroButtonText: { color: '#fff', fontWeight: '800' },
-  eyebrow: { color: '#1d4ed8', fontWeight: '800', fontSize: 12, textTransform: 'uppercase' },
-  title: { marginTop: 6, fontSize: 24, fontWeight: '800', color: '#0f172a' },
-  subtitle: { marginTop: 8, color: '#475569', lineHeight: 20 },
   filtersCard: { marginTop: 14, borderRadius: 18, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e5e7eb', padding: 16 },
+  filtersHeader: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 12 },
+  filtersActionButton: { borderRadius: 12, backgroundColor: '#2563eb', paddingVertical: 10, paddingHorizontal: 14 },
+  filtersActionButtonText: { color: '#fff', fontWeight: '800' },
   input: { borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#fff' },
   inputLocked: { backgroundColor: '#f1f5f9', color: '#475569' },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 12 },

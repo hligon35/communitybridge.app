@@ -88,12 +88,6 @@ export default function AdminChatMonitorScreen() {
   return (
     <ScreenWrapper style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.hero}>
-          <Text style={styles.eyebrow}>Communication</Text>
-          <Text style={styles.title}>Internal and parent communication</Text>
-          <Text style={styles.subtitle}>{isBcba ? `Review parent and ${THERAPY_ROLE_LABELS.therapist.toLowerCase()} communication threads, along with message attachments, from one workspace.` : 'Use this workspace to review inbox threads, attachments, and broadcast announcements from one place.'}</Text>
-        </View>
-
         <View style={styles.tabRow}>
           {[
             { key: 'inbox', label: 'Inbox' },
@@ -191,10 +185,6 @@ export default function AdminChatMonitorScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
   content: { padding: 16 },
-  hero: { borderRadius: 22, backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe', padding: 18 },
-  eyebrow: { color: '#1d4ed8', fontWeight: '800', fontSize: 12, textTransform: 'uppercase' },
-  title: { marginTop: 6, fontSize: 24, fontWeight: '800', color: '#0f172a' },
-  subtitle: { marginTop: 8, color: '#475569', lineHeight: 20 },
   tabRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 14 },
   tabButton: { borderRadius: 999, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#f1f5f9', marginRight: 8, marginBottom: 8 },
   tabButtonActive: { backgroundColor: '#2563eb' },

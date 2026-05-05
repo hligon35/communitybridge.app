@@ -135,12 +135,6 @@ export default function AdminAlertsScreen() {
   return (
     <ScreenWrapper style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.hero}>
-          <Text style={styles.eyebrow}>Compliance</Text>
-          <Text style={styles.title}>Track staff compliance and documentation</Text>
-          <Text style={styles.subtitle}>{isBcba ? 'BCBA users can review credential and document status here.' : 'Office users can upload documents, track expirations, and review the compliance audit trail here.'}</Text>
-        </View>
-
         {loadError ? <Text style={styles.errorText}>{loadError}</Text> : null}
 
         <View style={styles.tabRow}>
@@ -197,10 +191,6 @@ export default function AdminAlertsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
   content: { padding: 16 },
-  hero: { borderRadius: 22, backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe', padding: 18 },
-  eyebrow: { color: '#1d4ed8', fontWeight: '800', fontSize: 12, textTransform: 'uppercase' },
-  title: { marginTop: 6, fontSize: 24, fontWeight: '800', color: '#0f172a' },
-  subtitle: { marginTop: 8, color: '#475569', lineHeight: 20 },
   errorText: { color: '#b91c1c', marginTop: 12 },
   tabRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 14 },
   tabButton: { borderRadius: 999, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#f1f5f9', marginRight: 8, marginBottom: 8 },

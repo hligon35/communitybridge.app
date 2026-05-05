@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ScreenWrapper } from '../../components/ScreenWrapper';
 import { useAuth } from '../../AuthContext';
 import { useTenant } from '../../core/tenant/TenantContext';
+import { isBcbaRole } from '../../core/tenant/models';
 import * as Api from '../../Api';
 
 export default function ProgramDirectoryScreen() {
@@ -11,7 +12,7 @@ export default function ProgramDirectoryScreen() {
   const tenant = useTenant() || {};
   const { programs = [], currentOrganization, currentProgramId, setSelectedProgramId, featureFlags = {} } = tenant;
   const enabled = featureFlags.programDirectory !== false;
-  const isBcba = String(user?.role || '').trim().toLowerCase() === 'bcba';
+  const isBcba = isBcbaRole(user?.role);
   const [viewMode, setViewMode] = useState('library');
   const [draftTarget, setDraftTarget] = useState('');
   const [draftPromptHierarchy, setDraftPromptHierarchy] = useState('Least-to-most prompting');
@@ -125,12 +126,6 @@ export default function ProgramDirectoryScreen() {
   return (
     <ScreenWrapper style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.hero}>
-          <Text style={styles.eyebrow}>Programs & Goals</Text>
-          <Text style={styles.title}>Clinical program management</Text>
-          <Text style={styles.subtitle}>Review the program library, learner program list, and shared program editor from one BCBA-only workspace.</Text>
-        </View>
-
         <View style={styles.modeRow}>
           {[
             { key: 'library', label: 'Program Library' },
@@ -206,10 +201,6 @@ export default function ProgramDirectoryScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#f8fafc' },
   content: { padding: 16 },
-  hero: { borderRadius: 22, backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe', padding: 18 },
-  eyebrow: { color: '#1d4ed8', fontWeight: '800', fontSize: 12, textTransform: 'uppercase' },
-  title: { marginTop: 6, fontSize: 24, fontWeight: '800', color: '#0f172a' },
-  subtitle: { marginTop: 8, color: '#475569', lineHeight: 20 },
   modeRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 14 },
   modeChip: { borderRadius: 999, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#f1f5f9', marginRight: 8, marginBottom: 8 },
   modeChipActive: { backgroundColor: '#2563eb' },

@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import * as FileSystem from 'expo-file-system';
+import { MaterialIcons } from '@expo/vector-icons';
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../AuthContext';
@@ -14,6 +15,113 @@ function Block({ title, children, style }) {
     <View style={[styles.card, style]}>
       <Text style={styles.cardTitle}>{title}</Text>
       {children}
+    </View>
+  );
+}
+
+function HeaderLearnerPicker({ children, selectedLearnerId, onSelect }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuAnchor, setMenuAnchor] = useState(null);
+  const buttonRef = useRef(null);
+  const items = Array.isArray(children) ? children.filter(Boolean) : [];
+  const selectedLearner = items.find((child) => child?.id === selectedLearnerId) || items[0] || null;
+  const buttonLabel = selectedLearner?.name || 'Select learner';
+  const disabled = items.length <= 1;
+
+  function chooseLearner(nextId) {
+    if (!nextId) return;
+    onSelect(nextId);
+    setMenuOpen(false);
+  }
+
+  function openWebMenu() {
+    if (!buttonRef.current?.measureInWindow) {
+      setMenuAnchor({ x: 12, y: 56, width: 188, height: 36 });
+      setMenuOpen(true);
+      return;
+    }
+    buttonRef.current.measureInWindow((x, y, width, height) => {
+      setMenuAnchor({ x, y, width, height });
+      setMenuOpen(true);
+    });
+  }
+
+  function openNativeChooser() {
+    Alert.alert(
+      'Select learner',
+      'Choose the learner for billing details.',
+      [
+        ...items.map((child) => ({
+          text: child?.name || 'Learner',
+          onPress: () => chooseLearner(child?.id),
+        })),
+        { text: 'Cancel', style: 'cancel', onPress: () => setMenuOpen(false) },
+      ]
+    );
+  }
+
+  function handlePress() {
+    if (!items.length) return;
+    if (Platform.OS === 'web') {
+      if (menuOpen) {
+        setMenuOpen(false);
+        return;
+      }
+      openWebMenu();
+      return;
+    }
+    openNativeChooser();
+  }
+
+  return (
+    <View style={styles.headerPickerWrap}>
+      <TouchableOpacity
+        accessibilityLabel={selectedLearner ? `Selected learner ${buttonLabel}` : 'Select learner'}
+        disabled={!items.length}
+        onPress={handlePress}
+        ref={buttonRef}
+        style={[styles.headerPickerButton, !items.length ? styles.headerPickerButtonDisabled : null]}
+      >
+        <Text style={styles.headerPickerCaption}>Learner</Text>
+        <View style={styles.headerPickerRow}>
+          <Text numberOfLines={1} style={[styles.headerPickerValue, disabled ? styles.headerPickerValueLocked : null]}>
+            {buttonLabel}
+          </Text>
+          {!disabled ? <MaterialIcons color="#475569" name={menuOpen ? 'arrow-drop-up' : 'arrow-drop-down'} size={20} /> : null}
+        </View>
+      </TouchableOpacity>
+
+      {Platform.OS === 'web' && menuOpen && items.length > 1 ? (
+        <Modal animationType="none" onRequestClose={() => setMenuOpen(false)} transparent visible>
+          <Pressable style={styles.headerPickerBackdrop} onPress={() => setMenuOpen(false)}>
+            <View
+              style={[
+                styles.headerPickerMenu,
+                {
+                  left: menuAnchor?.x ?? 12,
+                  top: (menuAnchor?.y ?? 56) + (menuAnchor?.height ?? 36) + 6,
+                  width: Math.max(menuAnchor?.width ?? 188, 188),
+                },
+              ]}
+            >
+              {items.map((child) => {
+                const active = child?.id === selectedLearner?.id;
+                return (
+                  <TouchableOpacity
+                    key={child.id}
+                    onPress={() => chooseLearner(child.id)}
+                    style={[styles.headerPickerMenuItem, active ? styles.headerPickerMenuItemActive : null]}
+                  >
+                    <Text numberOfLines={1} style={[styles.headerPickerMenuText, active ? styles.headerPickerMenuTextActive : null]}>
+                      {child?.name || 'Learner'}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </Pressable>
+        </Modal>
+      ) : null}
     </View>
   );
 }
@@ -393,32 +501,23 @@ export default function InsuranceBillingScreen() {
     await persistLearnerInsurance(nextInsurance, `${childName} verification was marked complete.`);
   }
 
+  const learnerPicker = !isParent ? (
+    <HeaderLearnerPicker
+      children={children}
+      onSelect={setSelectedLearnerId}
+      selectedLearnerId={selectedLearner?.id || selectedLearnerId}
+    />
+  ) : null;
+
   return (
-    <ScreenWrapper style={styles.container}>
+    <ScreenWrapper
+      bannerLeft={null}
+      bannerRight={Platform.OS === 'web' ? null : learnerPicker}
+      bannerTitleLeft={Platform.OS === 'web' ? learnerPicker : null}
+      style={styles.container}
+    >
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.hero}>
-          <Text style={styles.eyebrow}>Billing & Authorizations</Text>
-          <Text style={styles.title}>{isParent ? 'Insurance and billing summary' : 'Insurance and billing workflow'}</Text>
-          <Text style={styles.subtitle}>{isParent ? 'Review your family insurance status, authorization details, and any signature items that still need attention.' : (isBcba ? 'BCBA view only. Review authorization context, session verification, and billing status here.' : 'Office control. Manage authorizations, verification, and billing export handoff here.')}</Text>
-        </View>
-
         {loadError ? <Text style={styles.errorText}>{loadError}</Text> : null}
-
-        {!isParent ? (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Learner</Text>
-            <View style={styles.chipRow}>
-              {(children || []).map((child) => {
-                const active = child?.id === selectedLearner?.id;
-                return (
-                  <TouchableOpacity key={child.id} style={[styles.chip, active ? styles.chipActive : null]} onPress={() => setSelectedLearnerId(child.id)}>
-                    <Text style={[styles.chipText, active ? styles.chipTextActive : null]}>{child.name || 'Learner'}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-        ) : null}
 
         {isParent ? (
           <Block title="Digital Insurance Card">
@@ -525,20 +624,53 @@ export default function InsuranceBillingScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
   content: { padding: 16 },
-  hero: { borderRadius: 22, backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe', padding: 18 },
-  eyebrow: { color: '#1d4ed8', fontWeight: '800', fontSize: 12, textTransform: 'uppercase' },
-  title: { marginTop: 6, fontSize: 24, fontWeight: '800', color: '#0f172a' },
   errorText: { color: '#b91c1c', marginTop: 12 },
-  subtitle: { marginTop: 8, color: '#475569', lineHeight: 20 },
   splitRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 },
   card: { marginTop: 12, borderRadius: 18, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e5e7eb', padding: 16 },
   splitCard: { width: '48%', marginTop: 0 },
   cardTitle: { fontSize: 16, fontWeight: '800', color: '#0f172a', marginBottom: 12 },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap' },
-  chip: { borderRadius: 999, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#eff6ff', marginRight: 8, marginBottom: 8 },
-  chipActive: { backgroundColor: '#2563eb' },
-  chipText: { color: '#1d4ed8', fontWeight: '700' },
-  chipTextActive: { color: '#ffffff' },
+  headerPickerWrap: { minWidth: 156, maxWidth: 176 },
+  headerPickerButton: {
+    minHeight: 36,
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#dbe4ee',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.06,
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  headerPickerButtonDisabled: { opacity: 0.72 },
+  headerPickerCaption: { color: '#64748b', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.3 },
+  headerPickerRow: { marginTop: 1, flexDirection: 'row', alignItems: 'center' },
+  headerPickerValue: { flex: 1, color: '#0f172a', fontWeight: '700', fontSize: 13 },
+  headerPickerValueLocked: { paddingRight: 2 },
+  headerPickerBackdrop: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  headerPickerMenu: {
+    position: 'absolute',
+    borderRadius: 14,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#dbe4ee',
+    paddingVertical: 6,
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.12,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 18,
+    elevation: 3,
+    zIndex: 40,
+  },
+  headerPickerMenuItem: { paddingVertical: 10, paddingHorizontal: 12 },
+  headerPickerMenuItemActive: { backgroundColor: '#eff6ff' },
+  headerPickerMenuText: { color: '#334155', fontWeight: '600' },
+  headerPickerMenuTextActive: { color: '#1d4ed8', fontWeight: '800' },
   rowText: { color: '#475569', lineHeight: 20, marginBottom: 8 },
   digitalCard: { borderRadius: 18, backgroundColor: '#1e3a8a', padding: 18 },
   digitalCardName: { color: '#ffffff', fontSize: 22, fontWeight: '800' },
@@ -555,7 +687,7 @@ const styles = StyleSheet.create({
   exportTitle: { fontSize: 16, fontWeight: '800', color: '#0f172a' },
   exportText: { marginTop: 6, color: '#64748b' },
   exportCardActive: { borderWidth: 1, borderColor: '#93c5fd', backgroundColor: '#eff6ff' },
-  exportActionRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 },
+  exportActionRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 10, rowGap: 10, marginBottom: 12 },
   primaryButton: { marginTop: 10, alignSelf: 'flex-start', borderRadius: 12, backgroundColor: '#2563eb', paddingVertical: 12, paddingHorizontal: 14 },
   primaryButtonDisabled: { opacity: 0.55 },
   primaryButtonText: { color: '#ffffff', fontWeight: '800' },

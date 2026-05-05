@@ -97,15 +97,15 @@ export default function TapTrackerScreen() {
             </View>
           </View>
         </View>
-        {inactivePreview ? (
-          <View style={[styles.inactiveCard, styles.inactiveMuted]}>
-            <Text style={styles.inactiveTitle}>Live Behavior Tracking</Text>
-            <Text style={styles.inactiveMessage}>Start a sessions to activate</Text>
-            <Text style={styles.inactiveText}>No recorded data available.</Text>
-          </View>
-        ) : (
-          <TherapySessionPanel workspace={workspace} mode="tracker" title="Live Behavior Tracking" trackerPaused={paused} hideTrackerFeed />
-        )}
+        <TherapySessionPanel
+          workspace={workspace}
+          mode="tracker"
+          title="Live Behavior Tracking"
+          trackerPaused={paused}
+          hideTrackerFeed
+          showInactiveTracker={inactivePreview}
+          inactiveTrackerMessage="Start a session to activate."
+        />
       </ScrollView>
     </ScreenWrapper>
   );
@@ -126,9 +126,4 @@ const styles = StyleSheet.create({
   timerText: { fontSize: 20, fontWeight: '800', color: '#0f172a', marginLeft: 12 },
   iconControl: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#dbe4f0', marginRight: 8, backgroundColor: '#fff' },
   iconControlDisabled: { opacity: 0.45 },
-  inactiveCard: { marginTop: 12, borderRadius: 16, borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#f8fafc', padding: 16 },
-  inactiveMuted: { opacity: 0.6 },
-  inactiveTitle: { fontWeight: '700', color: '#0f172a', marginBottom: 8 },
-  inactiveMessage: { color: '#0f172a', fontWeight: '800' },
-  inactiveText: { marginTop: 8, color: '#64748b', lineHeight: 20 },
 });

@@ -32,7 +32,7 @@ export function useTherapySessionWorkspace({ child, preview = false, canManageSe
   const [queuedEvents, setQueuedEvents] = useState([]);
   const [syncingQueuedEvents, setSyncingQueuedEvents] = useState(false);
   const [recentEvents, setRecentEvents] = useState([]);
-  const [previewActiveSessionState, setPreviewActiveSessionState] = useState(() => (preview ? createPreviewSession('AM') : null));
+  const [previewActiveSessionState, setPreviewActiveSessionState] = useState(null);
   const [previewDraftSummaryState, setPreviewDraftSummaryState] = useState(() => (preview ? PREVIEW_DRAFT_SUMMARY : null));
   const [previewLatestApprovedSummary, setPreviewLatestApprovedSummary] = useState(() => (preview ? PREVIEW_DRAFT_SUMMARY : null));
   const [previewRecentEvents, setPreviewRecentEvents] = useState(() => (preview ? [...PREVIEW_EVENTS] : []));

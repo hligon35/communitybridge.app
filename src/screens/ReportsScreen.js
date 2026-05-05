@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { useAuth } from '../AuthContext';
@@ -79,6 +80,124 @@ function UtilizationMeters({ items = [] }) {
   );
 }
 
+function HeaderFilterDropdown({ label, value, options = [], selectedValue, onSelect, buttonWidth = 120 }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuAnchor, setMenuAnchor] = useState(null);
+  const buttonRef = useRef(null);
+
+  function handleOpen() {
+    if (menuOpen) {
+      setMenuOpen(false);
+      return;
+    }
+    if (buttonRef.current?.measureInWindow) {
+      buttonRef.current.measureInWindow((x, y, width, height) => {
+        setMenuAnchor({ x, y, width, height });
+        setMenuOpen(true);
+      });
+      return;
+    }
+    setMenuAnchor({ x: 12, y: 56, width: buttonWidth, height: 34 });
+    setMenuOpen(true);
+  }
+
+  if (!options.length) return null;
+
+  return (
+    <View style={styles.headerDropdownWrap}>
+      <TouchableOpacity ref={buttonRef} style={[styles.headerDropdownButton, { width: buttonWidth }]} onPress={handleOpen}>
+        <Text style={styles.headerDropdownCaption}>{label}</Text>
+        <View style={styles.headerDropdownValueRow}>
+          <Text numberOfLines={1} style={styles.headerDropdownValue}>{value}</Text>
+          <MaterialIcons name={menuOpen ? 'arrow-drop-up' : 'arrow-drop-down'} size={16} color="#475569" />
+        </View>
+      </TouchableOpacity>
+
+      {menuOpen ? (
+        <Modal animationType="none" transparent visible onRequestClose={() => setMenuOpen(false)}>
+          <Pressable style={styles.headerFiltersBackdrop} onPress={() => setMenuOpen(false)}>
+            <View
+              style={[
+                styles.headerDropdownMenu,
+                {
+                  left: menuAnchor?.x ?? 12,
+                  top: (menuAnchor?.y ?? 56) + (menuAnchor?.height ?? 34) + 6,
+                  width: Math.max(menuAnchor?.width ?? buttonWidth, buttonWidth),
+                },
+              ]}
+            >
+              {options.map((option) => {
+                const active = selectedValue === option.value;
+                return (
+                  <TouchableOpacity
+                    key={`${label}-${option.value}`}
+                    style={[styles.headerDropdownItem, active ? styles.headerDropdownItemActive : null]}
+                    onPress={() => {
+                      onSelect(option.value);
+                      setMenuOpen(false);
+                    }}
+                  >
+                    <Text numberOfLines={1} style={[styles.headerDropdownItemText, active ? styles.headerDropdownItemTextActive : null]}>
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </Pressable>
+        </Modal>
+      ) : null}
+    </View>
+  );
+}
+
+function HeaderReportFilters({
+  roomOptions = [],
+  selectedRoom,
+  onSelectRoom,
+  learners = [],
+  selectedChildId,
+  onSelectChild,
+}) {
+  const hasRoomFilter = roomOptions.length > 1;
+  const hasLearnerFilter = learners.length > 0;
+  const activeLearner = learners.find((child) => child?.id === selectedChildId) || null;
+  const learnerLabel = selectedChildId === 'all' ? 'All learners' : (activeLearner?.name || 'Learner');
+  const roomLabel = selectedRoom === 'all' ? 'All rooms' : selectedRoom;
+  const roomChoices = roomOptions.map((room) => ({ value: room, label: room === 'all' ? 'All Rooms' : room }));
+  const learnerChoices = [
+    { value: 'all', label: 'All Learners' },
+    ...learners.map((child) => ({ value: child.id, label: child.name })),
+  ];
+
+  if (!hasRoomFilter && !hasLearnerFilter) return null;
+
+  return (
+    <View style={styles.headerFiltersWrap}>
+      {hasRoomFilter ? (
+        <HeaderFilterDropdown
+          label="Room"
+          value={roomLabel}
+          options={roomChoices}
+          selectedValue={selectedRoom}
+          onSelect={onSelectRoom}
+          buttonWidth={104}
+        />
+      ) : null}
+      {hasLearnerFilter ? (
+        <HeaderFilterDropdown
+          label="Learner"
+          value={learnerLabel}
+          options={learnerChoices}
+          selectedValue={selectedChildId}
+          onSelect={onSelectChild}
+          buttonWidth={132}
+        />
+      ) : null}
+    </View>
+  );
+}
+
 export default function ReportsScreen() {
   const { user } = useAuth();
   const workspaceLabel = getWorkspaceLabel(user?.role);
@@ -89,6 +208,7 @@ export default function ReportsScreen() {
   const isParent = role.includes('parent');
   const isWideLayout = width >= 900;
   const isThreeCardLayout = width >= 720;
+  const showHeaderFilters = width >= 900;
   const reportChildren = useMemo(() => findReportChildren(user, children, parents), [user, children, parents]);
   const [selectedChildId, setSelectedChildId] = useState('all');
   const [selectedRoom, setSelectedRoom] = useState('all');
@@ -168,6 +288,17 @@ export default function ReportsScreen() {
       </ScreenWrapper>
     );
   }
+
+  const headerFilters = showHeaderFilters ? (
+    <HeaderReportFilters
+      roomOptions={roomOptions}
+      selectedRoom={selectedRoom}
+      onSelectRoom={setSelectedRoom}
+      learners={filteredReportChildren}
+      selectedChildId={selectedChildId}
+      onSelectChild={setSelectedChildId}
+    />
+  ) : null;
 
   async function refreshJobs() {
     try {
@@ -284,14 +415,8 @@ export default function ReportsScreen() {
   }
 
   return (
-    <ScreenWrapper style={styles.container}>
+    <ScreenWrapper style={styles.container} bannerTitleLeft={headerFilters}>
       <ScrollView contentContainerStyle={[styles.content, isWideLayout ? styles.contentWide : null]} showsVerticalScrollIndicator={false}>
-        <View style={styles.hero}>
-          <Text style={styles.eyebrow}>Data & Reports</Text>
-          <Text style={styles.title}>Clinical and operational reporting</Text>
-          <Text style={styles.subtitle}>{isBcba ? 'BCBA reporting emphasizes skill acquisition, behavior trends, ABC logging, and communication review.' : 'Office reporting emphasizes attendance, verification, staff utilization, and export workflow.'}</Text>
-        </View>
-
         <View style={styles.tabRow}>
           {(isBcba ? ['clinical', 'export'] : ['operational', 'export']).map((key) => (
             <TouchableOpacity key={key} style={[styles.tabButton, tab === key ? styles.tabButtonActive : null]} onPress={() => setTab(key)}>
@@ -300,7 +425,7 @@ export default function ReportsScreen() {
           ))}
         </View>
 
-        {roomOptions.length > 1 ? (
+        {!showHeaderFilters && roomOptions.length > 1 ? (
           <View style={styles.filterSection}>
             <Text style={styles.filterLabel}>Filter by room</Text>
             <View style={styles.filterRow}>
@@ -313,7 +438,7 @@ export default function ReportsScreen() {
           </View>
         ) : null}
 
-        {filteredReportChildren.length ? (
+        {!showHeaderFilters && filteredReportChildren.length ? (
           <View style={styles.filterSection}>
             <Text style={styles.filterLabel}>Filter by learner</Text>
             <View style={styles.filterRow}>
@@ -327,7 +452,7 @@ export default function ReportsScreen() {
               ))}
             </View>
           </View>
-        ) : reportChildren.length ? (
+        ) : !showHeaderFilters && reportChildren.length ? (
           <View style={styles.emptyFilterState}>
             <Text style={styles.rowText}>No learners were found for the selected room.</Text>
           </View>
@@ -423,10 +548,18 @@ const styles = StyleSheet.create({
   parentBlockedEyebrow: { color: '#1d4ed8', fontWeight: '800', fontSize: 12, textTransform: 'uppercase' },
   parentBlockedTitle: { marginTop: 6, fontSize: 24, fontWeight: '800', color: '#0f172a' },
   parentBlockedText: { marginTop: 8, color: '#475569', lineHeight: 20 },
-  hero: { borderRadius: 22, backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe', padding: 18 },
-  eyebrow: { color: '#1d4ed8', fontWeight: '800', fontSize: 12, textTransform: 'uppercase' },
-  title: { marginTop: 6, fontSize: 24, fontWeight: '800', color: '#0f172a' },
-  subtitle: { marginTop: 8, color: '#475569', lineHeight: 20 },
+  headerFiltersWrap: { minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  headerDropdownWrap: { minWidth: 0 },
+  headerDropdownButton: { borderRadius: 10, backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', paddingHorizontal: 8, paddingVertical: 4 },
+  headerDropdownCaption: { color: '#64748b', fontSize: 9, fontWeight: '700', textTransform: 'uppercase', lineHeight: 10 },
+  headerDropdownValueRow: { flexDirection: 'row', alignItems: 'center', marginTop: 1 },
+  headerDropdownValue: { flex: 1, color: '#0f172a', fontWeight: '700', fontSize: 12, marginRight: 2 },
+  headerFiltersBackdrop: { flex: 1 },
+  headerDropdownMenu: { position: 'absolute', borderRadius: 12, borderWidth: 1, borderColor: '#dbe4f0', backgroundColor: '#ffffff', paddingVertical: 4, shadowColor: '#0f172a', shadowOpacity: 0.12, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 8 },
+  headerDropdownItem: { paddingHorizontal: 8, paddingVertical: 6 },
+  headerDropdownItemActive: { backgroundColor: '#eff6ff' },
+  headerDropdownItemText: { color: '#0f172a', fontWeight: '700', fontSize: 12 },
+  headerDropdownItemTextActive: { color: '#1d4ed8' },
   tabRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 14 },
   tabButton: { borderRadius: 999, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#f1f5f9', marginRight: 8, marginBottom: 8 },
   tabButtonActive: { backgroundColor: '#2563eb' },

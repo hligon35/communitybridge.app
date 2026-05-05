@@ -17,6 +17,7 @@ export function ScreenWrapper({
   bannerTitle,
   bannerLeft,
   bannerRight,
+  bannerTitleLeft,
   bottomSpacerHeight,
   webBottomSpacerHeight,
 }) {
@@ -66,7 +67,7 @@ export function ScreenWrapper({
       {/* web: show top WebNav; mobile: show ScreenHeader */}
       {isWeb && !isTabletLayout && !suppressLegacyWebNav
         ? <WebNav />
-        : (!hideBanner && <ScreenHeader title={title} showBack={showBack} left={bannerLeft} right={bannerRight} />)}
+        : (!hideBanner && <ScreenHeader title={title} showBack={showBack} left={bannerLeft} right={bannerRight} titleLeft={bannerTitleLeft} />)}
 
       {isWeb ? (
         <View style={{ flex: 1, width: '100%', alignItems: 'center', paddingHorizontal: 16, paddingTop: 20 }}>

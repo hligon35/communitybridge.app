@@ -311,12 +311,6 @@ export default function ScheduleCalendarScreen() {
   return (
     <ScreenWrapper style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.hero}>
-          <Text style={styles.eyebrow}>Scheduling</Text>
-          <Text style={styles.title}>{isTherapist ? 'Your work schedule' : (isParent ? 'Family calendar' : 'Master scheduling for students, staff, and rooms')}</Text>
-          <Text style={styles.subtitle}>{isTherapist ? `This view only shows sessions assigned to your ${THERAPY_ROLE_LABELS.therapist.toLowerCase()} profile.` : (isParent ? 'Review upcoming sessions for children linked to your family account.' : 'Switch between day, week, and month context while reviewing session cards by staff, student, or room.')}</Text>
-        </View>
-
         <View style={styles.controlsCard}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRowSingleLine}>
             {['day', 'week', 'month'].map((mode) => (
@@ -476,10 +470,6 @@ export default function ScheduleCalendarScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#f8fafc' },
   content: { padding: 16 },
-  hero: { borderRadius: 22, backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe', padding: 18 },
-  eyebrow: { color: '#1d4ed8', fontWeight: '800', fontSize: 12, textTransform: 'uppercase' },
-  title: { marginTop: 6, fontSize: 24, fontWeight: '800', color: '#0f172a' },
-  subtitle: { marginTop: 8, color: '#475569', lineHeight: 20 },
   controlsCard: { marginTop: 14, borderRadius: 18, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e5e7eb', padding: 16 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 },
   chipRowSingleLine: { flexDirection: 'row', flexWrap: 'nowrap', paddingRight: 8 },

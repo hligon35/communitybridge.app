@@ -52,6 +52,14 @@ export default function LoginScreen({ navigation, suppressAutoRedirect = false }
     ? 48
     : Math.max(72, Math.round(windowHeight * 0.14));
   const passwordInputRef = useRef(null);
+  const isExplicitWebLoginRoute = useMemo(() => {
+    if (Platform.OS !== 'web') return false;
+    try {
+      return String(globalThis?.location?.pathname || '').trim().toLowerCase() === '/login';
+    } catch (_) {
+      return false;
+    }
+  }, []);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -261,11 +269,11 @@ export default function LoginScreen({ navigation, suppressAutoRedirect = false }
   // This effect must be declared before any early returns to preserve
   // the order of Hooks between renders.
   useEffect(() => {
-    if (suppressAutoRedirect) return;
+    if (suppressAutoRedirect || isExplicitWebLoginRoute) return;
     if (auth.loading) return;
     if (!auth.token) return;
     navigation.replace(auth.passwordSetupRequired ? 'CreatePassword' : (auth.needsMfa ? 'TwoFactor' : 'Main'));
-  }, [auth.loading, auth.token, auth.needsMfa, auth.passwordSetupRequired, suppressAutoRedirect]);
+  }, [auth.loading, auth.token, auth.needsMfa, auth.passwordSetupRequired, isExplicitWebLoginRoute, suppressAutoRedirect]);
 
   useEffect(() => {
     let mounted = true;

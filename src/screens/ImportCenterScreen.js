@@ -373,12 +373,6 @@ export default function ImportCenterScreen() {
   return (
     <ScreenWrapper style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.hero}>
-          <Text style={styles.eyebrow}>Import Center</Text>
-          <Text style={styles.title}>Directory ingestion and validation workspace</Text>
-          <Text style={styles.subtitle}>Office users can import JSON or CSV exports from pre-existing directories. The importer recognizes common learner, parent, guardian, staff, therapist, provider, and faculty field names.</Text>
-        </View>
-
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Supported shapes</Text>
           <Text style={styles.helperText}>Use top-level arrays such as children, students, learners, parents, guardians, staff, providers, or a flat CSV or records export with recognizable headers like student name, guardian name, room, role, or email.</Text>
@@ -423,10 +417,6 @@ export default function ImportCenterScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   content: { padding: 16 },
-  hero: { borderRadius: 18, backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe', padding: 16 },
-  eyebrow: { color: '#1d4ed8', fontWeight: '800', textTransform: 'uppercase', fontSize: 12 },
-  title: { marginTop: 6, fontSize: 23, fontWeight: '800', color: '#0f172a' },
-  subtitle: { marginTop: 8, color: '#475569', lineHeight: 20 },
   card: { marginTop: 14, borderRadius: 16, borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#fff', padding: 14 },
   sectionTitle: { fontSize: 15, fontWeight: '800', color: '#111827', marginBottom: 8 },
   codeBlock: { borderRadius: 12, backgroundColor: '#0f172a', color: '#e2e8f0', padding: 12, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', fontSize: 12, marginTop: 12 },

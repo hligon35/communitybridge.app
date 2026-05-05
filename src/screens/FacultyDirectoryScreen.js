@@ -157,12 +157,6 @@ export default function FacultyDirectoryScreen() {
     <ScreenWrapper style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {loadError ? <Text style={styles.errorText}>{loadError}</Text> : null}
-        <View style={styles.hero}>
-          <Text style={styles.eyebrow}>Staff</Text>
-          <Text style={styles.title}>Manage staff, credentials, and caseloads</Text>
-          <Text style={styles.subtitle}>Use the roster filters to find BCBAs, RBTs, and office users, then inspect the selected staff profile tabs here.</Text>
-        </View>
-
         <View style={styles.filtersCard}>
           <TextInput value={query} onChangeText={setQuery} placeholder="Search staff" style={styles.input} />
           <View style={styles.chipRow}>
@@ -222,10 +216,6 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#f8fafc' },
   content: { padding: 16 },
   errorText: { color: '#b91c1c', marginBottom: 12 },
-  hero: { borderRadius: 22, backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe', padding: 18 },
-  eyebrow: { color: '#1d4ed8', fontWeight: '800', fontSize: 12, textTransform: 'uppercase' },
-  title: { marginTop: 6, fontSize: 24, fontWeight: '800', color: '#0f172a' },
-  subtitle: { marginTop: 8, color: '#475569', lineHeight: 20 },
   filtersCard: { marginTop: 14, borderRadius: 18, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e5e7eb', padding: 16 },
   input: { borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#fff' },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 12 },

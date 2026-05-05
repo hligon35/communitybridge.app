@@ -39,55 +39,51 @@ function TrendCard({ title, items, accent = '#2563eb', horizontalInset = 26 }) {
   return (
     <View style={styles.card}>
       <Text style={styles.cardTitle}>{title}</Text>
-      {hasItems ? (
-        <View style={styles.lineChartWrap} onLayout={(event) => setChartWidth(Math.max(0, event?.nativeEvent?.layout?.width || 0))}>
-          <View style={[styles.lineChartSurface, { width: effectiveChartWidth, height: chartHeight }]}> 
-            {yAxisTicks.map((tick, index) => (
-              <View key={`grid-${tick}`} style={[styles.lineChartGrid, { left: yAxisWidth, top: topPadding + (plotHeight / (yAxisTicks.length - 1)) * index }]} />
-            ))}
-            {yAxisTicks.map((tick, index) => (
-              <View key={`label-${tick}`} style={[styles.yAxisLabelWrap, { top: topPadding + (plotHeight / (yAxisTicks.length - 1)) * index - 8 }]}>
-                <Text style={styles.yAxisLabel}>{tick}</Text>
+      <View style={styles.lineChartWrap} onLayout={(event) => setChartWidth(Math.max(0, event?.nativeEvent?.layout?.width || 0))}>
+        <View style={[styles.lineChartSurface, { width: effectiveChartWidth, height: chartHeight }]}> 
+          {yAxisTicks.map((tick, index) => (
+            <View key={`grid-${tick}`} style={[styles.lineChartGrid, { left: yAxisWidth, top: topPadding + (plotHeight / (yAxisTicks.length - 1)) * index }]} />
+          ))}
+          {yAxisTicks.map((tick, index) => (
+            <View key={`label-${tick}`} style={[styles.yAxisLabelWrap, { top: topPadding + (plotHeight / (yAxisTicks.length - 1)) * index - 8 }]}>
+              <Text style={styles.yAxisLabel}>{tick}</Text>
+            </View>
+          ))}
+          {hasItems ? points.slice(0, -1).map((point, index) => {
+            const nextPoint = points[index + 1];
+            const dx = nextPoint.x - point.x;
+            const dy = nextPoint.y - point.y;
+            const length = Math.sqrt((dx * dx) + (dy * dy));
+            const angle = `${Math.atan2(dy, dx)}rad`;
+            return (
+              <View
+                key={`segment-${point.key}-${nextPoint.key}`}
+                style={[
+                  styles.lineSegment,
+                  {
+                    left: point.x + (dx / 2) - (length / 2),
+                    top: point.y + (dy / 2) - 1.5,
+                    width: length,
+                    backgroundColor: accent,
+                    transform: [{ rotate: angle }],
+                  },
+                ]}
+              />
+            );
+          }) : null}
+          {hasItems ? points.map((point) => (
+            <View key={point.key} style={[styles.linePointColumn, { left: point.x - 26, top: 0 }]}> 
+              <View style={[styles.linePointValueWrap, { top: Math.max(0, point.y - 4) }]}>
+                <Text style={styles.linePointValue}>{point.value}</Text>
               </View>
-            ))}
-            {points.slice(0, -1).map((point, index) => {
-              const nextPoint = points[index + 1];
-              const dx = nextPoint.x - point.x;
-              const dy = nextPoint.y - point.y;
-              const length = Math.sqrt((dx * dx) + (dy * dy));
-              const angle = `${Math.atan2(dy, dx)}rad`;
-              return (
-                <View
-                  key={`segment-${point.key}-${nextPoint.key}`}
-                  style={[
-                    styles.lineSegment,
-                    {
-                      left: point.x + (dx / 2) - (length / 2),
-                      top: point.y + (dy / 2) - 1.5,
-                      width: length,
-                      backgroundColor: accent,
-                      transform: [{ rotate: angle }],
-                    },
-                  ]}
-                />
-              );
-            })}
-            {points.map((point) => (
-              <View key={point.key} style={[styles.linePointColumn, { left: point.x - 26, top: 0 }]}> 
-                <View style={[styles.linePointValueWrap, { top: Math.max(0, point.y - 4) }]}>
-                  <Text style={styles.linePointValue}>{point.value}</Text>
-                </View>
-                <View style={[styles.linePoint, { top: point.y - 5, borderColor: accent }]}>
-                  <View style={[styles.linePointInner, { backgroundColor: accent }]} />
-                </View>
-                <Text style={styles.linePointLabel}>{point.label}</Text>
+              <View style={[styles.linePoint, { top: point.y - 5, borderColor: accent }]}>
+                <View style={[styles.linePointInner, { backgroundColor: accent }]} />
               </View>
-            ))}
-          </View>
+              <Text style={styles.linePointLabel}>{point.label}</Text>
+            </View>
+          )) : null}
         </View>
-      ) : (
-        <Text style={styles.emptyTrendText}>No staffing data is available yet for this graph.</Text>
-      )}
+      </View>
     </View>
   );
 }
@@ -99,7 +95,7 @@ export default function AdminControlsScreen() {
   const isBcba = isBcbaRole(user?.role);
   const isTabletLayout = useIsTabletLayout();
   const estimatedContentWidth = Math.max(320, width - (isTabletLayout ? 320 : 48));
-  const showFourUpTiles = estimatedContentWidth >= 1120;
+  const showFourUpTiles = estimatedContentWidth >= 820;
   const showTwoUpTiles = estimatedContentWidth >= 640;
   const useCompactTiles = estimatedContentWidth < 860;
   const showChartGrid = estimatedContentWidth >= 900;
@@ -138,12 +134,6 @@ export default function AdminControlsScreen() {
   return (
     <ScreenWrapper style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.hero}>
-          <Text style={styles.eyebrow}>Dashboard</Text>
-          <Text style={styles.title}>High-level operational and clinical overview</Text>
-          <Text style={styles.subtitle}>{isBcba ? 'BCBA dashboards prioritize incidents, overdue documentation, and program review readiness.' : 'Office dashboards prioritize staffing, credential timing, session throughput, and announcements.'}</Text>
-        </View>
-
         <View style={[styles.tileRow, showFourUpTiles ? styles.tileRowWide : null]}>
           <View style={[
             styles.tileWrap,
@@ -204,11 +194,7 @@ export default function AdminControlsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
   content: { padding: 16 },
-  hero: { borderRadius: 22, backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe', padding: 18 },
-  eyebrow: { color: '#1d4ed8', fontWeight: '800', fontSize: 12, textTransform: 'uppercase' },
-  title: { marginTop: 6, fontSize: 24, fontWeight: '800', color: '#0f172a' },
-  subtitle: { marginTop: 8, color: '#475569', lineHeight: 20 },
-  tileRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginTop: 14, alignItems: 'flex-start' },
+  tileRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start' },
   tileRowWide: { marginHorizontal: -6 },
   tileWrap: { marginBottom: 12 },
   tileWrapStacked: { width: '100%' },
@@ -239,7 +225,6 @@ const styles = StyleSheet.create({
   linePoint: { position: 'absolute', width: 12, height: 12, borderRadius: 999, borderWidth: 2, backgroundColor: '#ffffff', alignItems: 'center', justifyContent: 'center' },
   linePointInner: { width: 4, height: 4, borderRadius: 999 },
   linePointLabel: { marginTop: 'auto', fontSize: 11, fontWeight: '700', color: '#334155', textAlign: 'center' },
-  emptyTrendText: { color: '#64748b', lineHeight: 20 },
   alertRow: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 10, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
   alertTextWrap: { flex: 1, marginLeft: 10 },
   alertTitle: { fontWeight: '800', color: '#0f172a' },

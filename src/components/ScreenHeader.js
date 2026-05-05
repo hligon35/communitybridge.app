@@ -4,7 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { logger } from '../utils/logger';
 
-export default function ScreenHeader({ title, showBack = true, left, right }) {
+export default function ScreenHeader({ title, showBack = true, left, right, titleLeft }) {
   const navigation = useNavigation();
   const logEvent = (ev) => {
     logger.debug('ui', `ScreenHeader:${ev}`, { title });
@@ -32,6 +32,8 @@ export default function ScreenHeader({ title, showBack = true, left, right }) {
       ) : (
         <View style={styles.backPlaceholder} />
       )}
+
+      {titleLeft ? <View style={styles.titleLeft}>{titleLeft}</View> : null}
 
       {title ? <Text style={styles.title} numberOfLines={1} pointerEvents="none">{title}</Text> : <View style={styles.titlePlaceholder} />}
 
@@ -61,6 +63,16 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   backPlaceholder: { width: 84, position: 'absolute', left: 12, top: 10 },
+  titleLeft: {
+    position: 'absolute',
+    right: '50%',
+    marginRight: 12,
+    transform: [{ translateX: -150 }],
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+  },
   title: { fontSize: 18, fontWeight: '700', textAlign: 'center', marginHorizontal: 64 },
   titlePlaceholder: { height: 0 },
   right: { position: 'absolute', right: 12, top: 10, minWidth: 34, alignItems: 'flex-end' }

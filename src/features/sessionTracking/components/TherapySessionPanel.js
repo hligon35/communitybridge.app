@@ -6,7 +6,7 @@ import BehaviorTapGrid from './BehaviorTapGrid';
 import LiveEventFeed from './LiveEventFeed';
 const { summarizeSessionStamp } = require('../utils/previewWorkspace');
 
-export default function TherapySessionPanel({ workspace, mode = 'combined', title = 'Therapy Session Workspace', trackerPaused = false, hideTrackerFeed = false, onSubmitted }) {
+export default function TherapySessionPanel({ workspace, mode = 'combined', title = 'Therapy Session Workspace', trackerPaused = false, hideTrackerFeed = false, showInactiveTracker = false, inactiveTrackerMessage = '', onSubmitted }) {
   const showTracker = mode === 'combined' || mode === 'tracker';
   const showSummary = mode === 'combined' || mode === 'summary';
   const feedItems = [
@@ -45,6 +45,16 @@ export default function TherapySessionPanel({ workspace, mode = 'combined', titl
                 onUndoLast={workspace.undoLastQueuedEvent}
               />
               {!hideTrackerFeed ? <LiveEventFeed items={feedItems} /> : null}
+            </>
+          ) : showInactiveTracker ? (
+            <>
+              <View style={styles.inactiveTrackerWrap}>
+                <BehaviorTapGrid
+                  groups={THERAPY_EVENT_GROUPS}
+                  queuedEvents={[]}
+                  disabled
+                />
+              </View>
             </>
           ) : (
             <>
@@ -116,6 +126,7 @@ const styles = StyleSheet.create({
   sessionMetaText: { color: '#475569', fontSize: 12, textAlign: 'right', marginRight: 10, flexShrink: 1 },
   trackerHelpText: { marginTop: 4, color: '#475569', lineHeight: 18 },
   bodyText: { color: '#374151' },
+  inactiveTrackerWrap: { opacity: 0.55 },
   previewBanner: { marginTop: 8, marginBottom: 4, color: '#1d4ed8', backgroundColor: '#eff6ff', borderRadius: 10, padding: 10, lineHeight: 18 },
   noteInput: { minHeight: 88, borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 12, backgroundColor: '#fff', paddingHorizontal: 12, paddingVertical: 10, marginTop: 12, textAlignVertical: 'top' },
   actionRow: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12 },

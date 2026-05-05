@@ -346,7 +346,6 @@ export default function RoleDashboardScreen({ navigation }) {
         <View style={[styles.hero, isTherapist ? styles.heroTherapist : null]}>
           {isTherapist ? (
             <>
-              <Text style={styles.heroEyebrow}>{labels.dashboard || 'Dashboard'}</Text>
               {directoryLoading ? (
                 <View style={styles.statusPanel}>
                   <MaterialIcons name="hourglass-top" size={18} color="#2563eb" />
@@ -390,8 +389,6 @@ export default function RoleDashboardScreen({ navigation }) {
             </>
           ) : (
             <>
-              <Text style={styles.heroEyebrow}>{labels.familySection || 'Your Family'}</Text>
-              <Text style={styles.heroText}>Select a child to update the cards below.</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.familyCarouselTrack}>
                 {relevantChildren.map((child, index) => {
                   const isSelected = child?.id === selectedChild?.id;
@@ -452,9 +449,7 @@ const styles = StyleSheet.create({
   content: { padding: 16, paddingBottom: Platform.OS === 'web' ? 32 : 16 },
   hero: { padding: 18, borderRadius: 18, backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0' },
   heroTherapist: { padding: 0, borderRadius: 0, backgroundColor: 'transparent', borderWidth: 0 },
-  heroEyebrow: { color: '#2563eb', fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.6 },
   heroTitle: { marginTop: 8, fontSize: 24, fontWeight: '800', color: '#0f172a' },
-  heroText: { marginTop: 8, color: '#475569', lineHeight: 20 },
   statusPanel: { marginTop: 14, padding: 12, borderRadius: 14, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#dbeafe', flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
   statusText: { flexShrink: 1, color: '#334155', lineHeight: 18 },
   retryButton: { marginLeft: 'auto', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, backgroundColor: '#2563eb' },

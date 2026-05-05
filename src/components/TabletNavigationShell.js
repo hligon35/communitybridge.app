@@ -59,7 +59,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
   const isPhoneViewport = Platform.OS !== 'ios' || !Platform.isPad
     ? shortEdge < 600 && longEdge < 1100
     : false;
-  const showMobileAdminShell = Boolean(showAdminWorkspace && !isBcbaRole(user?.role) && isPhoneViewport);
+  const showMobileAdminShell = Boolean(showAdminWorkspace && isPhoneViewport);
   const activeRouteParams = navigationRef?.getCurrentRoute?.()?.params || null;
   const activeRouteChildId = String(activeRouteParams?.childId || '').trim();
 
@@ -294,7 +294,6 @@ export default function TabletNavigationShell({ currentRoute, children }) {
             <View style={[styles.brandRow, styles.mobileBrandRow]}>
               <LogoTitle width={128} height={40} />
               <View style={[styles.greetingWrap, styles.mobileGreetingWrap]}>
-                <Text style={styles.topEyebrow}>{workspaceLabel}</Text>
                 <Text style={[styles.topTitle, styles.mobileTopTitle]} numberOfLines={1}>Hello, {greeting}</Text>
               </View>
             </View>
@@ -310,7 +309,6 @@ export default function TabletNavigationShell({ currentRoute, children }) {
           <View style={[styles.mobileNavOverlay, { paddingTop: Math.max(insets.top, 16), paddingBottom: Math.max(insets.bottom, 16) }]}>
             <View style={styles.mobileNavHeader}>
               <View>
-                <Text style={styles.mobileNavEyebrow}>{workspaceLabel}</Text>
                 <Text style={styles.mobileNavTitle}>Navigation</Text>
               </View>
               <TouchableOpacity style={styles.mobileNavCloseButton} onPress={() => setMobileNavOpen(false)} accessibilityLabel="Close navigation menu">
@@ -345,6 +343,9 @@ export default function TabletNavigationShell({ currentRoute, children }) {
       {Platform.OS !== 'web' && insets.top > 0 ? <View style={{ height: insets.top, backgroundColor: '#e2e8f0' }} /> : null}
       <View style={styles.shell}>
         <View style={[styles.drawer, { paddingTop: 20, paddingBottom: 20 + Math.max(insets.bottom, 0) }, collapsed ? styles.drawerCollapsed : null]}>
+          <View style={[styles.drawerBrandWrap, collapsed ? styles.drawerBrandWrapCollapsed : null]}>
+            <LogoTitle width={collapsed ? 90 : 180} height={collapsed ? 90 : 90} />
+          </View>
           {Platform.OS !== 'web' ? (
             <TouchableOpacity style={styles.drawerToggle} onPress={() => setCollapsed((value) => !value)}>
               <MaterialIcons name={collapsed ? 'menu' : 'menu-open'} size={22} color="#e2e8f0" />
@@ -367,10 +368,8 @@ export default function TabletNavigationShell({ currentRoute, children }) {
           {showHeaderQuickMenu && quickMenuOpen ? <TouchableOpacity style={styles.quickMenuDismissLayer} activeOpacity={1} onPress={() => setQuickMenuOpen(false)} /> : null}
           <View style={styles.topBar}>
             <View style={styles.brandRow}>
-              <LogoTitle width={150} height={48} />
               {!collapsed ? (
                 <View style={styles.greetingWrap}>
-                  <Text style={styles.topEyebrow}>{workspaceLabel}</Text>
                   <Text style={styles.topTitle}>Hello, {greeting}</Text>
                 </View>
               ) : null}
@@ -447,6 +446,8 @@ const styles = StyleSheet.create({
   shell: { flex: 1, flexDirection: 'row', backgroundColor: '#e2e8f0' },
   drawer: { width: 280, backgroundColor: '#0f172a', paddingHorizontal: 16 },
   drawerCollapsed: { width: 92, paddingHorizontal: 10 },
+  drawerBrandWrap: { alignItems: 'flex-start', justifyContent: 'center', marginBottom: 14 },
+  drawerBrandWrapCollapsed: { alignItems: 'center' },
   drawerToggle: { flexDirection: 'row', alignItems: 'center', marginBottom: 18 },
   drawerToggleText: { color: '#e2e8f0', fontWeight: '700', marginLeft: 10 },
   group: { marginBottom: 18 },
@@ -471,8 +472,7 @@ const styles = StyleSheet.create({
   mobileBrandRow: { flex: 1, minWidth: 0 },
   greetingWrap: { marginLeft: 14 },
   mobileGreetingWrap: { flex: 1, minWidth: 0, marginLeft: 12 },
-  topEyebrow: { color: '#2563eb', fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
-  topTitle: { marginTop: 4, fontSize: 20, fontWeight: '800', color: '#0f172a' },
+  topTitle: { fontSize: 20, fontWeight: '800', color: '#0f172a' },
   mobileTopTitle: { fontSize: 16 },
   headerActions: { flexDirection: 'row', alignItems: 'center', marginLeft: 'auto' },
   mobileHeaderActions: { flexShrink: 0, marginLeft: 12 },
@@ -487,8 +487,7 @@ const styles = StyleSheet.create({
   mobileScreenWrap: { flex: 1, borderRadius: 24, overflow: 'hidden', backgroundColor: '#f8fafc' },
   mobileNavOverlay: { flex: 1, backgroundColor: '#f8fafc', paddingHorizontal: 16 },
   mobileNavHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
-  mobileNavEyebrow: { color: '#2563eb', fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
-  mobileNavTitle: { marginTop: 4, fontSize: 28, fontWeight: '800', color: '#0f172a' },
+  mobileNavTitle: { fontSize: 28, fontWeight: '800', color: '#0f172a' },
   mobileNavCloseButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: '#e2e8f0' },
   mobileNavScroll: { flex: 1 },
   mobileNavScrollContent: { paddingBottom: 20 },

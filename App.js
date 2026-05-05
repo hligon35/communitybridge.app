@@ -28,6 +28,7 @@ import ChatThreadScreen from './src/screens/ChatThreadScreen';
 import NewThreadScreen from './src/screens/NewThreadScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import AdminSettingsHubScreen from './src/screens/AdminSettingsHubScreen';
+import AdminSettingsWorkspaceScreen from './src/screens/AdminSettingsWorkspaceScreen';
 import EditProfileScreen from './src/screens/EditProfileScreen';
 import HelpScreen from './src/screens/HelpScreen';
 import MyClassScreen from './src/screens/MyClassScreen';
@@ -144,7 +145,9 @@ function ControlsStack() {
       <ControlsStackNav.Screen name="FacultyDetail" component={FacultyDetailScreen} options={{ title: 'Faculty' }} />
       <ControlsStackNav.Screen name="AdminMemos" component={AdminMemosScreen} options={{ title: 'Compose Memo' }} />
       <ControlsStackNav.Screen name="AdminChatMonitor" component={AdminChatMonitorScreen} options={{ title: 'Communication' }} />
-      <ControlsStackNav.Screen name="AdminSettings" component={AdminSettingsHubScreen} options={{ title: 'Settings' }} />
+      <ControlsStackNav.Screen name="AdminSettings" component={AdminSettingsHubScreen} options={{ title: 'Settings', headerLeft: () => <HelpButton /> }} />
+      <ControlsStackNav.Screen name="OrganizationSettings" component={AdminSettingsWorkspaceScreen} initialParams={{ sectionKey: 'organization' }} options={{ title: 'Organization Settings' }} />
+      <ControlsStackNav.Screen name="BrandingSettings" component={AdminSettingsWorkspaceScreen} initialParams={{ sectionKey: 'branding' }} options={{ title: 'Branding' }} />
       <ControlsStackNav.Screen name="UserMonitor" component={UserMonitorScreen} options={{ title: 'User Monitor' }} />
       <ControlsStackNav.Screen name="ChatThread" component={ChatThreadScreen} options={{ title: 'Thread' }} />
       <ControlsStackNav.Screen name="ManagePermissions" component={ManagePermissionsScreen} options={{ title: 'Manage Permissions' }} />
@@ -263,7 +266,7 @@ function MainShell({ currentRoute }) {
   const isTabletLayout = useIsTabletLayout();
   const { width, height } = useWindowDimensions();
   const role = normalizeUserRole(user?.role);
-  const isPhoneAdminViewport = canAccessAdminWorkspace(role) && !isBcbaRole(role) && Math.min(width, height) < 600 && Math.max(width, height) < 1100;
+  const isPhoneAdminViewport = canAccessAdminWorkspace(role) && Math.min(width, height) < 600 && Math.max(width, height) < 1100;
   const isParentWorkspace = !canAccessAdminWorkspace(role) && !isStaffRole(role);
   const shouldRequireLandscape = !isPhoneAdminViewport && !isParentWorkspace && !isTabletLayout && width < height && Math.max(width, height) >= 640;
 
@@ -326,7 +329,7 @@ function MainRoutes() {
   const initialWorkspace = hasAdminWorkspace
     ? 'Controls'
     : hasStaffWorkspace
-      ? 'MyClass'
+      ? 'Home'
       : 'Home';
 
   return (
