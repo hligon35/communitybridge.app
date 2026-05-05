@@ -7,6 +7,7 @@ import AddressAutocompleteField from '../components/AddressAutocompleteField';
 import { useAuth } from '../AuthContext';
 import * as Api from '../Api';
 import { ADMIN_SECTION_KEYS, canAccessAdminSection, hasFullAdminSectionAccess, isBcbaRole } from '../core/tenant/models';
+const { SUPPORT_EMAIL, SUPPORT_URL } = require('../config/brand');
 
 function buildFormState(item) {
   const next = item && typeof item === 'object' ? item : {};
@@ -208,7 +209,7 @@ export default function AdminSettingsHubScreen() {
           </View>
           <View style={styles.editorGrid}>
             <Field label="Organization name" value={form.organizationName} onChangeText={(value) => updateField('organizationName', value)} placeholder="AlphaZone Labs" />
-            <Field label="Support email" value={form.supportEmail} onChangeText={(value) => updateField('supportEmail', value)} placeholder="support@communitybridge.app" keyboardType="email-address" autoCapitalize="none" />
+            <Field label="Support email" value={form.supportEmail} onChangeText={(value) => updateField('supportEmail', value)} placeholder={SUPPORT_EMAIL} keyboardType="email-address" autoCapitalize="none" />
             <Field label="Support phone" value={form.supportPhone} onChangeText={(value) => updateField('supportPhone', value)} placeholder="(555) 123-4567" keyboardType="phone-pad" autoCapitalize="none" />
           </View>
           <AddressAutocompleteField label="Organization address" value={form.address} onChangeText={(value) => updateField('address', value)} placeholder="123 Main St, City, ST 00000" />
@@ -285,7 +286,7 @@ export default function AdminSettingsHubScreen() {
         <View style={styles.editorGrid}>
           <Field label="Brand name" value={form.brandName} onChangeText={(value) => updateField('brandName', value)} placeholder="CommunityBridge" />
           <Field label="Logo URL" value={form.logoUrl} onChangeText={(value) => updateField('logoUrl', value)} placeholder="https://.../logo.png" autoCapitalize="none" />
-          <Field label="Support URL" value={form.supportUrl} onChangeText={(value) => updateField('supportUrl', value)} placeholder="https://communitybridge.app/support" autoCapitalize="none" />
+          <Field label="Support URL" value={form.supportUrl} onChangeText={(value) => updateField('supportUrl', value)} placeholder={SUPPORT_URL} autoCapitalize="none" />
         </View>
         <View style={styles.editorGrid}>
           <Field label="Primary color" value={form.primaryColor} onChangeText={(value) => updateField('primaryColor', value)} placeholder="#2563EB" autoCapitalize="characters" />

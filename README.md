@@ -48,9 +48,9 @@ The seeded tenant directory source lives in [src/seed/tenantDirectory.seed.json]
 
 Current seed contents:
 
-- Organization: Centria Healthcare
-- Programs: Centria Autism, Life Skills Autism Academy
-- Campuses: the listed Centria Autism and Life Skills Autism Academy campuses
+- Organization: CommunityBridge Care Network
+- Programs: Center-Based ABA, Early Learning Support
+- Campuses: the listed CommunityBridge Care Network demo campuses
 - Each campus stores both `zipCode` and `enrollmentCode`
 - For now `enrollmentCode` matches `zipCode`
 - Enrollment resolution still requires `organizationId + programId + enrollmentCode`, so duplicate ZIPs across programs stay valid

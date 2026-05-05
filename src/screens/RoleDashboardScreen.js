@@ -15,6 +15,7 @@ const { logPress } = require('../utils/logger');
 const { isSpecialAccessUser } = require('../utils/authState');
 const { getEffectiveChatIdentity } = require('../utils/demoIdentity');
 const { isChildLinkedToTherapist, resolveSelectedDashboardChild, resolveTherapyWorkspaceTarget } = require('../features/sessionTracking/utils/dashboardSessionTarget');
+const { DEFAULT_RESOURCE_URL } = require('../config/brand');
 
 const moodGoodIcon = require('../../assets/icons/good.png');
 const moodModerateIcon = require('../../assets/icons/moderate.png');
@@ -292,7 +293,7 @@ export default function RoleDashboardScreen({ navigation }) {
       hint: 'Open guidance, support, and reference details.',
       imageSource: parentResourcesIcon,
       onPress: () => {
-        const url = 'https://centriahealthcare.com/parent-resources/?utm_source=mobile-app&utm_medium=homepage&utm_campaign=family-connect';
+        const url = DEFAULT_RESOURCE_URL;
         if (Platform.OS === 'web') {
           Linking.openURL(url).catch(() => {
             Alert.alert('Unable to open resource', 'Your device could not open the resource link.');

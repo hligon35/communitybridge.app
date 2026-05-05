@@ -92,7 +92,7 @@ function envFlag(value, defaultValue = false) {
 
 // API base URL
 // Prefer environment-driven config so dev/staging/prod can be swapped without code edits:
-//   EXPO_PUBLIC_API_BASE_URL=https://buddyboard.example.com
+//   EXPO_PUBLIC_API_BASE_URL=https://communitybridge.app
 // In production builds, this should be set via EAS/CI secrets.
 //
 // Production default:

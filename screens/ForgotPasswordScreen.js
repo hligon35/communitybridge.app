@@ -5,6 +5,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import * as Api from '../src/Api';
 import { formatSupportDetails, reportErrorToSentry } from '../src/utils/reportError';
 import LogoTitle from '../src/components/LogoTitle';
+const { SUPPORT_EMAIL } = require('../src/config/brand');
 
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
@@ -15,14 +16,7 @@ export default function ForgotPasswordScreen({ onDone, onCancel }) {
   const [busy, setBusy] = useState(false);
 
   const supportEmail = useMemo(() => {
-    try {
-      const v = (typeof process !== 'undefined' && process.env && process.env.EXPO_PUBLIC_SUPPORT_EMAIL)
-        ? String(process.env.EXPO_PUBLIC_SUPPORT_EMAIL)
-        : '';
-      return v.trim() || 'info@communitybridge.app';
-    } catch (_) {
-      return 'info@communitybridge.app';
-    }
+    return SUPPORT_EMAIL;
   }, []);
 
   async function submitRequest() {

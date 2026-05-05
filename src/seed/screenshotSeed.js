@@ -1,3 +1,5 @@
+const { DEFAULT_RESOURCE_URL, SUPPORT_URL, DOWNLOAD_URL } = require('../config/brand');
+
 const raw = {
   organization: {
     id: 'org-demo-001',
@@ -46,7 +48,7 @@ const raw = {
     { id: 'frontdesk-001', userId: 'user-reception-001', name: 'Tom Richards', role: 'reception', title: 'Front Desk', email: 'reception.demo@communitybridge.app', phone: '317-555-4106', avatar: '' },
   ],
   children: [
-    { id: 'child-001', name: 'Zahari Cook', age: '5', room: 'Blue-2', parents: [{ id: 'par-001', name: 'Alicia Cook' }], assignedABA: ['aba-101', 'aba-102'], session: 'AM', dropoffTimeISO: '2026-04-27T09:15:00', pickupTimeISO: '2026-04-27T12:30:00', notes: 'Improving transitions and communication.', carePlan: 'Increase independent communication during transitions.', monthlyGoal: 'Use functional communication during 80% of transitions.', successCriteria: '4 of 5 transition opportunities completed with one prompt.', curriculum: 'Functional Communication, Transitions, Matching', behaviorNotes: 'Low task refusal, redirected quickly.', moodScore: 14, mood: 14, insurance: { provider: 'Demo Health Plan', memberId: '120990673299', groupNumber: 'GRP-001', subscriberName: 'Zahari Cook', relationToSubscriber: 'Self', expirationDate: null, authorizationStatus: 'active', approvedHours: 120, remainingHours: 48, billingContact: 'billing@communitybridge.app' }, programDocs: [{ title: 'Transition Support Plan', url: 'https://example.com/transition-support-plan.pdf' }] },
+    { id: 'child-001', name: 'Zahari Cook', age: '5', room: 'Blue-2', parents: [{ id: 'par-001', name: 'Alicia Cook' }], assignedABA: ['aba-101', 'aba-102'], session: 'AM', dropoffTimeISO: '2026-04-27T09:15:00', pickupTimeISO: '2026-04-27T12:30:00', notes: 'Improving transitions and communication.', carePlan: 'Increase independent communication during transitions.', monthlyGoal: 'Use functional communication during 80% of transitions.', successCriteria: '4 of 5 transition opportunities completed with one prompt.', curriculum: 'Functional Communication, Transitions, Matching', behaviorNotes: 'Low task refusal, redirected quickly.', moodScore: 14, mood: 14, insurance: { provider: 'Demo Health Plan', memberId: '120990673299', groupNumber: 'GRP-001', subscriberName: 'Zahari Cook', relationToSubscriber: 'Self', expirationDate: null, authorizationStatus: 'active', approvedHours: 120, remainingHours: 48, billingContact: 'billing@communitybridge.app' }, programDocs: [{ title: 'Transition Support Plan', url: DOWNLOAD_URL }] },
     { id: 'child-002', name: 'Aubrey Cook', age: '7', room: 'Blue-1', parents: [{ id: 'par-001', name: 'Alicia Cook' }], assignedABA: ['aba-101'], session: 'PM', dropoffTimeISO: '2026-04-27T13:00:00', pickupTimeISO: '2026-04-27T16:00:00', notes: 'Working on communication goals.', carePlan: 'Increase spontaneous requests.', monthlyGoal: 'Request preferred items independently.', successCriteria: 'Completed 5 of 6 communication trials.', curriculum: 'Mand Training, Peer Play, Visual Schedule', behaviorNotes: 'No major interfering behaviors.', moodScore: 13, mood: 13, insurance: { provider: 'Demo Health Plan', memberId: '120990673300', groupNumber: 'GRP-001', subscriberName: 'Aubrey Cook', relationToSubscriber: 'Self', expirationDate: '2026-12-31', authorizationStatus: 'active', approvedHours: 100, remainingHours: 52, billingContact: '317-555-6000' } },
     { id: 'child-003', name: 'Mason Thompson', age: '6', room: 'Green-1', parents: [{ id: 'par-002', name: 'Brian Thompson' }], assignedABA: ['aba-102'], session: 'AM', dropoffTimeISO: '2026-04-28T09:00:00', pickupTimeISO: '2026-04-28T12:00:00', notes: 'Practicing peer interaction.', carePlan: 'Increase cooperative play.', monthlyGoal: 'Participate in group activity for 10 minutes.', successCriteria: 'Stayed in group for 8 minutes.', curriculum: 'Peer Play, Group Instruction', behaviorNotes: 'Moderate elopement attempt, redirected.', moodScore: 9, mood: 9, insurance: { provider: 'CareFirst Demo', memberId: '120990673301', groupNumber: 'GRP-003', subscriberName: 'Mason Thompson', relationToSubscriber: 'Child', expirationDate: '2026-08-31', authorizationStatus: 'pending', approvedHours: 80, remainingHours: 12 } },
     { id: 'child-004', name: 'Harper Moore', age: '8', room: 'Green-2', parents: [{ id: 'par-003', name: 'Danielle Moore' }], assignedABA: ['aba-103'], session: 'PM', dropoffTimeISO: '2026-04-28T13:00:00', pickupTimeISO: '2026-04-28T16:00:00', notes: 'Reduced prompting during table work.', carePlan: 'Build independent work stamina.', monthlyGoal: 'Complete table work for 12 minutes.', successCriteria: 'Completed 10 minutes with two prompts.', curriculum: 'Independent Work, Visual Matching', behaviorNotes: 'Low refusal.', moodScore: 12, mood: 12 },
@@ -110,7 +112,7 @@ const raw = {
     { id: 'invoice-003', childId: 'child-003', amountDue: 120, status: 'overdue', description: 'Prior balance' },
   ],
   exportJobs: [
-    { id: 'export-001', title: 'Billing Export', category: 'billing', format: 'csv', status: 'completed', recordsCount: 10, artifactUrl: 'https://example.com/billing-export.csv', createdAt: '2026-04-24T09:00:00' },
+    { id: 'export-001', title: 'Billing Export', category: 'billing', format: 'csv', status: 'completed', recordsCount: 10, artifactUrl: DOWNLOAD_URL, createdAt: '2026-04-24T09:00:00' },
     { id: 'export-002', title: 'Reports Export', category: 'reports', format: 'pdf', status: 'queued', recordsCount: 5, createdAt: '2026-04-24T09:15:00' },
   ],
   auditLogs: [
@@ -119,16 +121,16 @@ const raw = {
     { id: 'audit-003', action: 'schedule.updated', summary: 'Session schedule updated.', createdAt: '2026-04-24T09:20:00' },
   ],
   programDocuments: [
-    { id: 'program-doc-001', programId: 'program-aba-001', title: 'Functional Communication Plan', url: 'https://example.com/functional-communication-plan.pdf', type: 'pdf' },
-    { id: 'program-doc-002', programId: 'program-aba-001', title: 'Transition Support Plan', url: 'https://example.com/transition-support-plan.pdf', type: 'pdf' },
+    { id: 'program-doc-001', programId: 'program-aba-001', title: 'Functional Communication Plan', url: DOWNLOAD_URL, type: 'pdf' },
+    { id: 'program-doc-002', programId: 'program-aba-001', title: 'Transition Support Plan', url: DOWNLOAD_URL, type: 'pdf' },
   ],
   campusDocuments: [
-    { id: 'campus-doc-001', campusId: 'campus-main-001', title: 'Pickup Policy', url: 'https://example.com/pickup-policy.pdf', type: 'pdf' },
-    { id: 'campus-doc-002', campusId: 'campus-main-001', title: 'Health Policy', url: 'https://example.com/health-policy.pdf', type: 'pdf' },
+    { id: 'campus-doc-001', campusId: 'campus-main-001', title: 'Pickup Policy', url: DOWNLOAD_URL, type: 'pdf' },
+    { id: 'campus-doc-002', campusId: 'campus-main-001', title: 'Health Policy', url: DOWNLOAD_URL, type: 'pdf' },
   ],
   parentResources: [
-    { id: 'resource-001', title: 'What to Bring to Session', category: 'Getting Started', url: 'https://example.com/what-to-bring' },
-    { id: 'resource-002', title: 'Understanding ABA Progress Notes', category: 'ABA Basics', url: 'https://example.com/aba-progress-notes' },
+    { id: 'resource-001', title: 'What to Bring to Session', category: 'Getting Started', url: DEFAULT_RESOURCE_URL },
+    { id: 'resource-002', title: 'Understanding ABA Progress Notes', category: 'ABA Basics', url: SUPPORT_URL },
   ],
 };
 
@@ -477,7 +479,7 @@ const seededScreenshotOrgSettings = {
   id: String(organization?.id || 'org-demo-001'),
   name: String(organization?.name || 'CommunityBridge Therapy Center'),
   billing: {
-    paymentPortalUrl: 'https://example.com/payments/communitybridge-demo',
+    paymentPortalUrl: SUPPORT_URL,
     contactEmail: 'billing@communitybridge.app',
     contactPhone: '(317) 555-6000',
     showContactEmail: true,

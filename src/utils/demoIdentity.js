@@ -2,9 +2,10 @@ const { isSpecialAccessUser } = require('./authState');
 const { seededDemoRoleIdentities } = require('../seed/demoModeSeed');
 
 const DEMO_ROLE_IDENTITIES = Object.freeze(seededDemoRoleIdentities);
+const isDevRuntime = typeof __DEV__ !== 'undefined' && Boolean(__DEV__);
 
 function hasScreenshotSeedRequest() {
-  if (!__DEV__) return false;
+  if (!isDevRuntime) return false;
   try {
     const href = String(globalThis?.location?.href || '');
     if (!href) return false;

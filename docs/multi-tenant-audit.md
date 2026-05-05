@@ -37,5 +37,5 @@
      `createUserWithEmailAndPassword` to fail fast on bad codes.
   3. Persist `organizationId`, `programId`, `campusId`, and `enrollmentCode` on the user profile
      and write the org-scoped membership record at `organizations/{orgId}/users/{uid}`.
-- Real `enrollmentCode` values for Centria are placeholders (currently equal to `zipCode`); replace
+- Demo `enrollmentCode` values are placeholders (currently equal to `zipCode`); replace
   in `src/seed/tenantDirectory.seed.json` once provided.
