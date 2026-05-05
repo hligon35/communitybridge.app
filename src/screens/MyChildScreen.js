@@ -20,7 +20,7 @@ import { getLatestChildSessionSummary } from '../Api';
 export default function MyChildScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { children, parents, urgentMemos, timeChangeProposals, proposeTimeChange, respondToProposal, respondToUrgentMemo, fetchAndSync } = useData();
+  const { children, parents, urgentMemos, timeChangeProposals, proposeTimeChange, respondToProposal, respondToUrgentMemo, fetchAndSync, seededSessionSummariesByChild = {} } = useData();
   const { user } = useAuth();
   const tenant = useTenant() || {};
   const childProfileMode = tenant.childProfileMode || { mode: 'family', entityLabel: 'child', collectionLabel: 'children', profileTitle: 'My Child', profileSummaryTitle: 'Family Overview' };
@@ -168,6 +168,22 @@ export default function MyChildScreen() {
         if (!disposed) setLatestApprovedSummary(null);
         return;
       }
+      const seededItems = Array.isArray(seededSessionSummariesByChild?.[child.id]) ? seededSessionSummariesByChild[child.id] : null;
+      if (seededItems) {
+        const approvedItems = seededItems
+          .filter((item) => String(item?.status || '').trim().toLowerCase() === 'approved')
+          .sort((left, right) => {
+            const leftStamp = Date.parse(String(left?.approvedAt || left?.updatedAt || left?.generatedAt || ''));
+            const rightStamp = Date.parse(String(right?.approvedAt || right?.updatedAt || right?.generatedAt || ''));
+            return (Number.isFinite(rightStamp) ? rightStamp : 0) - (Number.isFinite(leftStamp) ? leftStamp : 0);
+          });
+        if (!disposed) {
+          setLatestApprovedSummary(approvedItems[0] || null);
+          setSummaryError('');
+          setSummaryLoading(false);
+        }
+        return;
+      }
       setSummaryLoading(true);
       setSummaryError('');
       try {
@@ -187,7 +203,7 @@ export default function MyChildScreen() {
     return () => {
       disposed = true;
     };
-  }, [child?.id]);
+  }, [child?.id, seededSessionSummariesByChild]);
 
   const latestApprovedSummarySubtitle = useMemo(() => {
     const source = latestApprovedSummary?.approvedAt || latestApprovedSummary?.updatedAt || latestApprovedSummary?.generatedAt || '';

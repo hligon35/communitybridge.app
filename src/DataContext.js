@@ -12,6 +12,19 @@ import {
   seededDemoUrgentMemos,
   seededDemoTimeChangeProposals,
 } from './seed/demoModeSeed';
+import {
+  seededScreenshotParents,
+  seededScreenshotTherapists,
+  seededScreenshotChildren,
+  seededScreenshotMessages,
+  seededScreenshotPosts,
+  seededScreenshotUrgentMemos,
+  seededScreenshotTimeChangeProposals,
+  seededScreenshotSessionSummaries,
+  seededScreenshotOrgSettings,
+  seededScreenshotExportJobs,
+  seededScreenshotAuditLogs,
+} from './seed/screenshotSeed';
 import { countUnreadVisibleThreads } from './utils/chatThreads';
 import { DEMO_ROLE_IDENTITIES, getEffectiveChatIdentity } from './utils/demoIdentity';
 import { attachTherapistsToChildren, mergeById } from './utils/directoryState';
@@ -19,6 +32,19 @@ import { setApplicationBadgeCountAsync } from './utils/pushNotifications';
 import { buildScopedStorageKeys, getStorageScopeId } from './utils/storageScope';
 
 const DataContext = createContext(null);
+
+function readWebSeedPreset() {
+  if (!__DEV__) return '';
+  try {
+    const href = String(globalThis?.location?.href || '');
+    if (!href) return '';
+    const url = new URL(href);
+    const seed = String(url.searchParams.get('seed') || '').trim().toLowerCase();
+    return seed === 'screenshot' ? 'screenshot' : '';
+  } catch (_) {
+    return '';
+  }
+}
 
 export function useData() {
   return useContext(DataContext);
@@ -72,6 +98,7 @@ function cloneSeedValue(value) {
 // Directory seed data is provided from `src/seed/directorySeed.js` (imported above)
 
 export function DataProvider({ children: reactChildren }) {
+  const initialWebSeedPreset = useMemo(() => readWebSeedPreset(), []);
   const { user, loading, needsMfa, refreshMfaState, markMfaRequired, isDemoReviewer } = useAuth();
   const needsMfaRef = useRef(Boolean(needsMfa));
   const mfaRefreshInFlightRef = useRef(false);
@@ -108,6 +135,11 @@ export function DataProvider({ children: reactChildren }) {
   const [directoryError, setDirectoryError] = useState('');
   const [blockedUserIds, setBlockedUserIds] = useState([]);
   const [chatBlockedUserIds, setChatBlockedUserIds] = useState([]);
+  const [activeSeedPreset, setActiveSeedPreset] = useState('');
+  const [seededSessionSummariesByChild, setSeededSessionSummariesByChild] = useState({});
+  const [seededOrgSettings, setSeededOrgSettings] = useState({});
+  const [seededExportJobs, setSeededExportJobs] = useState([]);
+  const [seededAuditLogs, setSeededAuditLogs] = useState([]);
   const [storageReady, setStorageReady] = useState(false);
 
   function buildDemoMessages() {
@@ -154,6 +186,46 @@ export function DataProvider({ children: reactChildren }) {
     };
   }
 
+  function buildScreenshotDirectory() {
+    const screenshotParents = cloneSeedValue(seededScreenshotParents);
+    const screenshotChildren = cloneSeedValue(seededScreenshotChildren);
+    const screenshotTherapists = cloneSeedValue(seededScreenshotTherapists);
+    return {
+      parents: screenshotParents,
+      therapists: screenshotTherapists,
+      children: attachTherapistsToChildren(screenshotChildren, screenshotTherapists),
+    };
+  }
+
+  function buildScreenshotSeedState() {
+    const directory = buildScreenshotDirectory();
+    const screenshotSessionSummariesByChild = (Array.isArray(seededScreenshotSessionSummaries) ? seededScreenshotSessionSummaries : []).reduce((accumulator, item) => {
+      const childId = String(item?.childId || '').trim();
+      if (!childId) return accumulator;
+      if (!accumulator[childId]) accumulator[childId] = [];
+      accumulator[childId].push(cloneSeedValue(item));
+      return accumulator;
+    }, {});
+    return {
+      posts: cloneSeedValue(seededScreenshotPosts),
+      messages: cloneSeedValue(seededScreenshotMessages),
+      threadReads: {},
+      urgentMemos: cloneSeedValue(seededScreenshotUrgentMemos),
+      archivedThreads: [],
+      timeChangeProposals: cloneSeedValue(seededScreenshotTimeChangeProposals),
+      children: directory.children,
+      parents: directory.parents,
+      therapists: directory.therapists,
+      blockedUserIds: [],
+      chatBlockedUserIds: [],
+      activeSeedPreset: 'screenshot',
+      sessionSummariesByChild: screenshotSessionSummariesByChild,
+      orgSettings: cloneSeedValue(seededScreenshotOrgSettings),
+      exportJobs: cloneSeedValue(seededScreenshotExportJobs),
+      auditLogs: cloneSeedValue(seededScreenshotAuditLogs),
+    };
+  }
+
   function resetLocalState() {
     setPosts([]);
     setMessages([]);
@@ -165,6 +237,11 @@ export function DataProvider({ children: reactChildren }) {
     setTherapists([]);
     setBlockedUserIds([]);
     setChatBlockedUserIds([]);
+    setActiveSeedPreset('');
+    setSeededSessionSummariesByChild({});
+    setSeededOrgSettings({});
+    setSeededExportJobs([]);
+    setSeededAuditLogs([]);
   }
 
   function applyLocalStateSnapshot(snapshot) {
@@ -179,10 +256,19 @@ export function DataProvider({ children: reactChildren }) {
     setTherapists(Array.isArray(snapshot?.therapists) ? snapshot.therapists : []);
     setBlockedUserIds(Array.isArray(snapshot?.blockedUserIds) ? snapshot.blockedUserIds : []);
     setChatBlockedUserIds(Array.isArray(snapshot?.chatBlockedUserIds) ? snapshot.chatBlockedUserIds : []);
+    setActiveSeedPreset(typeof snapshot?.activeSeedPreset === 'string' ? snapshot.activeSeedPreset : '');
+    setSeededSessionSummariesByChild(snapshot?.sessionSummariesByChild && typeof snapshot.sessionSummariesByChild === 'object' ? snapshot.sessionSummariesByChild : {});
+    setSeededOrgSettings(snapshot?.orgSettings && typeof snapshot.orgSettings === 'object' ? snapshot.orgSettings : {});
+    setSeededExportJobs(Array.isArray(snapshot?.exportJobs) ? snapshot.exportJobs : []);
+    setSeededAuditLogs(Array.isArray(snapshot?.auditLogs) ? snapshot.auditLogs : []);
   }
 
   function resetDemoData() {
     applyLocalStateSnapshot(buildDemoState());
+  }
+
+  function resetScreenshotSeed() {
+    applyLocalStateSnapshot(buildScreenshotSeedState());
   }
 
   function resetMessagesToDemo() {
@@ -228,7 +314,7 @@ export function DataProvider({ children: reactChildren }) {
           if (hasStoredDemoState) {
             // continue through normal hydration path using the reviewer-scoped cache
           } else {
-            applyLocalStateSnapshot(buildDemoState());
+            applyLocalStateSnapshot(initialWebSeedPreset === 'screenshot' ? buildScreenshotSeedState() : buildDemoState());
             return;
           }
         }
@@ -1135,10 +1221,16 @@ export function DataProvider({ children: reactChildren }) {
       blockUser,
       unblockUser,
       chatBlockedUserIds,
+      activeSeedPreset,
+      seededSessionSummariesByChild,
+      seededOrgSettings,
+      seededExportJobs,
+      seededAuditLogs,
       blockChatUser,
       unblockChatUser,
       clearAllData,
       resetDemoData,
+      resetScreenshotSeed,
       resetMessagesToDemo,
       resetChildrenToDemo,
       // time change proposals

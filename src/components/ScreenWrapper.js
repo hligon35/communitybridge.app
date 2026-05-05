@@ -1,9 +1,11 @@
 import React from 'react';
-import { View, Platform, StyleSheet } from 'react-native';
+import { View, Platform, StyleSheet, useWindowDimensions } from 'react-native';
 import ScreenHeader from './ScreenHeader';
 import WebNav from './WebNav';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTenant } from '../core/tenant/TenantContext';
+import { useAuth } from '../AuthContext';
+import { isAdminRole } from '../core/tenant/models';
 import { humanizeScreenLabel } from '../utils/screenLabels';
 import useIsTabletLayout from '../hooks/useIsTabletLayout';
 
@@ -21,9 +23,15 @@ export function ScreenWrapper({
   const navigation = useNavigation();
   const route = useRoute();
   const tenant = useTenant();
+  const { user } = useAuth();
+  const { width, height } = useWindowDimensions();
   const isTabletLayout = useIsTabletLayout();
   const labels = tenant?.labels || {};
   const isWeb = Platform.OS === 'web';
+  const shortEdge = Math.min(width, height);
+  const longEdge = Math.max(width, height);
+  const isPhoneViewport = shortEdge < 600 && longEdge < 1100;
+  const suppressLegacyWebNav = Boolean(isWeb && isAdminRole(user?.role) && isPhoneViewport);
 
   const nameMap = {
     CommunityMain: 'Home',
@@ -56,7 +64,7 @@ export function ScreenWrapper({
   return (
     <View style={[{ flex: 1, width: '100%', backgroundColor: isWeb ? '#f0f2f5' : '#fff' }, style]}>
       {/* web: show top WebNav; mobile: show ScreenHeader */}
-      {isWeb && !isTabletLayout
+      {isWeb && !isTabletLayout && !suppressLegacyWebNav
         ? <WebNav />
         : (!hideBanner && <ScreenHeader title={title} showBack={showBack} left={bannerLeft} right={bannerRight} />)}
 

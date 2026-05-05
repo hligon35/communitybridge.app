@@ -20,7 +20,7 @@ export default function SummaryReviewScreen() {
   const navigation = useNavigation();
   const { user } = useAuth();
   const { childId, sessionPreview, draftSummary } = route.params || {};
-  const { children = [], fetchAndSync } = useData();
+  const { children = [], fetchAndSync, seededSessionSummariesByChild = {} } = useData();
   const role = normalizeUserRole(user?.role);
   const isTherapist = role === USER_ROLES.THERAPIST;
   const canManageSession = isAdminRole(user?.role) || isStaffRole(user?.role);
@@ -82,7 +82,10 @@ export default function SummaryReviewScreen() {
 
         const results = await Promise.all(
           targetChildren.map(async (entry) => {
-            const result = await getChildSessionSummaries(entry.id, 40).catch(() => ({ items: [] }));
+            const seededItems = Array.isArray(seededSessionSummariesByChild?.[entry.id]) ? seededSessionSummariesByChild[entry.id] : null;
+            const result = seededItems
+              ? { items: seededItems }
+              : await getChildSessionSummaries(entry.id, 40).catch(() => ({ items: [] }));
             return (Array.isArray(result?.items) ? result.items : []).map((item) => ({
               ...item,
               childName: therapistChildNameById[String(entry?.id || '').trim()] || String(entry?.name || 'Learner').trim() || 'Learner',
@@ -118,7 +121,7 @@ export default function SummaryReviewScreen() {
     return () => {
       disposed = true;
     };
-  }, [child, isTherapist, therapistChildNameById, therapistChildren, user?.id, workspace.draftSummary?.sessionId]);
+  }, [child, isTherapist, seededSessionSummariesByChild, therapistChildNameById, therapistChildren, user?.id, workspace.draftSummary?.sessionId]);
 
   const filteredSessions = useMemo(() => {
     const query = String(searchQuery || '').trim().toLowerCase();

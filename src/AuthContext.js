@@ -14,11 +14,42 @@ const AuthContext = createContext(null);
 const MFA_VERIFIED_CACHE_KEY = 'bb_mfa_verified_at_cache_v1';
 const DEV_ROLE_OVERRIDE_KEY = 'bb_dev_role_override_v1';
 
+function readWebDevSessionBootstrap() {
+  if (!__DEV__) return null;
+  try {
+    const href = String(globalThis?.location?.href || '');
+    if (!href) return null;
+    const url = new URL(href);
+    if (url.searchParams.get('devSession') !== '1') return null;
+    const requestedRole = normalizeRoleOverride(url.searchParams.get('role')) || 'admin';
+    const identityByRole = {
+      parent: { id: 'par-001', name: 'Alicia Cook' },
+      therapist: { id: 'aba-101', name: 'Jordan Ellis' },
+      bcba: { id: 'bcba-001', name: 'Dr. Marissa Bennett' },
+      admin: { id: 'user-admin-001', name: 'Jordan Admin' },
+    };
+    const identity = identityByRole[requestedRole] || identityByRole.admin;
+    return {
+      token: 'dev-web-screenshot-session',
+      user: {
+        id: identity.id,
+        name: identity.name,
+        email: 'appreview@communitybridge.app',
+        role: requestedRole,
+      },
+      role: requestedRole,
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
 export function useAuth() {
   return useContext(AuthContext);
 }
 
 export function AuthProvider({ children }) {
+  const webDevSessionBootstrap = useMemo(() => readWebDevSessionBootstrap(), []);
   const [token, setToken] = useState(null);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -230,6 +261,17 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
+    if (webDevSessionBootstrap) {
+      setAuthError(null);
+      setToken(webDevSessionBootstrap.token);
+      setDevRoleOverride(webDevSessionBootstrap.role);
+      setUser(applyDevRoleOverride(webDevSessionBootstrap.user, webDevSessionBootstrap.role));
+      setMfaRequired(false);
+      setMfaVerified(true);
+      setLoading(false);
+      return undefined;
+    }
+
     const a = getAuthInstance();
     if (!a) {
       const initErr = getAuthInitError();
@@ -328,7 +370,7 @@ export function AuthProvider({ children }) {
     return () => {
       try { unsub && unsub(); } catch (_) {}
     };
-  }, []);
+  }, [webDevSessionBootstrap]);
 
   useEffect(() => {
     try {

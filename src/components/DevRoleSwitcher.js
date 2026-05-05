@@ -13,6 +13,8 @@ const DEV_SWITCHER_VISIBILITY_KEY = '@communitybridge/dev-switcher-visible';
 
 export default function DevRoleSwitcher() {
   const { setRole, user, isDemoReviewer } = useAuth();
+  const { clearAllData, resetDemoData, resetScreenshotSeed } = useData();
+  const tenant = useTenant() || {};
   const isDevAccount = isDevSwitcherUser(user?.email);
   const isReviewAccount = isDemoReviewer || isDemoReviewerUser(user?.email);
   const isAllowed = __DEV__ || isDevAccount || isReviewAccount;
@@ -72,8 +74,6 @@ export default function DevRoleSwitcher() {
     Alert.alert('Role changed', `Switched to ${r}`);
   };
 
-  const { clearAllData, resetDemoData } = useData();
-  const tenant = useTenant() || {};
   const {
     programs = [],
     campuses = [],
@@ -113,6 +113,16 @@ export default function DevRoleSwitcher() {
       Alert.alert('Demo Mode seeded', `Loaded demo parents, ${THERAPY_ROLE_LABELS.therapists.toLowerCase()}, children, posts, chats, memos, alerts, and proposals across the app.`);
     } catch (e) {
       Alert.alert('Error', 'Could not seed demo mode');
+    }
+  }
+
+  function seedScreenshotMode() {
+    try {
+      logPress('DevTools:SeedScreenshotMode');
+      resetScreenshotSeed();
+      Alert.alert('Screenshot seed loaded', 'Loaded the screenshot-ready local data set for directory, chats, memos, proposals, and progress snapshots.');
+    } catch (e) {
+      Alert.alert('Error', 'Could not load screenshot seed');
     }
   }
 
@@ -173,6 +183,9 @@ export default function DevRoleSwitcher() {
           <Text style={styles.sectionLabel}>Demo Mode</Text>
           <TouchableOpacity onPress={seedDemoMode} style={styles.menuBtn}>
             <Text>Seed demo data</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={seedScreenshotMode} style={styles.menuBtn}>
+            <Text>Screenshot seed</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={clearDemoData} style={styles.menuBtn}>
             <Text>Clear demo data</Text>

@@ -21,7 +21,14 @@ function Block({ title, children, style }) {
 export default function InsuranceBillingScreen() {
   const navigation = useNavigation();
   const { user } = useAuth();
-  const { children = [], parents = [], setChildren } = useData();
+  const {
+    children = [],
+    parents = [],
+    setChildren,
+    seededOrgSettings = {},
+    seededExportJobs = [],
+    seededAuditLogs = [],
+  } = useData();
   const role = normalizeUserRole(user?.role);
   const isBcba = isBcbaRole(user?.role);
   const isParent = role === USER_ROLES.PARENT;
@@ -98,6 +105,10 @@ export default function InsuranceBillingScreen() {
   useEffect(() => {
     let mounted = true;
     (async () => {
+      if (seededOrgSettings && Object.keys(seededOrgSettings).length) {
+        if (mounted) setOrgSettings(seededOrgSettings);
+        return;
+      }
       try {
         const result = await Api.getOrgSettings();
         if (!mounted) return;
@@ -109,7 +120,7 @@ export default function InsuranceBillingScreen() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [seededOrgSettings]);
 
   const filteredAuditItems = useMemo(() => {
     const billingItems = (auditItems || []).filter((item) => {
@@ -126,6 +137,14 @@ export default function InsuranceBillingScreen() {
         setJobs([]);
         setAuditItems([]);
         setLoadError('');
+        return;
+      }
+      if (Array.isArray(seededExportJobs) && seededExportJobs.length) {
+        if (mounted) {
+          setLoadError('');
+          setJobs(seededExportJobs.filter((item) => String(item?.category || '').trim() === 'billing'));
+          setAuditItems(Array.isArray(seededAuditLogs) ? seededAuditLogs : []);
+        }
         return;
       }
       try {
@@ -148,7 +167,7 @@ export default function InsuranceBillingScreen() {
     return () => {
       mounted = false;
     };
-  }, [isParent]);
+  }, [isParent, seededAuditLogs, seededExportJobs]);
 
   function toCSV(rows) {
     if (!rows || !rows.length) return '';

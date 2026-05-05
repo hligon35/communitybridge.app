@@ -291,17 +291,14 @@ export default function TabletNavigationShell({ currentRoute, children }) {
         {Platform.OS !== 'web' && insets.top > 0 ? <View style={{ height: insets.top, backgroundColor: '#e2e8f0' }} /> : null}
         <View style={[styles.contentWrap, styles.mobileContentWrap, { paddingTop: 12, paddingBottom: Math.max(insets.bottom, 12) }]}>
           <View style={[styles.topBar, styles.mobileTopBar]}>
-            <View style={styles.brandRow}>
-              <LogoTitle width={150} height={48} />
-              <View style={styles.greetingWrap}>
+            <View style={[styles.brandRow, styles.mobileBrandRow]}>
+              <LogoTitle width={128} height={40} />
+              <View style={[styles.greetingWrap, styles.mobileGreetingWrap]}>
                 <Text style={styles.topEyebrow}>{workspaceLabel}</Text>
-                <Text style={styles.topTitle}>Hello, {greeting}</Text>
+                <Text style={[styles.topTitle, styles.mobileTopTitle]} numberOfLines={1}>Hello, {greeting}</Text>
               </View>
             </View>
-            <View style={styles.headerActions}>
-              <TouchableOpacity style={styles.iconOnlyButton} onPress={() => openTarget({ root: 'Settings', screen: 'Help' })}>
-                <MaterialIcons name="help-outline" size={20} color="#1d4ed8" />
-              </TouchableOpacity>
+            <View style={[styles.headerActions, styles.mobileHeaderActions]}>
               <TouchableOpacity style={styles.iconOnlyButton} onPress={() => setMobileNavOpen(true)} accessibilityLabel="Open navigation menu">
                 <MaterialIcons name="menu" size={22} color="#1d4ed8" />
               </TouchableOpacity>
@@ -471,10 +468,14 @@ const styles = StyleSheet.create({
   topBar: { minHeight: 70, borderRadius: 18, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e2e8f0', paddingHorizontal: 18, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, zIndex: 30 },
   mobileTopBar: { paddingHorizontal: 14, alignItems: 'flex-start' },
   brandRow: { flexDirection: 'row', alignItems: 'center' },
+  mobileBrandRow: { flex: 1, minWidth: 0 },
   greetingWrap: { marginLeft: 14 },
+  mobileGreetingWrap: { flex: 1, minWidth: 0, marginLeft: 12 },
   topEyebrow: { color: '#2563eb', fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
   topTitle: { marginTop: 4, fontSize: 20, fontWeight: '800', color: '#0f172a' },
+  mobileTopTitle: { fontSize: 16 },
   headerActions: { flexDirection: 'row', alignItems: 'center', marginLeft: 'auto' },
+  mobileHeaderActions: { flexShrink: 0, marginLeft: 12 },
   quickAddAnchor: { position: 'relative', marginLeft: 10 },
   iconOnlyButton: { width: 40, height: 40, borderRadius: 20, marginLeft: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#eff6ff' },
   quickAddButton: { marginLeft: 0 },
