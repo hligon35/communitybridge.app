@@ -5,7 +5,7 @@ import * as Updates from 'expo-updates';
 import { useAuth } from '../AuthContext';
 import { useData } from '../DataContext';
 import { useTenant } from '../core/tenant/TenantContext';
-import { ADMIN_SECTION_KEYS, canAccessAdminSection, canAccessAdminWorkspace, isAdminRole, isBcbaRole, isOfficeAdminRole, isStaffRole } from '../core/tenant/models';
+import { ADMIN_SECTION_KEYS, canAccessAdminSection, canAccessAdminWorkspace, isBcbaRole, isOfficeAdminRole, isStaffRole } from '../core/tenant/models';
 import { isChildLinkedToTherapist } from '../features/sessionTracking/utils/dashboardSessionTarget';
 import useIsTabletLayout from '../hooks/useIsTabletLayout';
 import { navigationRef } from '../navigationRef';
@@ -33,7 +33,7 @@ function openTarget(target) {
 
 export default function TabletNavigationShell({ currentRoute, children }) {
   const isTabletLayout = useIsTabletLayout();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
   const { children: directoryChildren = [], therapists = [], createStaffLog } = useData();
@@ -54,12 +54,12 @@ export default function TabletNavigationShell({ currentRoute, children }) {
   const showQuickAdd = !showAdminWorkspace && isStaff;
   const showBcbaQuickActions = showAdminWorkspace && isBcbaRole(user?.role);
   const showHeaderQuickMenu = showQuickAdd || showBcbaQuickActions;
-  const shortEdge = Math.min(width, useWindowDimensions().height);
-  const longEdge = Math.max(width, useWindowDimensions().height);
+  const shortEdge = Math.min(width, height);
+  const longEdge = Math.max(width, height);
   const isPhoneViewport = Platform.OS !== 'ios' || !Platform.isPad
     ? shortEdge < 600 && longEdge < 1100
     : false;
-  const showMobileAdminShell = Boolean(isAdminRole(user?.role) && isPhoneViewport);
+  const showMobileAdminShell = Boolean(showAdminWorkspace && !isBcbaRole(user?.role) && isPhoneViewport);
   const activeRouteParams = navigationRef?.getCurrentRoute?.()?.params || null;
   const activeRouteChildId = String(activeRouteParams?.childId || '').trim();
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { View, TouchableOpacity, Text, Alert, StyleSheet, ScrollView } from 'react-native';
 import { useAuth } from '../AuthContext';
 import { useData } from '../DataContext';
@@ -8,15 +9,60 @@ import { logPress } from '../utils/logger';
 import { isDevSwitcherUser, isDemoReviewerUser } from '../utils/authState';
 import { THERAPY_ROLE_LABELS } from '../utils/roleTerminology';
 
+const DEV_SWITCHER_VISIBILITY_KEY = '@communitybridge/dev-switcher-visible';
+
 export default function DevRoleSwitcher() {
   const { setRole, user, isDemoReviewer } = useAuth();
   const isDevAccount = isDevSwitcherUser(user?.email);
   const isReviewAccount = isDemoReviewer || isDemoReviewerUser(user?.email);
+  const isAllowed = __DEV__ || isDevAccount || isReviewAccount;
+  const [open, setOpen] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
+  const [visibilityReady, setVisibilityReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!isAllowed) {
+      setVisibilityReady(true);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    AsyncStorage.getItem(DEV_SWITCHER_VISIBILITY_KEY)
+      .then((stored) => {
+        if (cancelled) return;
+        setIsVisible(stored !== 'hidden');
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setIsVisible(true);
+      })
+      .finally(() => {
+        if (!cancelled) setVisibilityReady(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAllowed]);
+
+  const toggleVisibility = async () => {
+    const nextVisible = !isVisible;
+    setIsVisible(nextVisible);
+    if (!nextVisible) setOpen(false);
+    try {
+      await AsyncStorage.setItem(DEV_SWITCHER_VISIBILITY_KEY, nextVisible ? 'visible' : 'hidden');
+    } catch (_) {
+      // ignore persistence failures and keep the in-memory toggle
+    }
+    Alert.alert('Developer tools', nextVisible ? 'Developer button shown.' : 'Developer button hidden. Long press the lower-right corner for 3 seconds to show it again.');
+  };
+
   // Visible in __DEV__ builds for everyone, OR for the dev@communitybridge.app
   // account in any build (controlled gate so the dev account can navigate the
   // hierarchy/paths in production-like environments).
-  if (!__DEV__ && !isDevAccount && !isReviewAccount) return null;
-  const [open, setOpen] = useState(false);
+  if (!isAllowed || !visibilityReady) return null;
 
   const changeRole = (r) => {
     if (!setRole) return;
@@ -90,14 +136,32 @@ export default function DevRoleSwitcher() {
     ]);
   }
 
+  if (!isVisible) {
+    return (
+      <View pointerEvents="box-none" style={styles.container}>
+        <TouchableOpacity
+          style={styles.hiddenActivator}
+          delayLongPress={3000}
+          onLongPress={toggleVisibility}
+          accessibilityLabel="Show developer tools"
+        />
+      </View>
+    );
+  }
+
   return (
     <View pointerEvents="box-none" style={styles.container}>
       {/* Role badge */}
-      <View style={styles.badgeWrap} pointerEvents="none">
+      <TouchableOpacity
+        style={styles.badgeWrap}
+        delayLongPress={3000}
+        onLongPress={toggleVisibility}
+        activeOpacity={0.95}
+      >
         <View style={styles.badge}>
           <Text style={styles.badgeText}>{isReviewAccount ? 'DEMO' : ((user && user.role) ? user.role.toString().toUpperCase() : 'DEV')}</Text>
         </View>
-      </View>
+      </TouchableOpacity>
       {open && (
         <ScrollView style={styles.menu} contentContainerStyle={{ paddingBottom: 4 }} showsVerticalScrollIndicator={false}>
           {isReviewAccount ? (
@@ -148,7 +212,13 @@ export default function DevRoleSwitcher() {
         </ScrollView>
       )}
 
-      <TouchableOpacity style={styles.fab} onPress={() => { logPress('DevTools:ToggleMenu', { open: !open }); setOpen(!open); }} accessibilityLabel="Developer role switcher">
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => { logPress('DevTools:ToggleMenu', { open: !open }); setOpen(!open); }}
+        onLongPress={toggleVisibility}
+        delayLongPress={3000}
+        accessibilityLabel="Developer role switcher"
+      >
         <MaterialIcons name="developer-mode" size={20} color="#fff" />
       </TouchableOpacity>
     </View>
@@ -225,6 +295,12 @@ const styles = StyleSheet.create({
   badgeWrap: {
     marginBottom: 8,
     alignItems: 'flex-end',
+  },
+  hiddenActivator: {
+    width: 65,
+    height: 65,
+    borderRadius: 33,
+    backgroundColor: 'transparent',
   },
   badge: {
     backgroundColor: '#111827',
