@@ -693,6 +693,9 @@ function consume2faChallenge(challengeId, code) {
 // Dev compatibility: allow the mobile app's __DEV__ auto-login token.
 // Default: enabled outside production, disabled in production.
 const ALLOW_DEV_TOKEN = envFlag(process.env.CB_ALLOW_DEV_TOKEN || process.env.BB_ALLOW_DEV_TOKEN, NODE_ENV !== 'production');
+if (NODE_ENV === 'production' && ALLOW_DEV_TOKEN) {
+  throw new Error('CB_ALLOW_DEV_TOKEN/BB_ALLOW_DEV_TOKEN must be disabled in production.');
+}
 
 const ADMIN_EMAIL = process.env.CB_ADMIN_EMAIL || process.env.BB_ADMIN_EMAIL || '';
 const ADMIN_PASSWORD = process.env.CB_ADMIN_PASSWORD || process.env.BB_ADMIN_PASSWORD || '';
@@ -2280,6 +2283,10 @@ app.use('/uploads', uploadAccessMiddleware, express.static(UPLOAD_DIR));
 // Rate limits (best-effort, in-memory)
 const AUTH_RATE_WINDOW_MS = Math.max(10_000, Number(process.env.CB_AUTH_RATE_WINDOW_MS || process.env.BB_AUTH_RATE_WINDOW_MS || 5 * 60 * 1000));
 const AUTH_RATE_MAX = Math.max(1, Number(process.env.CB_AUTH_RATE_MAX || process.env.BB_AUTH_RATE_MAX || 30));
+const TWO_FA_VERIFY_RATE_WINDOW_MS = Math.max(10_000, Number(process.env.CB_2FA_VERIFY_RATE_WINDOW_MS || process.env.BB_2FA_VERIFY_RATE_WINDOW_MS || 10 * 60 * 1000));
+const TWO_FA_VERIFY_RATE_MAX = Math.max(1, Number(process.env.CB_2FA_VERIFY_RATE_MAX || process.env.BB_2FA_VERIFY_RATE_MAX || 12));
+const TWO_FA_RESEND_RATE_WINDOW_MS = Math.max(10_000, Number(process.env.CB_2FA_RESEND_RATE_WINDOW_MS || process.env.BB_2FA_RESEND_RATE_WINDOW_MS || 10 * 60 * 1000));
+const TWO_FA_RESEND_RATE_MAX = Math.max(1, Number(process.env.CB_2FA_RESEND_RATE_MAX || process.env.BB_2FA_RESEND_RATE_MAX || 6));
 const UPLOAD_RATE_WINDOW_MS = Math.max(10_000, Number(process.env.CB_UPLOAD_RATE_WINDOW_MS || process.env.BB_UPLOAD_RATE_WINDOW_MS || 10 * 60 * 1000));
 const UPLOAD_RATE_MAX = Math.max(1, Number(process.env.CB_UPLOAD_RATE_MAX || process.env.BB_UPLOAD_RATE_MAX || 30));
 
@@ -2291,6 +2298,28 @@ const authRateLimit = createInMemoryRateLimiter({
     const email = safeLower(req.body && req.body.email);
     const route = safeLower(req.path);
     return `auth:${route}:${ip}:${email}`;
+  },
+});
+
+const twoFaVerifyRateLimit = createInMemoryRateLimiter({
+  windowMs: TWO_FA_VERIFY_RATE_WINDOW_MS,
+  max: TWO_FA_VERIFY_RATE_MAX,
+  keyFn: (req) => {
+    const ip = getClientIp(req);
+    const route = safeLower(req.path);
+    const challengeId = safeLower(req.body && req.body.challengeId);
+    return `auth-2fa-verify:${route}:${ip}:${challengeId}`;
+  },
+});
+
+const twoFaResendRateLimit = createInMemoryRateLimiter({
+  windowMs: TWO_FA_RESEND_RATE_WINDOW_MS,
+  max: TWO_FA_RESEND_RATE_MAX,
+  keyFn: (req) => {
+    const ip = getClientIp(req);
+    const route = safeLower(req.path);
+    const challengeId = safeLower(req.body && req.body.challengeId);
+    return `auth-2fa-resend:${route}:${ip}:${challengeId}`;
   },
 });
 
@@ -5217,7 +5246,7 @@ app.post('/api/auth/signup', authRateLimit, async (req, res) => {
 });
 
 // Verify 2FA challenge and mint an auth token.
-app.post('/api/auth/2fa/verify', authRateLimit, (req, res) => {
+app.post('/api/auth/2fa/verify', authRateLimit, twoFaVerifyRateLimit, (req, res) => {
   const challengeId = (req.body && req.body.challengeId) ? String(req.body.challengeId).trim() : '';
   const code = (req.body && req.body.code) ? String(req.body.code).trim() : '';
   if (!challengeId || !code) return res.status(400).json({ ok: false, error: 'challengeId and code required' });
@@ -5236,7 +5265,7 @@ app.post('/api/auth/2fa/verify', authRateLimit, (req, res) => {
 });
 
 // Resend SMS 2FA code with a cooldown.
-app.post('/api/auth/2fa/resend', authRateLimit, async (req, res) => {
+app.post('/api/auth/2fa/resend', authRateLimit, twoFaResendRateLimit, async (req, res) => {
   const challengeId = (req.body && req.body.challengeId) ? String(req.body.challengeId).trim() : '';
   if (!challengeId) return res.status(400).json({ ok: false, error: 'challengeId required' });
 

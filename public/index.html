@@ -1,20 +1,262 @@
-<!-- expo-dev-index -->
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" type="image/png" href="/assets/logo.png" sizes="any" />
-    <link rel="apple-touch-icon" href="/assets/logo.png" />
-    <title>CommunityBridge</title>
+    <link rel="icon" type="image/png" href="/icon.png" sizes="any" />
+    <link rel="apple-touch-icon" href="/icon.png" />
+    <script>
+      (function () {
+        var CANONICAL_HOST = 'communitybridge.app';
+        if (window.location.hostname === 'www.' + CANONICAL_HOST) {
+          var target = 'https://' + CANONICAL_HOST + window.location.pathname + window.location.search + window.location.hash;
+          window.location.replace(target);
+        }
+      })();
+    </script>
+    <title>CommunityBridge | Role-based coordination for ABA, school, and family teams</title>
+    <meta name="description" content="CommunityBridge brings schedules, staff coordination, family communication, billing workflows, and reporting into one role-based platform for ABA and care teams." />
+    <meta property="og:title" content="CommunityBridge" />
+    <meta property="og:description" content="Role-based coordination for families, ABA techs, BCBAs, office teams, reception, and administrators." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://communitybridge.app/" />
+    <meta property="og:image" content="https://communitybridge.app/og-image.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="CommunityBridge" />
+    <meta name="twitter:description" content="Schedules, billing workflows, reporting, and family communication in one platform." />
+    <meta name="twitter:image" content="https://communitybridge.app/og-image.png" />
+    <link rel="canonical" href="https://communitybridge.app/" />
     <style>
-      html, body, #root { height: 100%; margin: 0; padding: 0; }
-      body { background: #ffffff; -webkit-font-smoothing: antialiased; }
-      #root { display: flex; flex-direction: column; min-height: 100vh; }
+      :root {
+        --bg: #ffffff;
+        --card: #ffffff;
+        --text: #0f172a;
+        --muted: #475569;
+        --accent: #16a34a;
+        --line: rgba(15, 23, 42, 0.12);
+        --containerBg: #0b1220;
+        --containerText: #e5e7eb;
+        --containerMuted: #94a3b8;
+        --containerLine: rgba(255, 255, 255, 0.12);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+        min-height: 100vh;
+        background:
+          radial-gradient(900px 520px at 18% -10%, rgba(37, 99, 235, 0.16) 0%, rgba(37, 99, 235, 0.0) 62%),
+          radial-gradient(900px 520px at 86% 6%, rgba(22, 163, 74, 0.14) 0%, rgba(22, 163, 74, 0.0) 60%),
+          linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        color: var(--text);
+      }
+      a { color: inherit; }
+      .wrap { max-width: 1080px; margin: 0 auto; padding: 44px 18px; }
+      .nav { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+      .navActions { display: flex; gap: 10px; align-items: center; }
+      .brand { display: flex; flex-direction: column; gap: 6px; text-decoration: none; }
+      .brandLogo {
+        height: 120px;
+        width: auto;
+        max-width: min(600px, 100%);
+        display: inline-block;
+        object-fit: contain;
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+        padding: 0;
+        box-shadow: none;
+        filter: drop-shadow(0 12px 28px rgba(15, 23, 42, 0.18));
+      }
+      .brandTag {
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.2px;
+        color: var(--muted);
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 14px;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        text-decoration: none;
+        background: rgba(255, 255, 255, 0.85);
+        color: var(--text);
+      }
+      .btnPrimary {
+        background: var(--accent);
+        border-color: rgba(22, 163, 74, 0.35);
+        color: #ffffff;
+      }
+      .btnGhost { background: transparent; }
+      .hero { margin-top: 30px; }
+      .card {
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02)),
+          var(--containerBg);
+        border: 1px solid var(--containerLine);
+        border-radius: 18px;
+        padding: 18px;
+        color: var(--containerText);
+        box-shadow: 0 18px 46px rgba(15, 23, 42, 0.18);
+      }
+      .card p { color: var(--containerMuted); }
+      .card .btn:not(.btnPrimary) {
+        background: rgba(255, 255, 255, 0.07);
+        border-color: rgba(255, 255, 255, 0.14);
+        color: var(--containerText);
+      }
+      .card .btnGhost:not(.btnPrimary) { background: transparent; }
+      h1 { margin: 0 0 10px; font-size: 42px; line-height: 1.07; letter-spacing: -0.4px; }
+      p { margin: 0 0 14px; color: var(--muted); line-height: 1.6; }
+      .ctaRow { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; justify-content: center; }
+      .heroTop {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 18px;
+        align-items: center;
+      }
+      .heroCopy { text-align: center; }
+      .heroCopy p { margin-left: auto; margin-right: auto; }
+      .heroMedia { display: grid; gap: 12px; justify-items: center; }
+      .storeRow { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 14px; justify-content: center; }
+      .storeBtn {
+        display: inline-flex;
+        align-items: center;
+        padding: 10px 12px;
+        border-radius: 14px;
+        border: 1px solid var(--containerLine);
+        background: rgba(255, 255, 255, 0.06);
+      }
+      .storeBtn img { height: 44px; width: auto; display: block; }
+      .featuresBlock { margin-top: 18px; text-align: center; }
+      .featuresTitle { font-weight: 900; margin-top: 16px; margin-bottom: 10px; }
+      .list { display: inline-block; margin: 0; padding-left: 18px; color: var(--containerMuted); text-align: left; }
+      .list li { margin: 8px 0; }
+      .heroArt {
+        display: grid;
+        place-items: center;
+        padding: 0;
+        width: min(360px, 100%);
+        aspect-ratio: 1 / 1;
+        overflow: hidden;
+        background:
+          radial-gradient(600px 280px at 50% 30%, rgba(22,163,74,.16) 0%, rgba(255,255,255,0) 60%),
+          radial-gradient(600px 280px at 50% 70%, rgba(37,99,235,.12) 0%, rgba(255,255,255,0) 60%);
+      }
+      .heroImg {
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: contain;
+        border-radius: 0;
+        box-shadow: none;
+      }
+      .foot {
+        margin-top: 26px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        justify-content: space-between;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .links { display: flex; gap: 10px; flex-wrap: wrap; }
+      .links a { color: var(--muted); text-decoration: none; border-bottom: 1px solid rgba(15,23,42,0.0); }
+      .links a:hover { color: var(--text); border-bottom-color: rgba(15,23,42,0.25); }
+      @media (max-width: 900px) {
+        .heroTop { grid-template-columns: 1fr; }
+        h1 { font-size: 34px; }
+        .nav { justify-content: center; }
+        .brand { width: 100%; align-items: center; text-align: center; }
+        .navActions { width: 100%; justify-content: center; }
+      }
     </style>
   </head>
   <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"></div>
+    <div class="wrap">
+      <div class="nav">
+        <a class="brand" href="/" aria-label="CommunityBridge home">
+          <img class="brandLogo" src="/titlelogo.png" alt="CommunityBridge" />
+          <div class="brandTag">Families • ABA teams • office • reception • admins</div>
+        </a>
+
+        <div class="navActions">
+          <a class="btn btnGhost" href="/for-providers">For Providers</a>
+          <a class="btn btnGhost" href="/support">Support</a>
+          <a class="btn btnGhost" href="/dashboard">Open app</a>
+          <a class="btn btnPrimary" href="/download">Get the app</a>
+        </div>
+      </div>
+
+      <div class="hero">
+        <div class="card">
+          <div class="heroTop">
+            <div class="heroCopy">
+              <h1>One connected workspace for family communication, scheduling, reporting, and billing operations.</h1>
+              <p>
+                CommunityBridge gives each role the right view of the day: parents get a simplified family experience,
+                ABA techs and BCBAs manage learner care, and office or reception teams handle roster, schedule,
+                authorization, and export workflows without switching systems.
+              </p>
+
+              <div class="ctaRow" id="get">
+                <a class="btn btnPrimary" href="/dashboard">Open the web app</a>
+                <a class="btn" href="/for-providers">See provider workflows</a>
+                <a class="btn" href="#features">Features</a>
+              </div>
+
+              <div class="featuresBlock" id="features">
+                <div class="featuresTitle">What CommunityBridge includes</div>
+                <ul class="list">
+                  <li>Role-based dashboards for parents, ABA techs, BCBAs, office, reception, and admins</li>
+                  <li>Shared communication with posts, messages, urgent memos, and organization updates</li>
+                  <li>Scheduling tools with calendar views, session saves, and staff assignment workflows</li>
+                  <li>Billing and authorization tracking with export support for office teams</li>
+                  <li>Clinical and operational reporting filtered by learner, room, or overall program view</li>
+                  <li>Parent access to a digital insurance card, billing contact, and child-specific information only</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="heroMedia">
+              <div class="heroArt" aria-label="CommunityBridge app icon">
+                <img class="heroImg" src="/icon.png" alt="CommunityBridge app icon" />
+              </div>
+
+              <div class="storeRow" aria-label="App store buttons">
+                <a class="storeBtn" href="/download" title="Download options for testers">
+                  <img src="/appleStore.png" alt="Download on the App Store" />
+                </a>
+                <a class="storeBtn" href="/download" title="Download options for testers">
+                  <img src="/googleStore.png" alt="Get it on Google Play" />
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="foot">
+        <div>&copy; <span id="y"></span> CommunityBridge</div>
+        <div class="links">
+          <a href="/dashboard">Open app</a>
+          <a href="/support">Support</a>
+          <a href="#features">Features</a>
+          <a href="/for-providers">For Providers</a>
+          <a href="/download">Download</a>
+          <a href="/privacy">Privacy</a>
+          <a href="/terms">Terms</a>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const y = document.getElementById('y');
+      y.textContent = String(new Date().getFullYear());
+    </script>
   </body>
 </html>

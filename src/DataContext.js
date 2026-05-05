@@ -406,7 +406,7 @@ export function DataProvider({ children: reactChildren }) {
     let host = 'localhost';
     try {
       const scriptURL = NativeModules?.SourceCode?.scriptURL || '';
-      const m = scriptURL.match(/https?:\/\/([^:\/]+)/);
+      const m = scriptURL.match(/https?:\/\/([^:/]+)/);
       if (m && m[1]) host = m[1];
     } catch (e) {}
 

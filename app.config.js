@@ -53,6 +53,7 @@ module.exports = ({ config }) => {
     'EXPO_PUBLIC_SENTRY_DSN',
     'EXPO_PUBLIC_SENTRY_ENVIRONMENT',
     'EXPO_PUBLIC_API_BASE_URL',
+    'EXPO_PUBLIC_ENABLE_DEV_SWITCHER',
   ];
 
   for (const key of keys) {

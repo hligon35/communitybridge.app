@@ -69,6 +69,19 @@ function removeDirIfExists(dir) {
   fs.rmSync(dir, { recursive: true, force: true });
 }
 
+function restoreMarketingIndexIfNeeded(publicRoot) {
+  const devMarker = '<!-- expo-dev-index -->';
+  const indexPath = path.join(publicRoot, 'index.html');
+  const backupPath = path.join(publicRoot, '.index.marketing.backup.html');
+  if (!fs.existsSync(indexPath) || !fs.existsSync(backupPath)) return;
+
+  const currentIndex = fs.readFileSync(indexPath, 'utf8');
+  if (!currentIndex.includes(devMarker)) return;
+
+  const marketingIndex = fs.readFileSync(backupPath, 'utf8');
+  fs.writeFileSync(indexPath, marketingIndex, 'utf8');
+}
+
 function getWebAppEntryJsFile(exportDir) {
   const webJsDir = path.join(exportDir, '_expo', 'static', 'js', 'web');
   if (!fs.existsSync(webJsDir)) return null;
@@ -113,6 +126,7 @@ function main() {
   // Expo's export step copies everything under public/ into the export directory.
   // If we leave prior build outputs (public/_expo, public/assets, etc.) in place,
   // the export can contain stale AppEntry bundles and assets.
+  restoreMarketingIndexIfNeeded(path.join(process.cwd(), 'public'));
   removeDirIfExists(path.join('public', '_expo'));
   removeDirIfExists(path.join('public', 'assets'));
   removeDirIfExists(path.join('public', 'home'));

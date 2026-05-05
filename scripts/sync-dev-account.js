@@ -8,10 +8,15 @@ const bcrypt = require('bcryptjs');
 const { Pool } = require('pg');
 
 const DRY = process.argv.includes('--dry') || process.argv.includes('-n');
+const DEV_USER_PASSWORD = String(process.env.DEV_USER_PASSWORD || '').trim();
+
+if (!DEV_USER_PASSWORD) {
+  throw new Error('DEV_USER_PASSWORD is required to sync the development account.');
+}
 
 const DEV_USER = {
   email: 'dev@communitybridge.app',
-  password: process.env.DEV_USER_PASSWORD || 'Zing@r088',
+  password: DEV_USER_PASSWORD,
   name: 'Developer',
   role: 'admin',
 };

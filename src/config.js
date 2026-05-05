@@ -199,6 +199,11 @@ export const DEBUG_LOG_LEVEL = (typeof __DEV__ !== 'undefined' && __DEV__) ? 'de
 // Set EXPO_PUBLIC_DEV_AUTO_LOGIN=true to enable.
 export const DEV_AUTO_LOGIN = (getExpoPublicEnv('EXPO_PUBLIC_DEV_AUTO_LOGIN') || '').toLowerCase() === 'true';
 
+// Keep the dev/reviewer role switcher enabled for current pre-submission builds.
+// Set EXPO_PUBLIC_ENABLE_DEV_SWITCHER=0 in the submission environment to hide it
+// without changing code or special-access login behavior.
+export const ENABLE_DEV_SWITCHER = envFlag(getExpoPublicEnv('EXPO_PUBLIC_ENABLE_DEV_SWITCHER'), true);
+
 export default {
   BASE_URL,
   EMULATOR_HOST,
@@ -208,4 +213,5 @@ export default {
   DEBUG_LOG_COLORS,
   DEBUG_LOG_LEVEL,
   DEV_AUTO_LOGIN,
+  ENABLE_DEV_SWITCHER,
 };

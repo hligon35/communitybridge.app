@@ -12,7 +12,6 @@ export default function AdminMemosScreen() {
   const [body, setBody] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const [typingStopped, setTypingStopped] = useState(true);
-  const [debugLogs, setDebugLogs] = useState([]);
   const typingTimer = useRef(null);
   const blurTimer = useRef(null);
   const [searchLayout, setSearchLayout] = useState(null);
@@ -55,24 +54,9 @@ export default function AdminMemosScreen() {
 
   const dropdownVisible = ((isFocused && (!typingStopped || !query.trim())) && !exactMatch);
 
-  function pushLog(msg) {
-    try {
-      const t = new Date().toLocaleTimeString();
-      setDebugLogs((s) => [`${t} - ${msg}`, ...((s || []).slice(0, 49))]);
-      console.log('AdminMemos-debug:', msg);
-    } catch (e) { console.warn(e); }
-  }
-
   const handleToggle = (id) => setSelectedIds((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
-  // wrap toggle to log
-  const handleToggleLogged = (id) => {
-    pushLog(`toggle ${id}`);
-    setSelectedIds((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
-  };
 
   const handleSend = async () => {
-    console.log('AdminMemos: handleSend called', { selectedIds, subject, body });
-    pushLog(`handleSend called (selected=${selectedIds.length})`);
     if (!selectedIds.length) {
       Alert.alert('Select recipients', 'Please select at least one recipient for the memo.');
       return;
@@ -88,11 +72,9 @@ export default function AdminMemosScreen() {
     const payload = { recipients, subject: subject.trim(), body: body.trim() };
     try {
       if (typeof sendAdminMemo !== 'function') {
-        console.warn('sendAdminMemo is not a function', sendAdminMemo);
         Alert.alert('Error', 'Unable to send memo: send handler not available.');
         return;
       }
-      pushLog('calling sendAdminMemo');
       const created = await sendAdminMemo(payload);
       if (created) {
         Alert.alert('Sent', 'Memo sent successfully.');
@@ -103,8 +85,7 @@ export default function AdminMemosScreen() {
       } else {
         Alert.alert('Failed', 'Failed to send memo. Please try again.');
       }
-    } catch (e) {
-      console.warn('AdminMemos: sendAdminMemo threw', e);
+    } catch (_) {
       Alert.alert('Error', 'An unexpected error occurred.');
     }
   };
@@ -142,9 +123,9 @@ export default function AdminMemosScreen() {
         style={styles.input}
         placeholder="Search name (parents or faculty)"
         value={query}
-        onChangeText={(t) => { setQuery(t); pushLog(`query -> ${t}`); }}
-        onFocus={() => { pushLog('search focused'); if (blurTimer.current) { clearTimeout(blurTimer.current); blurTimer.current = null; } setIsFocused(true); }}
-        onBlur={() => { pushLog('search blurred'); if (blurTimer.current) clearTimeout(blurTimer.current); blurTimer.current = setTimeout(() => { setIsFocused(false); blurTimer.current = null; }, 220); }}
+        onChangeText={setQuery}
+        onFocus={() => { if (blurTimer.current) { clearTimeout(blurTimer.current); blurTimer.current = null; } setIsFocused(true); }}
+        onBlur={() => { if (blurTimer.current) clearTimeout(blurTimer.current); blurTimer.current = setTimeout(() => { setIsFocused(false); blurTimer.current = null; }, 220); }}
         onLayout={(e) => setSearchLayout(e.nativeEvent.layout)}
       />
 
@@ -158,7 +139,6 @@ export default function AdminMemosScreen() {
               const visibleIds = filteredRecipients.map((r) => r.id);
               const allSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id));
               const toggleAll = () => {
-                pushLog(allSelected ? 'deselect all' : 'select all');
                 // Cancel any pending blur-dismissal so the dropdown stays open.
                 if (blurTimer.current) { clearTimeout(blurTimer.current); blurTimer.current = null; }
                 setIsFocused(true);
@@ -185,7 +165,6 @@ export default function AdminMemosScreen() {
             })() : null}
             <TouchableOpacity
               onPress={() => {
-                pushLog('done pressed');
                 if (blurTimer.current) { clearTimeout(blurTimer.current); blurTimer.current = null; }
                 setIsFocused(false);
                 try { inputRef.current?.blur?.(); } catch (e) {}
@@ -207,8 +186,7 @@ export default function AdminMemosScreen() {
             >
               {filteredRecipients.map((item) => (
                 <View key={item.id}>
-                  {/* renderRecipient uses handleToggle; switch to logged toggle to capture logs */}
-                  <TouchableOpacity onPress={() => handleToggleLogged(item.id)}>
+                  <TouchableOpacity onPress={() => handleToggle(item.id)}>
                     {renderRecipient({ item })}
                   </TouchableOpacity>
                 </View>
@@ -232,10 +210,8 @@ export default function AdminMemosScreen() {
         style={styles.input}
         placeholder="Subject"
         value={subject}
-        onChangeText={(t) => { setSubject(t); pushLog(`subject -> ${t}`); }}
+        onChangeText={setSubject}
         maxLength={120}
-        onFocus={() => pushLog('subject focused')}
-        onBlur={() => pushLog('subject blurred')}
       />
 
       <Text style={[styles.label, { marginTop: 12 }]}>Message</Text>
@@ -243,11 +219,9 @@ export default function AdminMemosScreen() {
         style={[styles.input, { height: 120 }]}
         placeholder="Write your memo here"
         value={body}
-        onChangeText={(t) => { const next = String(t || '').slice(0, 5000); setBody(next); pushLog(`body -> ${next.slice(0,40)}`); }}
+        onChangeText={(t) => { const next = String(t || '').slice(0, 5000); setBody(next); }}
         multiline
         maxLength={5000}
-        onFocus={() => pushLog('body focused')}
-        onBlur={() => pushLog('body blurred')}
       />
 
       <TouchableOpacity style={styles.sendButton} onPress={handleSend}>
@@ -255,21 +229,6 @@ export default function AdminMemosScreen() {
       </TouchableOpacity>
     </View>
   ), [subject, body, filteredRecipients.length, handleSend]);
-
-  // Debug overlay render
-  const DebugOverlay = () => (
-    <View style={styles.debugOverlay} pointerEvents="box-none">
-      <Text style={styles.debugTitle}>DBG</Text>
-      <Text style={styles.debugText}>focused: {String(isFocused)}</Text>
-      <Text style={styles.debugText}>dropdown: {String(dropdownVisible)}</Text>
-      <Text style={styles.debugText}>typingStopped: {String(typingStopped)}</Text>
-      <Text style={styles.debugText}>selected: {selectedIds.length}</Text>
-      <Text style={styles.debugText}>query: {query ? query.slice(0, 20) : '<empty>'}</Text>
-      <ScrollView style={styles.logScroll}>
-        {debugLogs.map((l, idx) => (<Text key={idx} style={styles.logLine}>{l}</Text>))}
-      </ScrollView>
-    </View>
-  );
 
   return (
     <View style={{ flex: 1 }}>
@@ -299,7 +258,7 @@ export default function AdminMemosScreen() {
                   <View key={item.id} style={styles.chip}>
                     <Text style={styles.chipText} numberOfLines={1}>{name}</Text>
                     <TouchableOpacity
-                      onPress={() => handleToggleLogged(item.id)}
+                      onPress={() => handleToggle(item.id)}
                       style={styles.chipRemove}
                       accessibilityLabel={`Remove ${name}`}
                       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -330,10 +289,6 @@ export default function AdminMemosScreen() {
       {/* No absolute backdrop: dismissal happens via TouchableWithoutFeedback around
           the bottom area, onScrollBeginDrag, and the search input's onBlur. Adding
           an absolute overlay would intercept taps on the dropdown's Select all button. */}
-      {/* Render debug overlay (non-interactive) */}
-      <View pointerEvents="none">
-        <DebugOverlay />
-      </View>
     </View>
   );
 }
@@ -377,9 +332,4 @@ const styles = StyleSheet.create({
   checkCircle: { width: 28, height: 28, borderRadius: 14, borderWidth: 1, borderColor: '#cbd5e1', alignItems: 'center', justifyContent: 'center' },
   checkCircleSmall: { width: 20, height: 20, borderRadius: 10 },
   checkCircleActive: { backgroundColor: '#2563eb', borderColor: '#2563eb' },
-  debugOverlay: { position: 'absolute', right: 10, top: 10, width: 200, maxHeight: 260, backgroundColor: 'rgba(0,0,0,0.7)', padding: 8, borderRadius: 8, zIndex: 999 },
-  debugTitle: { color: '#fff', fontWeight: '700', marginBottom: 6 },
-  debugText: { color: '#fff', fontSize: 12 },
-  logScroll: { marginTop: 8, maxHeight: 160 },
-  logLine: { color: '#cfe8ff', fontSize: 11 },
 });

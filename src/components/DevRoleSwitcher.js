@@ -8,6 +8,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { logPress } from '../utils/logger';
 import { isDevSwitcherUser, isDemoReviewerUser } from '../utils/authState';
 import { THERAPY_ROLE_LABELS } from '../utils/roleTerminology';
+import { ENABLE_DEV_SWITCHER } from '../config';
 
 const DEV_SWITCHER_VISIBILITY_KEY = '@communitybridge/dev-switcher-visible';
 
@@ -17,7 +18,7 @@ export default function DevRoleSwitcher() {
   const tenant = useTenant() || {};
   const isDevAccount = isDevSwitcherUser(user?.email);
   const isReviewAccount = isDemoReviewer || isDemoReviewerUser(user?.email);
-  const isAllowed = __DEV__ || isDevAccount || isReviewAccount;
+  const isAllowed = ENABLE_DEV_SWITCHER && (__DEV__ || isDevAccount || isReviewAccount);
   const [open, setOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [visibilityReady, setVisibilityReady] = useState(false);

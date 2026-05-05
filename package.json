@@ -9,6 +9,8 @@
   "scripts": {
     "generate:icons": "node ./scripts/generate_icon_sets.js",
     "check:secrets": "node ./scripts/check-secrets.js",
+    "lint": "eslint --quiet --no-error-on-unmatched-pattern App.js screens/**/*.js src/**/*.js scripts/**/*.js tests/**/*.js app.config.js babel.config.js metro.config.js postcss.config.js tailwind.config.js eslint.config.js --ignore-pattern archive/** --ignore-pattern functions/** --ignore-pattern public/** --ignore-pattern src/seed/** --ignore-pattern scripts/api-mock.js",
+    "typecheck": "tsc -p tsconfig.typecheck.json --noEmit",
     "test:unit": "node --test tests/*.test.js",
     "gcp-build": "node ./scripts/build-web.js",
     "build:web": "node ./scripts/build-web.js",
@@ -125,10 +127,16 @@
   },
   "devDependencies": {
     "@babel/core": "^7.26.0",
+    "@eslint/js": "^8.57.0",
     "@react-native-community/cli": "latest",
     "@react-native-community/cli-server-api": "^20.0.2",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.0.10",
+    "eslint": "^8.57.0",
     "expo-module-scripts": "^5.0.8",
-    "png-to-ico": "^3.0.1"
+    "globals": "^15.15.0",
+    "png-to-ico": "^3.0.1",
+    "typescript": "^5.6.3"
   },
   "overrides": {
     "react-native-renderer": "19.1.0",
