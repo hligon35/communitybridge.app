@@ -95,8 +95,6 @@ export default function AdminControlsScreen() {
   const isBcba = isBcbaRole(user?.role);
   const isTabletLayout = useIsTabletLayout();
   const estimatedContentWidth = Math.max(320, width - (isTabletLayout ? 320 : 48));
-  const showFourUpTiles = estimatedContentWidth >= 820;
-  const showTwoUpTiles = estimatedContentWidth >= 640;
   const useCompactTiles = estimatedContentWidth < 860;
   const showChartGrid = estimatedContentWidth >= 900;
 
@@ -132,34 +130,30 @@ export default function AdminControlsScreen() {
   }, [children, isBcba, summary.overdueNotes, therapists, urgentMemos]);
 
   return (
-    <ScreenWrapper style={styles.container}>
+    <ScreenWrapper style={styles.container} bannerShowBack={false}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={[styles.tileRow, showFourUpTiles ? styles.tileRowWide : null]}>
+        <View style={styles.tileRow}>
           <View style={[
             styles.tileWrap,
-            showTwoUpTiles ? styles.tileWrapHalf : styles.tileWrapStacked,
-            showFourUpTiles ? styles.tileWrapWide : null,
+            styles.tileWrapHalf,
           ]}>
             <Tile label="Sessions today" value={summary.sessionsToday} hint="Scheduled and tracked learner sessions." compact={useCompactTiles} />
           </View>
           <View style={[
             styles.tileWrap,
-            showTwoUpTiles ? styles.tileWrapHalf : styles.tileWrapStacked,
-            showFourUpTiles ? styles.tileWrapWide : null,
+            styles.tileWrapHalf,
           ]}>
             <Tile label="Cancellations" value={summary.cancellations} hint="Canceled or interrupted sessions needing review." accent="#dc2626" compact={useCompactTiles} />
           </View>
           <View style={[
             styles.tileWrap,
-            showTwoUpTiles ? styles.tileWrapHalf : styles.tileWrapStacked,
-            showFourUpTiles ? styles.tileWrapWide : null,
+            styles.tileWrapHalf,
           ]}>
             <Tile label="Incidents" value={summary.incidents} hint="Behavior and operational incident volume." accent="#f59e0b" compact={useCompactTiles} />
           </View>
           <View style={[
             styles.tileWrap,
-            showTwoUpTiles ? styles.tileWrapHalf : styles.tileWrapStacked,
-            showFourUpTiles ? styles.tileWrapWide : null,
+            styles.tileWrapHalf,
           ]}>
             <Tile label="Overdue notes" value={summary.overdueNotes} hint="Learners missing updated notes or plan details." accent="#7c3aed" compact={useCompactTiles} />
           </View>
@@ -168,6 +162,10 @@ export default function AdminControlsScreen() {
         <View style={[styles.dashboardGrid, showChartGrid ? styles.dashboardGridWide : null]}>
           <View style={[styles.dashboardColumn, showChartGrid ? styles.dashboardColumnWide : null]}>
             <TrendCard title="Attendance trends" items={summary.attendanceTrend} accent="#0ea5e9" />
+            <TrendCard title="Staff utilization" items={summary.staffUtilization} accent="#16a34a" />
+          </View>
+          <View style={[styles.dashboardColumn, showChartGrid ? styles.dashboardColumnWide : null]}>
+            {isBcba ? <TrendCard title="Behavior incidents" items={summary.behaviorTrend} accent="#dc2626" horizontalInset={36} /> : null}
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Alerts</Text>
               {alerts.map((item) => (
@@ -181,10 +179,6 @@ export default function AdminControlsScreen() {
               ))}
             </View>
           </View>
-          <View style={[styles.dashboardColumn, showChartGrid ? styles.dashboardColumnWide : null]}>
-            {isBcba ? <TrendCard title="Behavior incidents" items={summary.behaviorTrend} accent="#dc2626" horizontalInset={36} /> : null}
-            <TrendCard title="Staff utilization" items={summary.staffUtilization} accent="#16a34a" />
-          </View>
         </View>
       </ScrollView>
     </ScreenWrapper>
@@ -195,11 +189,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
   content: { padding: 16 },
   tileRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start' },
-  tileRowWide: { marginHorizontal: -6 },
   tileWrap: { marginBottom: 12 },
-  tileWrapStacked: { width: '100%' },
   tileWrapHalf: { width: '48.5%' },
-  tileWrapWide: { width: '25%', paddingHorizontal: 6 },
   tile: { width: '100%', minHeight: 128, borderRadius: 18, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e5e7eb', padding: 16 },
   tileCompact: { minHeight: 112, paddingVertical: 14, paddingHorizontal: 14 },
   tileValue: { fontSize: 26, fontWeight: '800' },

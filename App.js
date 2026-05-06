@@ -62,7 +62,6 @@ import TherapistDocumentationDashboardScreen from './src/features/sessionInsight
 import OrganizationInsightsDashboardScreen from './src/features/sessionInsights/screens/OrganizationInsightsDashboardScreen';
 import { HelpButton, BackButton } from './src/components/TopButtons';
 import { View, Text } from 'react-native';
-import LogoTitle from './src/components/LogoTitle';
 import LoginScreen from './screens/LoginScreen';
 import TwoFactorScreen from './screens/TwoFactorScreen';
 import CreatePasswordScreen from './screens/CreatePasswordScreen';
@@ -80,10 +79,41 @@ initSentry();
 const RootStack = createNativeStackNavigator();
 const AppStack = createNativeStackNavigator();
 
-const HEADER_LOGO_WIDTH = 168;
-const HEADER_LOGO_HEIGHT = 80;
 const HEADER_HEIGHT = 96;
 const SHOW_STACK_HEADERS = Platform.OS !== 'web';
+const MAIN_NAV_ROUTES = new Set([
+  'CommunityMain',
+  'ChatsList',
+  'MyChildMain',
+  'SettingsMain',
+  'MyClassMain',
+  'ControlsMain',
+  'StudentDirectory',
+  'ParentDirectory',
+  'FacultyDirectory',
+  'ScheduleCalendar',
+  'ProgramDirectory',
+  'Reports',
+  'InsuranceBilling',
+  'AdminAlerts',
+  'AdminChatMonitor',
+  'AdminSettings',
+  'TapTracker',
+  'TapLogs',
+  'SummaryReview',
+]);
+
+function StackHeaderTitle({ children }) {
+  return (
+    <Text
+      style={landscapeStyles.stackHeaderTitle}
+      numberOfLines={2}
+      ellipsizeMode="tail"
+    >
+      {children}
+    </Text>
+  );
+}
 
 function getDeepestRouteName(state) {
   try {
@@ -105,9 +135,12 @@ function MyClassStack() {
         headerShown: SHOW_STACK_HEADERS && !isTabletLayout,
         title: humanizeScreenLabel(route?.name),
         headerTitleAlign: 'center',
-        headerTitle: () => <LogoTitle width={HEADER_LOGO_WIDTH} height={HEADER_LOGO_HEIGHT} />,
+        headerTitle: ({ children }) => <StackHeaderTitle>{children}</StackHeaderTitle>,
         headerStyle: { height: HEADER_HEIGHT },
-        headerLeft: () => (back ? <BackButton onPress={() => navigation.goBack()} /> : <HelpButton />),
+        headerBackVisible: !MAIN_NAV_ROUTES.has(route?.name),
+        headerBackTitleVisible: false,
+        headerLeft: () => (back && !MAIN_NAV_ROUTES.has(route?.name) ? <BackButton onPress={() => navigation.goBack()} /> : null),
+        headerRight: () => <HelpButton />,
       })}
     >
       <MyClassStackNav.Screen name="MyClassMain" component={MyClassScreen} options={{ title: 'My Class' }} />
@@ -124,9 +157,12 @@ function ControlsStack() {
         headerShown: SHOW_STACK_HEADERS && !isTabletLayout,
         title: humanizeScreenLabel(route?.name),
         headerTitleAlign: 'center',
-        headerTitle: () => <LogoTitle width={HEADER_LOGO_WIDTH} height={HEADER_LOGO_HEIGHT} />,
+        headerTitle: ({ children }) => <StackHeaderTitle>{children}</StackHeaderTitle>,
         headerStyle: { height: HEADER_HEIGHT },
-        headerLeft: () => (back ? <BackButton onPress={() => navigation.goBack()} /> : <HelpButton />),
+        headerBackVisible: !MAIN_NAV_ROUTES.has(route?.name),
+        headerBackTitleVisible: false,
+        headerLeft: () => (back && !MAIN_NAV_ROUTES.has(route?.name) ? <BackButton onPress={() => navigation.goBack()} /> : null),
+        headerRight: () => <HelpButton />,
       })}
     >
       <ControlsStackNav.Screen name="ControlsMain" component={AdminControlsScreen} options={{ title: 'Dashboard' }} />
@@ -145,7 +181,7 @@ function ControlsStack() {
       <ControlsStackNav.Screen name="FacultyDetail" component={FacultyDetailScreen} options={{ title: 'Faculty' }} />
       <ControlsStackNav.Screen name="AdminMemos" component={AdminMemosScreen} options={{ title: 'Compose Memo' }} />
       <ControlsStackNav.Screen name="AdminChatMonitor" component={AdminChatMonitorScreen} options={{ title: 'Communication' }} />
-      <ControlsStackNav.Screen name="AdminSettings" component={AdminSettingsHubScreen} options={{ title: 'Settings', headerLeft: () => <HelpButton /> }} />
+      <ControlsStackNav.Screen name="AdminSettings" component={AdminSettingsHubScreen} options={{ title: 'Settings' }} />
       <ControlsStackNav.Screen name="OrganizationSettings" component={AdminSettingsWorkspaceScreen} initialParams={{ sectionKey: 'organization' }} options={{ title: 'Organization Settings' }} />
       <ControlsStackNav.Screen name="BrandingSettings" component={AdminSettingsWorkspaceScreen} initialParams={{ sectionKey: 'branding' }} options={{ title: 'Branding' }} />
       <ControlsStackNav.Screen name="UserMonitor" component={UserMonitorScreen} options={{ title: 'User Monitor' }} />
@@ -176,9 +212,12 @@ function CommunityStack() {
         headerShown: SHOW_STACK_HEADERS && !isTabletLayout,
         title: humanizeScreenLabel(route?.name),
         headerTitleAlign: 'center',
-        headerTitle: () => <LogoTitle width={HEADER_LOGO_WIDTH} height={HEADER_LOGO_HEIGHT} />,
+        headerTitle: ({ children }) => <StackHeaderTitle>{children}</StackHeaderTitle>,
         headerStyle: { height: HEADER_HEIGHT },
-        headerLeft: () => (back ? <BackButton onPress={() => navigation.goBack()} /> : <HelpButton />),
+        headerBackVisible: !MAIN_NAV_ROUTES.has(route?.name),
+        headerBackTitleVisible: false,
+        headerLeft: () => (back && !MAIN_NAV_ROUTES.has(route?.name) ? <BackButton onPress={() => navigation.goBack()} /> : null),
+        headerRight: () => <HelpButton />,
       })}
     >
       <CommunityStackNav.Screen name="CommunityMain" component={RoleDashboardScreen} options={{ title: 'Dashboard' }} />
@@ -208,9 +247,12 @@ function MyChildStack() {
         headerShown: SHOW_STACK_HEADERS && !isTabletLayout,
         title: humanizeScreenLabel(route?.name),
         headerTitleAlign: 'center',
-        headerTitle: () => <LogoTitle width={HEADER_LOGO_WIDTH} height={HEADER_LOGO_HEIGHT} />,
+        headerTitle: ({ children }) => <StackHeaderTitle>{children}</StackHeaderTitle>,
         headerStyle: { height: HEADER_HEIGHT },
-        headerLeft: () => (back ? <BackButton onPress={() => navigation.goBack()} /> : <HelpButton />),
+        headerBackVisible: !MAIN_NAV_ROUTES.has(route?.name),
+        headerBackTitleVisible: false,
+        headerLeft: () => (back && !MAIN_NAV_ROUTES.has(route?.name) ? <BackButton onPress={() => navigation.goBack()} /> : null),
+        headerRight: () => <HelpButton />,
       })}
     >
       <MyChildStackNav.Screen name="MyChildMain" component={MyChildScreen} options={{ title: 'My Child' }} />
@@ -228,9 +270,12 @@ function ChatsStack() {
         headerShown: SHOW_STACK_HEADERS && !isTabletLayout,
         title: humanizeScreenLabel(route?.name),
         headerTitleAlign: 'center',
-        headerTitle: () => <LogoTitle width={HEADER_LOGO_WIDTH} height={HEADER_LOGO_HEIGHT} />,
+        headerTitle: ({ children }) => <StackHeaderTitle>{children}</StackHeaderTitle>,
         headerStyle: { height: HEADER_HEIGHT },
-        headerLeft: () => (back ? <BackButton onPress={() => navigation.goBack()} label={route?.name === 'ChatThread' ? 'Chats' : ''} /> : <HelpButton />),
+        headerBackVisible: !MAIN_NAV_ROUTES.has(route?.name),
+        headerBackTitleVisible: false,
+        headerLeft: () => (back && !MAIN_NAV_ROUTES.has(route?.name) ? <BackButton onPress={() => navigation.goBack()} label={route?.name === 'ChatThread' ? 'Chats' : ''} /> : null),
+        headerRight: () => <HelpButton />,
       })}
     >
       <ChatsStackNav.Screen name="ChatsList" component={ChatsScreen} options={{ title: 'Chats' }} />
@@ -249,12 +294,15 @@ function SettingsStack() {
         headerShown: SHOW_STACK_HEADERS && !isTabletLayout,
         title: humanizeScreenLabel(route?.name),
         headerTitleAlign: 'center',
-        headerTitle: () => <LogoTitle width={HEADER_LOGO_WIDTH} height={HEADER_LOGO_HEIGHT} />,
+        headerTitle: ({ children }) => <StackHeaderTitle>{children}</StackHeaderTitle>,
         headerStyle: { height: HEADER_HEIGHT },
-        headerLeft: () => (back ? <BackButton onPress={() => navigation.goBack()} /> : <HelpButton />),
+        headerBackVisible: !MAIN_NAV_ROUTES.has(route?.name),
+        headerBackTitleVisible: false,
+        headerLeft: () => (back && !MAIN_NAV_ROUTES.has(route?.name) ? <BackButton onPress={() => navigation.goBack()} /> : null),
+        headerRight: () => <HelpButton />,
       })}
     >
-      <SettingsStackNav.Screen name="SettingsMain" component={SettingsScreen} options={{ title: 'Profile Settings', headerRight: () => null }} />
+      <SettingsStackNav.Screen name="SettingsMain" component={SettingsScreen} options={{ title: 'Profile Settings' }} />
       <SettingsStackNav.Screen name="EditProfile" component={EditProfileScreen} options={{ title: 'Edit Profile' }} />
       <SettingsStackNav.Screen name="Help" component={HelpScreen} options={{ title: 'Help' }} />
     </SettingsStackNav.Navigator>
@@ -342,6 +390,14 @@ function MainRoutes() {
 }
 
 const landscapeStyles = StyleSheet.create({
+  stackHeaderTitle: {
+    maxWidth: 220,
+    fontSize: 17,
+    lineHeight: 20,
+    fontWeight: '700',
+    color: '#0f172a',
+    textAlign: 'center',
+  },
   rotateWrap: {
     flex: 1,
     alignItems: 'center',

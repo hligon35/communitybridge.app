@@ -10,6 +10,28 @@ import { humanizeScreenLabel } from '../utils/screenLabels';
 import useIsTabletLayout from '../hooks/useIsTabletLayout';
 import { MobileAdminShellContext } from './TabletNavigationShell';
 
+const MAIN_NAV_ROUTES = new Set([
+  'CommunityMain',
+  'ChatsList',
+  'MyChildMain',
+  'SettingsMain',
+  'MyClassMain',
+  'ControlsMain',
+  'StudentDirectory',
+  'ParentDirectory',
+  'FacultyDirectory',
+  'ScheduleCalendar',
+  'ProgramDirectory',
+  'Reports',
+  'InsuranceBilling',
+  'AdminAlerts',
+  'AdminChatMonitor',
+  'AdminSettings',
+  'TapTracker',
+  'TapLogs',
+  'SummaryReview',
+]);
+
 export function ScreenWrapper({
   children,
   style,
@@ -39,6 +61,7 @@ export function ScreenWrapper({
   const suppressLegacyWebNav = Boolean(isWeb && isAdminRole(user?.role) && isPhoneViewport);
   const useAdminPhoneMainArea = Boolean(!isWeb && isAdminRole(user?.role) && isPhoneViewport && route?.name !== 'StudentDirectory' && route?.name !== 'FacultyDirectory');
   const showMobileHeaderBelow = Boolean(useAdminPhoneMainArea && mobileHeaderBelow);
+  const showNativeStackHeader = !isWeb && !isTabletLayout;
 
   const nameMap = {
     CommunityMain: 'Home',
@@ -63,7 +86,8 @@ export function ScreenWrapper({
   };
 
   const title = bannerTitle || nameMap[route?.name] || humanizeScreenLabel(route?.name) || '';
-  const computedShowBack = !isWeb && navigation && navigation.canGoBack && navigation.canGoBack() && title !== 'Home';
+  const isMainNavRoute = MAIN_NAV_ROUTES.has(route?.name);
+  const computedShowBack = !isWeb && !isMainNavRoute && navigation && navigation.canGoBack && navigation.canGoBack() && title !== 'Home';
   const showBack = (typeof bannerShowBack === 'boolean') ? bannerShowBack : computedShowBack;
   const resolvedWebBottomSpacerHeight = typeof webBottomSpacerHeight === 'number' ? webBottomSpacerHeight : 24;
   const resolvedBottomSpacerHeight = typeof bottomSpacerHeight === 'number'
@@ -75,7 +99,7 @@ export function ScreenWrapper({
       {/* web: show top WebNav; mobile: show ScreenHeader */}
       {isWeb && !isTabletLayout && !suppressLegacyWebNav
         ? <WebNav />
-        : (!hideBanner && !shellContext?.suppressScreenHeader && <ScreenHeader title={title} showBack={showBack} left={bannerLeft} right={bannerRight} titleLeft={showMobileHeaderBelow ? null : bannerTitleLeft} />)}
+        : (!hideBanner && !showNativeStackHeader && !shellContext?.suppressScreenHeader && <ScreenHeader title={title} showBack={showBack} left={bannerLeft} right={bannerRight} titleLeft={showMobileHeaderBelow ? null : bannerTitleLeft} />)}
 
       {showMobileHeaderBelow ? (
         <View style={styles.mobileHeaderBelowShell}>

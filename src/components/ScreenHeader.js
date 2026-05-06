@@ -40,7 +40,7 @@ export default function ScreenHeader({ title, showBack = true, left, right, titl
 
       {titleLeft ? <View style={styles.titleLeft}>{titleLeft}</View> : null}
 
-      {title ? <Text style={styles.title} numberOfLines={1} pointerEvents="none">{title}</Text> : <View style={styles.titlePlaceholder} />}
+      {title ? <Text style={styles.title} numberOfLines={2} ellipsizeMode="tail" pointerEvents="none">{title}</Text> : <View style={styles.titlePlaceholder} />}
 
       <View style={[styles.right, { top: leftTop }]}>{right || null}</View>
     </View>
@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'flex-end',
   },
-  title: { fontSize: 18, fontWeight: '700', textAlign: 'center', marginHorizontal: 64 },
+  title: { fontSize: 16, lineHeight: 18, fontWeight: '700', textAlign: 'center', marginHorizontal: 64 },
   titlePlaceholder: { height: 0 },
   right: { position: 'absolute', right: 6, top: 10, minWidth: 34, alignItems: 'flex-end' },
 });

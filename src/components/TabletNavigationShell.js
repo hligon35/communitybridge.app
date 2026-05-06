@@ -335,16 +335,16 @@ export default function TabletNavigationShell({ currentRoute, children }) {
     return (
       <MobileAdminShellContext.Provider value={mobileAdminShellValue}>
         <View style={styles.mobileShellFrame}>
-          <View style={[styles.contentWrap, styles.mobileContentWrap, { paddingTop: 0, paddingBottom: Math.max(insets.bottom, 12) }]}>
+          <View style={[styles.contentWrap, styles.mobileContentWrap, { paddingTop: 0, paddingBottom: 0 }]}>
             <View style={styles.mobileScreenWrap}>{children}</View>
           </View>
-          <View style={[styles.mobileBottomMenuShell, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+          <View style={[styles.mobileBottomMenuShell, { paddingBottom: Math.max(insets.bottom, 0) }]}>
             <TouchableOpacity
               style={styles.mobileBottomMenuButton}
               onPress={() => setMobileNavOpen(true)}
               accessibilityLabel="Open navigation menu"
             >
-              <MaterialIcons name="menu" size={22} color="#1d4ed8" />
+              <MaterialIcons name="menu" size={22} color="#ffffff" />
             </TouchableOpacity>
           </View>
           <Modal visible={mobileNavOpen} animationType="slide" transparent={false} onRequestClose={() => setMobileNavOpen(false)}>
@@ -548,14 +548,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 36,
-    paddingTop: 4,
+    paddingTop: 0,
   },
   mobileBottomMenuButton: {
     width: '100%',
     height: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: '#1d4ed8',
   },
   mobileUtilitySection: { marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#dbe2ea' },
   mobileUtilityButton: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 12, backgroundColor: '#eff6ff', marginBottom: 10 },
