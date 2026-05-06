@@ -304,7 +304,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
       <MobileAdminShellContext.Provider value={mobileAdminShellValue}>
         <View style={styles.mobileShellFrame}>
           {Platform.OS !== 'web' && insets.top > 0 ? <View style={{ height: insets.top, backgroundColor: '#e2e8f0' }} /> : null}
-          <View style={[styles.contentWrap, styles.mobileContentWrap, { paddingTop: 12, paddingBottom: Math.max(insets.bottom, 12) }]}>
+          <View style={[styles.contentWrap, styles.mobileContentWrap, { paddingTop: 0, paddingBottom: Math.max(insets.bottom, 12) }]}>
             <View style={styles.mobileScreenWrap}>{children}</View>
           </View>
           <Modal visible={mobileNavOpen} animationType="slide" transparent={false} onRequestClose={() => setMobileNavOpen(false)}>
@@ -447,7 +447,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
 
 const styles = StyleSheet.create({
   shellFrame: { flex: 1, backgroundColor: '#e2e8f0' },
-  mobileShellFrame: { flex: 1, backgroundColor: '#e2e8f0' },
+  mobileShellFrame: { flex: 1, backgroundColor: '#ffffff' },
   shell: { flex: 1, flexDirection: 'row', backgroundColor: '#e2e8f0' },
   drawer: { width: 280, backgroundColor: '#0f172a', paddingHorizontal: 16 },
   drawerCollapsed: { width: 92, paddingHorizontal: 10 },
@@ -472,7 +472,7 @@ const styles = StyleSheet.create({
   logoutButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 14, backgroundColor: '#1e293b' },
   logoutText: { color: '#fecaca', fontWeight: '700', marginLeft: 10 },
   contentWrap: { flex: 1, paddingHorizontal: 12, position: 'relative' },
-  mobileContentWrap: { paddingHorizontal: 10 },
+  mobileContentWrap: { paddingHorizontal: 0 },
   quickMenuDismissLayer: { ...StyleSheet.absoluteFillObject, zIndex: 20 },
   topBar: { minHeight: 70, borderRadius: 18, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e2e8f0', paddingHorizontal: 18, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, zIndex: 30 },
   mobileTopBar: { paddingHorizontal: 14, alignItems: 'flex-start' },
@@ -492,7 +492,7 @@ const styles = StyleSheet.create({
   quickHeaderMenuItem: { paddingVertical: 10, paddingHorizontal: 14 },
   quickHeaderMenuText: { color: '#0f172a', fontWeight: '700' },
   screenWrap: { flex: 1, borderRadius: 24, overflow: 'hidden', backgroundColor: '#f8fafc' },
-  mobileScreenWrap: { flex: 1, borderRadius: 24, overflow: 'hidden', backgroundColor: '#f8fafc' },
+  mobileScreenWrap: { flex: 1, borderRadius: 0, overflow: 'visible', backgroundColor: '#ffffff' },
   mobileNavOverlay: { flex: 1, backgroundColor: '#f8fafc', paddingHorizontal: 16 },
   mobileNavHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
   mobileNavTitle: { fontSize: 28, fontWeight: '800', color: '#0f172a' },

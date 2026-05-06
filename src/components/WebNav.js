@@ -1,19 +1,43 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
-import LogoTitle from './LogoTitle';
 import { useAuth } from '../AuthContext';
 import { navigationRef } from '../navigationRef';
 import { useTenant } from '../core/tenant/TenantContext';
 import { isAdminRole } from '../core/tenant/models';
+import { humanizeScreenLabel } from '../utils/screenLabels';
 
 export default function WebNav() {
   const navigation = useNavigation();
+  const route = useRoute();
   const { user, logout } = useAuth();
   const tenant = useTenant();
   const labels = tenant?.labels || {};
   const role = (user && user.role) ? (user.role || '').toString().toLowerCase() : 'parent';
+  const titleMap = {
+    CommunityMain: 'Home',
+    ChatsList: 'Chats',
+    ChatThread: 'New Message',
+    MyChildMain: labels.myChild || 'My Child',
+    SettingsMain: 'Profile Settings',
+    MyClassMain: labels.myClass || 'My Class',
+    ControlsMain: labels.dashboard || 'Dashboard',
+    StudentDirectory: 'Student Directory',
+    ParentDirectory: 'Parent Directory',
+    FacultyDirectory: labels.facultyDirectory || 'Faculty Directory',
+    ChildDetail: 'Student',
+    FacultyDetail: labels.facultyDetail || 'Faculty',
+    TapTracker: 'Tap Tracker',
+    SummaryReview: 'Session Report',
+    ScheduleCalendar: 'Schedule',
+    ManagePermissions: 'Manage Permissions',
+    PrivacyDefaults: 'Profile Settings',
+    ModeratePosts: 'Moderate Posts',
+    ExportData: 'Export Data',
+  };
+  const headerTitle = titleMap[route?.name] || humanizeScreenLabel(route?.name) || 'Community Bridge';
+
   function navTo(route, params) {
     // Top-level tab targets (Home/Chats/Settings/Controls/MyClass/MyChild)
     // live inside the `Main` screen of the outer AppStack. Use the root
@@ -37,8 +61,8 @@ export default function WebNav() {
   return (
     <View style={styles.container}>
       <View style={styles.inner}>
-        <TouchableOpacity onPress={() => navTo('Home')} style={styles.logoWrap}>
-          <LogoTitle width={240} height={72} />
+        <TouchableOpacity onPress={() => navTo('Home')} style={styles.titleWrap}>
+          <Text style={styles.titleText} numberOfLines={1}>{headerTitle}</Text>
         </TouchableOpacity>
 
         <View style={styles.links}>
@@ -83,15 +107,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     zIndex: 1000,
   },
-  logoWrap: {
+  titleWrap: {
     alignItems: 'flex-start',
     justifyContent: 'center',
+    flex: 1,
+    minWidth: 0,
+  },
+  titleText: {
+    color: '#0f172a',
+    fontSize: 24,
+    fontWeight: '800',
   },
   links: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
     flexWrap: 'wrap',
+    marginLeft: 16,
   },
   link: {
     paddingVertical: 10,

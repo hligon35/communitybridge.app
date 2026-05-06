@@ -8,6 +8,22 @@ import { MobileAdminShellContext } from './TabletNavigationShell';
 export default function ScreenHeader({ title, showBack = true, left, right, titleLeft }) {
   const navigation = useNavigation();
   const mobileAdminShell = useContext(MobileAdminShellContext);
+  const showMobileAdminMenu = !showBack && mobileAdminShell?.showMobileAdminShell;
+  const rightContent = showMobileAdminMenu ? (
+    <View style={styles.rightRow}>
+      {right || null}
+      <TouchableOpacity
+        onPress={() => mobileAdminShell.openMobileNav?.()}
+        style={styles.menuButton}
+        accessibilityLabel="Open navigation menu"
+        hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
+      >
+        <View style={styles.backInner}>
+          <MaterialIcons name="menu" size={22} color="#1d4ed8" />
+        </View>
+      </TouchableOpacity>
+    </View>
+  ) : (right || null);
   const logEvent = (ev) => {
     logger.debug('ui', `ScreenHeader:${ev}`, { title });
   };
@@ -29,17 +45,6 @@ export default function ScreenHeader({ title, showBack = true, left, right, titl
             <MaterialIcons name="chevron-left" size={26} color="#111827" />
           </View>
         </TouchableOpacity>
-      ) : mobileAdminShell?.showMobileAdminShell ? (
-        <TouchableOpacity
-          onPress={() => mobileAdminShell.openMobileNav?.()}
-          style={styles.back}
-          accessibilityLabel="Open navigation menu"
-          hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
-        >
-          <View style={styles.backInner}>
-            <MaterialIcons name="menu" size={22} color="#1d4ed8" />
-          </View>
-        </TouchableOpacity>
       ) : left ? (
         <View style={styles.left}>{left}</View>
       ) : (
@@ -50,15 +55,15 @@ export default function ScreenHeader({ title, showBack = true, left, right, titl
 
       {title ? <Text style={styles.title} numberOfLines={1} pointerEvents="none">{title}</Text> : <View style={styles.titlePlaceholder} />}
 
-      <View style={styles.right}>{right || null}</View>
+      <View style={styles.right}>{rightContent}</View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { position: 'relative', height: 56, justifyContent: 'center', paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: '#eee' },
-  back: { position: 'absolute', left: 12, top: 10, width: 44, height: 40, alignItems: 'center', justifyContent: 'center' },
-  left: { position: 'absolute', left: 12, top: 10 },
+  header: { position: 'relative', height: 56, justifyContent: 'center', paddingHorizontal: 6, borderBottomWidth: 1, borderBottomColor: '#eee' },
+  back: { position: 'absolute', left: 6, top: 10, width: 44, height: 40, alignItems: 'center', justifyContent: 'center' },
+  left: { position: 'absolute', left: 6, top: 10 },
   backInner: {
     width: 40,
     height: 36,
@@ -75,7 +80,7 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
   },
-  backPlaceholder: { width: 84, position: 'absolute', left: 12, top: 10 },
+  backPlaceholder: { width: 84, position: 'absolute', left: 6, top: 10 },
   titleLeft: {
     position: 'absolute',
     right: '50%',
@@ -88,5 +93,7 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 18, fontWeight: '700', textAlign: 'center', marginHorizontal: 64 },
   titlePlaceholder: { height: 0 },
-  right: { position: 'absolute', right: 12, top: 10, minWidth: 34, alignItems: 'flex-end' }
+  right: { position: 'absolute', right: 6, top: 10, minWidth: 34, alignItems: 'flex-end' },
+  rightRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8 },
+  menuButton: { width: 44, height: 40, alignItems: 'center', justifyContent: 'center' },
 });

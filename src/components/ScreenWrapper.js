@@ -64,7 +64,9 @@ export function ScreenWrapper({
   const computedShowBack = !isWeb && navigation && navigation.canGoBack && navigation.canGoBack() && title !== 'Home';
   const showBack = (typeof bannerShowBack === 'boolean') ? bannerShowBack : computedShowBack;
   const resolvedWebBottomSpacerHeight = typeof webBottomSpacerHeight === 'number' ? webBottomSpacerHeight : 24;
-  const resolvedBottomSpacerHeight = typeof bottomSpacerHeight === 'number' ? bottomSpacerHeight : 72;
+  const resolvedBottomSpacerHeight = typeof bottomSpacerHeight === 'number'
+    ? bottomSpacerHeight
+    : (useAdminPhoneMainArea ? 0 : 72);
 
   return (
     <View style={[{ flex: 1, width: '100%', backgroundColor: isWeb ? '#f0f2f5' : '#fff' }, style]}>
@@ -189,8 +191,8 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingTop: 14,
+    paddingHorizontal: 7,
+    paddingTop: 7,
   },
   mobileAdminMain: {
     flex: 1,
@@ -209,7 +211,7 @@ const styles = StyleSheet.create({
     maxWidth: 920,
   },
   mobileHeaderBelowContent: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 7,
     paddingVertical: 10,
   },
 });
