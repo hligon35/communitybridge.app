@@ -4,15 +4,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Api from './Api';
 import { useAuth } from './AuthContext';
 import {
-  seededParents,
-  seededTherapists,
-  seededChildrenWithParents,
-  seededDemoMessages,
-  seededDemoPosts,
-  seededDemoUrgentMemos,
-  seededDemoTimeChangeProposals,
-} from './seed/demoModeSeed';
-import {
   seededScreenshotParents,
   seededScreenshotTherapists,
   seededScreenshotChildren,
@@ -24,7 +15,7 @@ import {
   seededScreenshotOrgSettings,
   seededScreenshotExportJobs,
   seededScreenshotAuditLogs,
-} from './seed/screenshotSeed';
+} from './seed/screenshotSeedData';
 import { countUnreadVisibleThreads } from './utils/chatThreads';
 import { DEMO_ROLE_IDENTITIES, getEffectiveChatIdentity } from './utils/demoIdentity';
 import { attachTherapistsToChildren, mergeById } from './utils/directoryState';
@@ -32,19 +23,6 @@ import { setApplicationBadgeCountAsync } from './utils/pushNotifications';
 import { buildScopedStorageKeys, getStorageScopeId } from './utils/storageScope';
 
 const DataContext = createContext(null);
-
-function readWebSeedPreset() {
-  if (!__DEV__) return '';
-  try {
-    const href = String(globalThis?.location?.href || '');
-    if (!href) return '';
-    const url = new URL(href);
-    const seed = String(url.searchParams.get('seed') || '').trim().toLowerCase();
-    return seed === 'screenshot' ? 'screenshot' : '';
-  } catch (_) {
-    return '';
-  }
-}
 
 export function useData() {
   return useContext(DataContext);
@@ -98,7 +76,6 @@ function cloneSeedValue(value) {
 // Directory seed data is provided from `src/seed/directorySeed.js` (imported above)
 
 export function DataProvider({ children: reactChildren }) {
-  const initialWebSeedPreset = useMemo(() => readWebSeedPreset(), []);
   const { user, loading, needsMfa, refreshMfaState, markMfaRequired, isDemoReviewer } = useAuth();
   const needsMfaRef = useRef(Boolean(needsMfa));
   const mfaRefreshInFlightRef = useRef(false);
@@ -141,50 +118,6 @@ export function DataProvider({ children: reactChildren }) {
   const [seededExportJobs, setSeededExportJobs] = useState([]);
   const [seededAuditLogs, setSeededAuditLogs] = useState([]);
   const [storageReady, setStorageReady] = useState(false);
-
-  function buildDemoMessages() {
-    return cloneSeedValue(seededDemoMessages);
-  }
-
-  function buildDemoPosts() {
-    return cloneSeedValue(seededDemoPosts);
-  }
-
-  function buildDemoUrgentMemos() {
-    return cloneSeedValue(seededDemoUrgentMemos);
-  }
-
-  function buildDemoTimeChangeProposals() {
-    return cloneSeedValue(seededDemoTimeChangeProposals);
-  }
-
-  function buildDemoDirectory() {
-    const demoParents = cloneSeedValue(seededParents);
-    const demoChildren = cloneSeedValue(seededChildrenWithParents);
-    const demoTherapists = cloneSeedValue(seededTherapists);
-    return {
-      parents: demoParents,
-      therapists: demoTherapists,
-      children: attachTherapistsToChildren(demoChildren, demoTherapists),
-    };
-  }
-
-  function buildDemoState() {
-    const directory = buildDemoDirectory();
-    return {
-      posts: buildDemoPosts(),
-      messages: buildDemoMessages(),
-      threadReads: {},
-      urgentMemos: buildDemoUrgentMemos(),
-      archivedThreads: [],
-      timeChangeProposals: buildDemoTimeChangeProposals(),
-      children: directory.children,
-      parents: directory.parents,
-      therapists: directory.therapists,
-      blockedUserIds: [],
-      chatBlockedUserIds: [],
-    };
-  }
 
   function buildScreenshotDirectory() {
     const screenshotParents = cloneSeedValue(seededScreenshotParents);
@@ -263,26 +196,9 @@ export function DataProvider({ children: reactChildren }) {
     setSeededAuditLogs(Array.isArray(snapshot?.auditLogs) ? snapshot.auditLogs : []);
   }
 
-  function resetDemoData() {
-    applyLocalStateSnapshot(buildDemoState());
-  }
-
   function resetScreenshotSeed() {
+    AsyncStorage.setItem(storageKeys.seedStatus, 'seeded').catch(() => {});
     applyLocalStateSnapshot(buildScreenshotSeedState());
-  }
-
-  function resetMessagesToDemo() {
-    const demo = buildDemoState();
-    setMessages(demo.messages);
-    setThreadReads(demo.threadReads);
-    setArchivedThreads(demo.archivedThreads);
-  }
-
-  function resetChildrenToDemo() {
-    const demo = buildDemoState();
-    setChildren(demo.children);
-    setParents(demo.parents);
-    setTherapists(demo.therapists);
   }
 
   // Hydrate from storage then attempt remote sync.
@@ -302,21 +218,36 @@ export function DataProvider({ children: reactChildren }) {
     resetLocalState();
     (async () => {
       try {
-        const [blockedRaw, chatBlockedRaw] = await Promise.all([
+        const [blockedRaw, chatBlockedRaw, seedStatusRaw] = await Promise.all([
           AsyncStorage.getItem(storageKeys.blocked),
           AsyncStorage.getItem(storageKeys.chatBlocked),
+          AsyncStorage.getItem(storageKeys.seedStatus),
         ]);
         await AsyncStorage.multiRemove(sensitiveStorageKeys).catch(() => {});
         if (!mounted) return;
 
         if (isDemoReviewer) {
-          const hasStoredDemoState = [blockedRaw, chatBlockedRaw].some((value) => value != null);
-          if (hasStoredDemoState) {
-            // continue through normal hydration path using the reviewer-scoped cache
-          } else {
-            applyLocalStateSnapshot(initialWebSeedPreset === 'screenshot' ? buildScreenshotSeedState() : buildDemoState());
+          const seedStatus = String(seedStatusRaw || '').trim().toLowerCase();
+          if (seedStatus === 'cleared') {
+            resetLocalState();
             return;
           }
+
+          const screenshotState = buildScreenshotSeedState();
+          if (blockedRaw) {
+            try {
+              const parsed = JSON.parse(blockedRaw);
+              screenshotState.blockedUserIds = Array.isArray(parsed) ? parsed : [];
+            } catch (_) {}
+          }
+          if (chatBlockedRaw) {
+            try {
+              const parsed = JSON.parse(chatBlockedRaw);
+              screenshotState.chatBlockedUserIds = Array.isArray(parsed) ? parsed : [];
+            } catch (_) {}
+          }
+          applyLocalStateSnapshot(screenshotState);
+          return;
         }
 
         setPosts([]);
@@ -349,7 +280,7 @@ export function DataProvider({ children: reactChildren }) {
       // after auth finishes loading to ensure requests include auth token.
     })();
     return () => { mounted = false; };
-  }, [buildDemoState, isDemoReviewer, sensitiveStorageKeys, storageKeys, storageScopeId]);
+  }, [isDemoReviewer, sensitiveStorageKeys, storageKeys, storageScopeId]);
 
   useEffect(() => {
     if (!storageReady) return;
@@ -1089,6 +1020,7 @@ export function DataProvider({ children: reactChildren }) {
     try {
       const keys = Object.values(storageKeys);
       await AsyncStorage.multiRemove(keys);
+      await AsyncStorage.setItem(storageKeys.seedStatus, 'cleared');
       resetLocalState();
     } catch (e) {
       console.warn('clearAllData failed', e?.message || e);
@@ -1229,10 +1161,7 @@ export function DataProvider({ children: reactChildren }) {
       blockChatUser,
       unblockChatUser,
       clearAllData,
-      resetDemoData,
       resetScreenshotSeed,
-      resetMessagesToDemo,
-      resetChildrenToDemo,
       // time change proposals
       timeChangeProposals,
       proposeTimeChange,

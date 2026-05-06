@@ -11,6 +11,7 @@ const STORAGE_KEY_BASES = {
   chatBlocked: 'bbs_chat_blocked_v1',
   parents: 'bbs_parents_v1',
   therapists: 'bbs_therapists_v1',
+  seedStatus: 'bbs_seed_status_v1',
 };
 
 function normalizeStorageScopePart(value) {

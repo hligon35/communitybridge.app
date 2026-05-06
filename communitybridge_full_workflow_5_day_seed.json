@@ -1,0 +1,6498 @@
+{
+  "_meta": {
+    "name": "CommunityBridge Full Workflow 5-Day Demo Seed",
+    "description": "Fictional, non-PHI data designed to visually exercise every implemented screen/system for app review, screenshots, QA, and demos.",
+    "dateRange": {
+      "start": "2026-04-27",
+      "end": "2026-05-01"
+    },
+    "safeForScreenshots": true,
+    "generatedFor": "CommunityBridge",
+    "notes": [
+      "Current demoModeSeed consumes therapists, parents, children, staff, messageThreads, urgentMemos, progressReports, nextSessions, and moodScores directly.",
+      "Additional top-level collections are included for backend/mock/API seed expansion so every system can show populated states."
+    ]
+  },
+  "organization": {
+    "id": "org-demo-001",
+    "name": "CommunityBridge Therapy Center",
+    "supportEmail": "support@communitybridge.app",
+    "website": "https://communitybridge.app"
+  },
+  "programs": [
+    {
+      "id": "program-aba-001",
+      "organizationId": "org-demo-001",
+      "name": "Center-Based ABA",
+      "type": "centerBasedAba"
+    }
+  ],
+  "campuses": [
+    {
+      "id": "campus-main-001",
+      "organizationId": "org-demo-001",
+      "programId": "program-aba-001",
+      "name": "Main Campus",
+      "enrollmentCode": "DEMO2026",
+      "address": "100 Bridge Way, Indianapolis, IN 46201"
+    }
+  ],
+  "rooms": [
+    "Blue-1",
+    "Blue-2",
+    "Green-1",
+    "Green-2",
+    "Yellow-1",
+    "Yellow-2",
+    "Red-1",
+    "Red-2",
+    "Orange-1",
+    "Purple-1"
+  ],
+  "users": [
+    {
+      "id": "user-parent-review",
+      "name": "Alicia Cook",
+      "email": "review-parent@communitybridge.app",
+      "role": "parent",
+      "passwordHint": "Use your review password"
+    },
+    {
+      "id": "user-therapist-review",
+      "name": "Jordan Ellis",
+      "email": "review-therapist@communitybridge.app",
+      "role": "therapist",
+      "passwordHint": "Use your review password"
+    },
+    {
+      "id": "user-bcba-review",
+      "name": "Dr. Marissa Bennett",
+      "email": "review-bcba@communitybridge.app",
+      "role": "bcba",
+      "passwordHint": "Use your review password"
+    },
+    {
+      "id": "user-office-review",
+      "name": "Maya Lewis",
+      "email": "review-office@communitybridge.app",
+      "role": "office",
+      "passwordHint": "Use your review password"
+    },
+    {
+      "id": "user-admin-review",
+      "name": "Linda Carter",
+      "email": "review-admin@communitybridge.app",
+      "role": "admin",
+      "passwordHint": "Use your review password"
+    }
+  ],
+  "therapists": [
+    {
+      "id": "bcba-001",
+      "name": "Dr. Marissa Bennett",
+      "role": "bcba",
+      "email": "review-bcba@communitybridge.app",
+      "phone": "317-555-4101",
+      "avatar": "",
+      "supervisedBy": "",
+      "title": "Supervising Clinician"
+    },
+    {
+      "id": "aba-101",
+      "name": "Jordan Ellis",
+      "role": "therapist",
+      "email": "review-therapist@communitybridge.app",
+      "phone": "317-555-4102",
+      "avatar": "",
+      "supervisedBy": "bcba-001",
+      "title": "ABA Therapist"
+    },
+    {
+      "id": "aba-102",
+      "name": "Samantha Reyes",
+      "role": "therapist",
+      "email": "samantha.reyes@example.com",
+      "phone": "317-555-4103",
+      "avatar": "",
+      "supervisedBy": "bcba-001",
+      "title": "ABA Therapist"
+    },
+    {
+      "id": "aba-103",
+      "name": "Marcus Hill",
+      "role": "therapist",
+      "email": "marcus.hill@example.com",
+      "phone": "317-555-4104",
+      "avatar": "",
+      "supervisedBy": "bcba-001",
+      "title": "ABA Therapist"
+    },
+    {
+      "id": "aba-104",
+      "name": "Nia Roberts",
+      "role": "therapist",
+      "email": "nia.roberts@example.com",
+      "phone": "317-555-4105",
+      "avatar": "",
+      "supervisedBy": "bcba-001",
+      "title": "ABA Therapist"
+    }
+  ],
+  "parents": [
+    {
+      "id": "par-001",
+      "name": "Alicia Cook",
+      "phone": "317-555-5101",
+      "email": "review-parent@communitybridge.app",
+      "avatar": "",
+      "childIds": [
+        "child-001",
+        "child-002"
+      ]
+    },
+    {
+      "id": "par-002",
+      "name": "Brian Thompson",
+      "phone": "317-555-5102",
+      "email": "brian.thompson@example.com",
+      "avatar": "",
+      "childIds": [
+        "child-003"
+      ]
+    },
+    {
+      "id": "par-003",
+      "name": "Danielle Moore",
+      "phone": "317-555-5103",
+      "email": "danielle.moore@example.com",
+      "avatar": "",
+      "childIds": [
+        "child-004",
+        "child-005"
+      ]
+    },
+    {
+      "id": "par-004",
+      "name": "Eric Johnson",
+      "phone": "317-555-5104",
+      "email": "eric.johnson@example.com",
+      "avatar": "",
+      "childIds": [
+        "child-006"
+      ]
+    },
+    {
+      "id": "par-005",
+      "name": "Felicia Grant",
+      "phone": "317-555-5105",
+      "email": "felicia.grant@example.com",
+      "avatar": "",
+      "childIds": [
+        "child-007"
+      ]
+    },
+    {
+      "id": "par-006",
+      "name": "George Ramirez",
+      "phone": "317-555-5106",
+      "email": "george.ramirez@example.com",
+      "avatar": "",
+      "childIds": [
+        "child-008",
+        "child-009",
+        "child-010"
+      ]
+    }
+  ],
+  "children": [
+    {
+      "id": "child-001",
+      "name": "Zahari Cook",
+      "age": "5",
+      "room": "Blue-1",
+      "parents": [
+        {
+          "id": "par-001",
+          "name": "Alicia Cook",
+          "email": "review-parent@communitybridge.app",
+          "phone": "317-555-5101"
+        }
+      ],
+      "assignedABA": [
+        "aba-101",
+        "aba-102"
+      ],
+      "amTherapist": "aba-101",
+      "pmTherapist": "aba-102",
+      "bcaTherapist": "bcba-001",
+      "session": "AM",
+      "dropoffTimeISO": "2026-04-27T09:00:00",
+      "pickupTimeISO": "2026-04-27T12:00:00",
+      "notes": "Zahari is working on use functional communication during transitions.",
+      "carePlan": "Use functional communication during transitions.",
+      "monthlyGoal": "Use functional communication during transitions.",
+      "successCriteria": "Meets target in 80% of opportunities across two consecutive sessions.",
+      "curriculum": "Functional Communication, Transitions, Visual Schedule",
+      "behaviorNotes": "Low to moderate interfering behavior; responsive to planned prompts.",
+      "moodScore": 14,
+      "mood": 14,
+      "insuranceStatus": "active"
+    },
+    {
+      "id": "child-002",
+      "name": "Aubrey Cook",
+      "age": "7",
+      "room": "Blue-2",
+      "parents": [
+        {
+          "id": "par-001",
+          "name": "Alicia Cook",
+          "email": "review-parent@communitybridge.app",
+          "phone": "317-555-5101"
+        }
+      ],
+      "assignedABA": [
+        "aba-101"
+      ],
+      "amTherapist": "aba-101",
+      "pmTherapist": "aba-101",
+      "bcaTherapist": "bcba-001",
+      "session": "PM",
+      "dropoffTimeISO": "2026-04-28T13:00:00",
+      "pickupTimeISO": "2026-04-28T16:00:00",
+      "notes": "Aubrey is working on increase spontaneous requests for preferred items.",
+      "carePlan": "Increase spontaneous requests for preferred items.",
+      "monthlyGoal": "Increase spontaneous requests for preferred items.",
+      "successCriteria": "Meets target in 80% of opportunities across two consecutive sessions.",
+      "curriculum": "Peer Play, Matching, Independent Work",
+      "behaviorNotes": "Low to moderate interfering behavior; responsive to planned prompts.",
+      "moodScore": 13,
+      "mood": 13,
+      "insuranceStatus": "active"
+    },
+    {
+      "id": "child-003",
+      "name": "Mason Thompson",
+      "age": "6",
+      "room": "Green-1",
+      "parents": [
+        {
+          "id": "par-002",
+          "name": "Brian Thompson",
+          "email": "brian.thompson@example.com",
+          "phone": "317-555-5102"
+        }
+      ],
+      "assignedABA": [
+        "aba-102"
+      ],
+      "amTherapist": "aba-102",
+      "pmTherapist": "aba-102",
+      "bcaTherapist": "bcba-001",
+      "session": "AM",
+      "dropoffTimeISO": "2026-04-29T09:00:00",
+      "pickupTimeISO": "2026-04-29T12:00:00",
+      "notes": "Mason is working on participate in peer play for 10 minutes.",
+      "carePlan": "Participate in peer play for 10 minutes.",
+      "monthlyGoal": "Participate in peer play for 10 minutes.",
+      "successCriteria": "Meets target in 80% of opportunities across two consecutive sessions.",
+      "curriculum": "Peer Play, Matching, Independent Work",
+      "behaviorNotes": "Low to moderate interfering behavior; responsive to planned prompts.",
+      "moodScore": 10,
+      "mood": 10,
+      "insuranceStatus": "pending"
+    },
+    {
+      "id": "child-004",
+      "name": "Harper Moore",
+      "age": "8",
+      "room": "Green-2",
+      "parents": [
+        {
+          "id": "par-003",
+          "name": "Danielle Moore",
+          "email": "danielle.moore@example.com",
+          "phone": "317-555-5103"
+        }
+      ],
+      "assignedABA": [
+        "aba-103"
+      ],
+      "amTherapist": "aba-103",
+      "pmTherapist": "aba-103",
+      "bcaTherapist": "bcba-001",
+      "session": "PM",
+      "dropoffTimeISO": "2026-04-30T13:00:00",
+      "pickupTimeISO": "2026-04-30T16:00:00",
+      "notes": "Harper is working on complete independent table work for 12 minutes.",
+      "carePlan": "Complete independent table work for 12 minutes.",
+      "monthlyGoal": "Complete independent table work for 12 minutes.",
+      "successCriteria": "Meets target in 80% of opportunities across two consecutive sessions.",
+      "curriculum": "Functional Communication, Transitions, Visual Schedule",
+      "behaviorNotes": "Low to moderate interfering behavior; responsive to planned prompts.",
+      "moodScore": 12,
+      "mood": 12,
+      "insuranceStatus": "active"
+    },
+    {
+      "id": "child-005",
+      "name": "Lakelynn Moore",
+      "age": "4",
+      "room": "Yellow-1",
+      "parents": [
+        {
+          "id": "par-003",
+          "name": "Danielle Moore",
+          "email": "danielle.moore@example.com",
+          "phone": "317-555-5103"
+        }
+      ],
+      "assignedABA": [
+        "aba-102"
+      ],
+      "amTherapist": "aba-102",
+      "pmTherapist": "aba-102",
+      "bcaTherapist": "bcba-001",
+      "session": "AM",
+      "dropoffTimeISO": "2026-05-01T09:00:00",
+      "pickupTimeISO": "2026-05-01T12:00:00",
+      "notes": "Lakelynn is working on follow visual schedule across four transitions.",
+      "carePlan": "Follow visual schedule across four transitions.",
+      "monthlyGoal": "Follow visual schedule across four transitions.",
+      "successCriteria": "Meets target in 80% of opportunities across two consecutive sessions.",
+      "curriculum": "Peer Play, Matching, Independent Work",
+      "behaviorNotes": "Low to moderate interfering behavior; responsive to planned prompts.",
+      "moodScore": 9,
+      "mood": 9,
+      "insuranceStatus": "active"
+    },
+    {
+      "id": "child-006",
+      "name": "Eli Johnson",
+      "age": "5",
+      "room": "Yellow-2",
+      "parents": [
+        {
+          "id": "par-004",
+          "name": "Eric Johnson",
+          "email": "eric.johnson@example.com",
+          "phone": "317-555-5104"
+        }
+      ],
+      "assignedABA": [
+        "aba-101",
+        "aba-104"
+      ],
+      "amTherapist": "aba-101",
+      "pmTherapist": "aba-104",
+      "bcaTherapist": "bcba-001",
+      "session": "PM",
+      "dropoffTimeISO": "2026-04-27T13:00:00",
+      "pickupTimeISO": "2026-04-27T16:00:00",
+      "notes": "Eli is working on imitate 10 motor actions.",
+      "carePlan": "Imitate 10 motor actions.",
+      "monthlyGoal": "Imitate 10 motor actions.",
+      "successCriteria": "Meets target in 80% of opportunities across two consecutive sessions.",
+      "curriculum": "Peer Play, Matching, Independent Work",
+      "behaviorNotes": "Low to moderate interfering behavior; responsive to planned prompts.",
+      "moodScore": 11,
+      "mood": 11,
+      "insuranceStatus": "needs_review"
+    },
+    {
+      "id": "child-007",
+      "name": "Sofia Grant",
+      "age": "6",
+      "room": "Red-1",
+      "parents": [
+        {
+          "id": "par-005",
+          "name": "Felicia Grant",
+          "email": "felicia.grant@example.com",
+          "phone": "317-555-5105"
+        }
+      ],
+      "assignedABA": [
+        "aba-103"
+      ],
+      "amTherapist": "aba-103",
+      "pmTherapist": "aba-103",
+      "bcaTherapist": "bcba-001",
+      "session": "AM",
+      "dropoffTimeISO": "2026-04-28T09:00:00",
+      "pickupTimeISO": "2026-04-28T12:00:00",
+      "notes": "Sofia is working on transition with one prompt or less.",
+      "carePlan": "Transition with one prompt or less.",
+      "monthlyGoal": "Transition with one prompt or less.",
+      "successCriteria": "Meets target in 80% of opportunities across two consecutive sessions.",
+      "curriculum": "Functional Communication, Transitions, Visual Schedule",
+      "behaviorNotes": "Low to moderate interfering behavior; responsive to planned prompts.",
+      "moodScore": 15,
+      "mood": 15,
+      "insuranceStatus": "active"
+    },
+    {
+      "id": "child-008",
+      "name": "Noah Ramirez",
+      "age": "4",
+      "room": "Red-2",
+      "parents": [
+        {
+          "id": "par-006",
+          "name": "George Ramirez",
+          "email": "george.ramirez@example.com",
+          "phone": "317-555-5106"
+        }
+      ],
+      "assignedABA": [
+        "aba-102"
+      ],
+      "amTherapist": "aba-102",
+      "pmTherapist": "aba-102",
+      "bcaTherapist": "bcba-001",
+      "session": "PM",
+      "dropoffTimeISO": "2026-04-29T13:00:00",
+      "pickupTimeISO": "2026-04-29T16:00:00",
+      "notes": "Noah is working on respond to eight receptive instructions.",
+      "carePlan": "Respond to eight receptive instructions.",
+      "monthlyGoal": "Respond to eight receptive instructions.",
+      "successCriteria": "Meets target in 80% of opportunities across two consecutive sessions.",
+      "curriculum": "Peer Play, Matching, Independent Work",
+      "behaviorNotes": "Low to moderate interfering behavior; responsive to planned prompts.",
+      "moodScore": 8,
+      "mood": 8,
+      "insuranceStatus": "expired"
+    },
+    {
+      "id": "child-009",
+      "name": "Mila Ramirez",
+      "age": "5",
+      "room": "Orange-1",
+      "parents": [
+        {
+          "id": "par-006",
+          "name": "George Ramirez",
+          "email": "george.ramirez@example.com",
+          "phone": "317-555-5106"
+        }
+      ],
+      "assignedABA": [
+        "aba-101"
+      ],
+      "amTherapist": "aba-101",
+      "pmTherapist": "aba-101",
+      "bcaTherapist": "bcba-001",
+      "session": "AM",
+      "dropoffTimeISO": "2026-04-30T09:00:00",
+      "pickupTimeISO": "2026-04-30T12:00:00",
+      "notes": "Mila is working on engage in turn-taking for five minutes.",
+      "carePlan": "Engage in turn-taking for five minutes.",
+      "monthlyGoal": "Engage in turn-taking for five minutes.",
+      "successCriteria": "Meets target in 80% of opportunities across two consecutive sessions.",
+      "curriculum": "Peer Play, Matching, Independent Work",
+      "behaviorNotes": "Low to moderate interfering behavior; responsive to planned prompts.",
+      "moodScore": 12,
+      "mood": 12,
+      "insuranceStatus": "active"
+    },
+    {
+      "id": "child-010",
+      "name": "Leo Ramirez",
+      "age": "3",
+      "room": "Purple-1",
+      "parents": [
+        {
+          "id": "par-006",
+          "name": "George Ramirez",
+          "email": "george.ramirez@example.com",
+          "phone": "317-555-5106"
+        }
+      ],
+      "assignedABA": [],
+      "amTherapist": "",
+      "pmTherapist": "",
+      "bcaTherapist": "",
+      "session": "",
+      "dropoffTimeISO": "",
+      "pickupTimeISO": "",
+      "notes": "Leo is working on begin intake and baseline assessment.",
+      "carePlan": "Begin intake and baseline assessment.",
+      "monthlyGoal": "Begin intake and baseline assessment.",
+      "successCriteria": "Meets target in 80% of opportunities across two consecutive sessions.",
+      "curriculum": "Functional Communication, Transitions, Visual Schedule",
+      "behaviorNotes": "",
+      "moodScore": null,
+      "mood": null,
+      "insuranceStatus": "intake"
+    }
+  ],
+  "staff": [
+    {
+      "id": "staff-001",
+      "name": "Linda Carter",
+      "role": "Admin",
+      "email": "review-admin@communitybridge.app",
+      "phone": "317-555-4201",
+      "title": "Center Administrator"
+    },
+    {
+      "id": "staff-002",
+      "name": "Tom Richards",
+      "role": "Front Desk",
+      "email": "review-reception@communitybridge.app",
+      "phone": "317-555-4202",
+      "title": "Front Desk"
+    },
+    {
+      "id": "staff-003",
+      "name": "Nina Patel",
+      "role": "Program Director",
+      "email": "nina.patel@example.com",
+      "phone": "317-555-4203",
+      "title": "Program Director"
+    },
+    {
+      "id": "staff-004",
+      "name": "Oscar Lee",
+      "role": "Transportation",
+      "email": "oscar.lee@example.com",
+      "phone": "317-555-4204",
+      "title": "Transportation Coordinator"
+    },
+    {
+      "id": "staff-005",
+      "name": "Rachel Kim",
+      "role": "Nurse",
+      "email": "rachel.kim@example.com",
+      "phone": "317-555-4205",
+      "title": "Nurse"
+    },
+    {
+      "id": "staff-006",
+      "name": "Victor Shaw",
+      "role": "IT Support",
+      "email": "victor.shaw@example.com",
+      "phone": "317-555-4206",
+      "title": "IT Support"
+    },
+    {
+      "id": "office-001",
+      "name": "Maya Lewis",
+      "role": "Office",
+      "email": "review-office@communitybridge.app",
+      "phone": "317-555-4207",
+      "title": "Operations Director"
+    }
+  ],
+  "sessions": [
+    {
+      "id": "sess-001-1",
+      "childId": "child-001",
+      "therapistId": "aba-101",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-27",
+      "type": "therapy",
+      "sessionBlock": "AM",
+      "startAt": "2026-04-27T09:00:00",
+      "endAt": "2026-04-27T12:00:00",
+      "room": "Blue-1",
+      "status": "completed",
+      "hasRecap": true,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-001-2",
+      "childId": "child-001",
+      "therapistId": "aba-102",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-28",
+      "type": "therapy",
+      "sessionBlock": "PM",
+      "startAt": "2026-04-28T13:00:00",
+      "endAt": "2026-04-28T16:00:00",
+      "room": "Blue-1",
+      "status": "completed",
+      "hasRecap": true,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-001-3",
+      "childId": "child-001",
+      "therapistId": "aba-101",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-29",
+      "type": "therapy",
+      "sessionBlock": "AM",
+      "startAt": "2026-04-29T09:00:00",
+      "endAt": "2026-04-29T12:00:00",
+      "room": "Blue-1",
+      "status": "completed",
+      "hasRecap": true,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-001-4",
+      "childId": "child-001",
+      "therapistId": "aba-102",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-30",
+      "type": "therapy",
+      "sessionBlock": "PM",
+      "startAt": "2026-04-30T13:00:00",
+      "endAt": "2026-04-30T16:00:00",
+      "room": "Blue-1",
+      "status": "completed",
+      "hasRecap": true,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-001-5",
+      "childId": "child-001",
+      "therapistId": "aba-101",
+      "bcbaId": "bcba-001",
+      "date": "2026-05-01",
+      "type": "therapy",
+      "sessionBlock": "AM",
+      "startAt": "2026-05-01T09:00:00",
+      "endAt": "2026-05-01T12:00:00",
+      "room": "Blue-1",
+      "status": "scheduled",
+      "hasRecap": false,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-002-1",
+      "childId": "child-002",
+      "therapistId": "aba-101",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-27",
+      "type": "therapy",
+      "sessionBlock": "PM",
+      "startAt": "2026-04-27T13:00:00",
+      "endAt": "2026-04-27T16:00:00",
+      "room": "Blue-2",
+      "status": "completed",
+      "hasRecap": true,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-002-2",
+      "childId": "child-002",
+      "therapistId": "aba-101",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-28",
+      "type": "therapy",
+      "sessionBlock": "AM",
+      "startAt": "2026-04-28T09:00:00",
+      "endAt": "2026-04-28T12:00:00",
+      "room": "Blue-2",
+      "status": "completed",
+      "hasRecap": true,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-002-3",
+      "childId": "child-002",
+      "therapistId": "aba-101",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-29",
+      "type": "therapy",
+      "sessionBlock": "PM",
+      "startAt": "2026-04-29T13:00:00",
+      "endAt": "2026-04-29T16:00:00",
+      "room": "Blue-2",
+      "status": "completed",
+      "hasRecap": true,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-002-4",
+      "childId": "child-002",
+      "therapistId": "aba-101",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-30",
+      "type": "therapy",
+      "sessionBlock": "AM",
+      "startAt": "2026-04-30T09:00:00",
+      "endAt": "2026-04-30T12:00:00",
+      "room": "Blue-2",
+      "status": "completed",
+      "hasRecap": true,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-002-5",
+      "childId": "child-002",
+      "therapistId": "aba-101",
+      "bcbaId": "bcba-001",
+      "date": "2026-05-01",
+      "type": "therapy",
+      "sessionBlock": "PM",
+      "startAt": "2026-05-01T13:00:00",
+      "endAt": "2026-05-01T16:00:00",
+      "room": "Blue-2",
+      "status": "scheduled",
+      "hasRecap": false,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-003-1",
+      "childId": "child-003",
+      "therapistId": "aba-102",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-27",
+      "type": "therapy",
+      "sessionBlock": "AM",
+      "startAt": "2026-04-27T09:00:00",
+      "endAt": "2026-04-27T12:00:00",
+      "room": "Green-1",
+      "status": "completed",
+      "hasRecap": true,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-003-2",
+      "childId": "child-003",
+      "therapistId": "aba-102",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-28",
+      "type": "therapy",
+      "sessionBlock": "PM",
+      "startAt": "2026-04-28T13:00:00",
+      "endAt": "2026-04-28T16:00:00",
+      "room": "Green-1",
+      "status": "completed",
+      "hasRecap": true,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-003-3",
+      "childId": "child-003",
+      "therapistId": "aba-102",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-29",
+      "type": "therapy",
+      "sessionBlock": "AM",
+      "startAt": "2026-04-29T09:00:00",
+      "endAt": "2026-04-29T12:00:00",
+      "room": "Green-1",
+      "status": "completed",
+      "hasRecap": true,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-003-4",
+      "childId": "child-003",
+      "therapistId": "aba-102",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-30",
+      "type": "therapy",
+      "sessionBlock": "PM",
+      "startAt": "2026-04-30T13:00:00",
+      "endAt": "2026-04-30T16:00:00",
+      "room": "Green-1",
+      "status": "completed",
+      "hasRecap": true,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-003-5",
+      "childId": "child-003",
+      "therapistId": "aba-102",
+      "bcbaId": "bcba-001",
+      "date": "2026-05-01",
+      "type": "therapy",
+      "sessionBlock": "AM",
+      "startAt": "2026-05-01T09:00:00",
+      "endAt": "2026-05-01T12:00:00",
+      "room": "Green-1",
+      "status": "scheduled",
+      "hasRecap": false,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-004-1",
+      "childId": "child-004",
+      "therapistId": "aba-103",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-27",
+      "type": "therapy",
+      "sessionBlock": "PM",
+      "startAt": "2026-04-27T13:00:00",
+      "endAt": "2026-04-27T16:00:00",
+      "room": "Green-2",
+      "status": "completed",
+      "hasRecap": true,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-004-2",
+      "childId": "child-004",
+      "therapistId": "aba-103",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-28",
+      "type": "therapy",
+      "sessionBlock": "AM",
+      "startAt": "2026-04-28T09:00:00",
+      "endAt": "2026-04-28T12:00:00",
+      "room": "Green-2",
+      "status": "completed",
+      "hasRecap": true,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-004-3",
+      "childId": "child-004",
+      "therapistId": "aba-103",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-29",
+      "type": "therapy",
+      "sessionBlock": "PM",
+      "startAt": "2026-04-29T13:00:00",
+      "endAt": "2026-04-29T16:00:00",
+      "room": "Green-2",
+      "status": "completed",
+      "hasRecap": true,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-004-4",
+      "childId": "child-004",
+      "therapistId": "aba-103",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-30",
+      "type": "therapy",
+      "sessionBlock": "AM",
+      "startAt": "2026-04-30T09:00:00",
+      "endAt": "2026-04-30T12:00:00",
+      "room": "Green-2",
+      "status": "completed",
+      "hasRecap": true,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-004-5",
+      "childId": "child-004",
+      "therapistId": "aba-103",
+      "bcbaId": "bcba-001",
+      "date": "2026-05-01",
+      "type": "therapy",
+      "sessionBlock": "PM",
+      "startAt": "2026-05-01T13:00:00",
+      "endAt": "2026-05-01T16:00:00",
+      "room": "Green-2",
+      "status": "scheduled",
+      "hasRecap": false,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-005-1",
+      "childId": "child-005",
+      "therapistId": "aba-102",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-27",
+      "type": "therapy",
+      "sessionBlock": "AM",
+      "startAt": "2026-04-27T09:00:00",
+      "endAt": "2026-04-27T12:00:00",
+      "room": "Yellow-1",
+      "status": "completed",
+      "hasRecap": true,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-005-2",
+      "childId": "child-005",
+      "therapistId": "aba-102",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-28",
+      "type": "therapy",
+      "sessionBlock": "PM",
+      "startAt": "2026-04-28T13:00:00",
+      "endAt": "2026-04-28T16:00:00",
+      "room": "Yellow-1",
+      "status": "completed",
+      "hasRecap": true,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-005-3",
+      "childId": "child-005",
+      "therapistId": "aba-102",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-29",
+      "type": "therapy",
+      "sessionBlock": "AM",
+      "startAt": "2026-04-29T09:00:00",
+      "endAt": "2026-04-29T12:00:00",
+      "room": "Yellow-1",
+      "status": "completed",
+      "hasRecap": true,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-005-4",
+      "childId": "child-005",
+      "therapistId": "aba-102",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-30",
+      "type": "therapy",
+      "sessionBlock": "PM",
+      "startAt": "2026-04-30T13:00:00",
+      "endAt": "2026-04-30T16:00:00",
+      "room": "Yellow-1",
+      "status": "completed",
+      "hasRecap": true,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-005-5",
+      "childId": "child-005",
+      "therapistId": "aba-102",
+      "bcbaId": "bcba-001",
+      "date": "2026-05-01",
+      "type": "therapy",
+      "sessionBlock": "AM",
+      "startAt": "2026-05-01T09:00:00",
+      "endAt": "2026-05-01T12:00:00",
+      "room": "Yellow-1",
+      "status": "scheduled",
+      "hasRecap": false,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-006-1",
+      "childId": "child-006",
+      "therapistId": "aba-104",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-27",
+      "type": "therapy",
+      "sessionBlock": "PM",
+      "startAt": "2026-04-27T13:00:00",
+      "endAt": "2026-04-27T16:00:00",
+      "room": "Yellow-2",
+      "status": "completed",
+      "hasRecap": true,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-006-2",
+      "childId": "child-006",
+      "therapistId": "aba-101",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-28",
+      "type": "therapy",
+      "sessionBlock": "AM",
+      "startAt": "2026-04-28T09:00:00",
+      "endAt": "2026-04-28T12:00:00",
+      "room": "Yellow-2",
+      "status": "completed",
+      "hasRecap": true,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-006-3",
+      "childId": "child-006",
+      "therapistId": "aba-104",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-29",
+      "type": "therapy",
+      "sessionBlock": "PM",
+      "startAt": "2026-04-29T13:00:00",
+      "endAt": "2026-04-29T16:00:00",
+      "room": "Yellow-2",
+      "status": "completed",
+      "hasRecap": true,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-006-4",
+      "childId": "child-006",
+      "therapistId": "aba-101",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-30",
+      "type": "therapy",
+      "sessionBlock": "AM",
+      "startAt": "2026-04-30T09:00:00",
+      "endAt": "2026-04-30T12:00:00",
+      "room": "Yellow-2",
+      "status": "completed",
+      "hasRecap": true,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-006-5",
+      "childId": "child-006",
+      "therapistId": "aba-104",
+      "bcbaId": "bcba-001",
+      "date": "2026-05-01",
+      "type": "therapy",
+      "sessionBlock": "PM",
+      "startAt": "2026-05-01T13:00:00",
+      "endAt": "2026-05-01T16:00:00",
+      "room": "Yellow-2",
+      "status": "scheduled",
+      "hasRecap": false,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-007-1",
+      "childId": "child-007",
+      "therapistId": "aba-103",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-27",
+      "type": "therapy",
+      "sessionBlock": "AM",
+      "startAt": "2026-04-27T09:00:00",
+      "endAt": "2026-04-27T12:00:00",
+      "room": "Red-1",
+      "status": "completed",
+      "hasRecap": true,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-007-2",
+      "childId": "child-007",
+      "therapistId": "aba-103",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-28",
+      "type": "therapy",
+      "sessionBlock": "PM",
+      "startAt": "2026-04-28T13:00:00",
+      "endAt": "2026-04-28T16:00:00",
+      "room": "Red-1",
+      "status": "completed",
+      "hasRecap": true,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-007-3",
+      "childId": "child-007",
+      "therapistId": "aba-103",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-29",
+      "type": "therapy",
+      "sessionBlock": "AM",
+      "startAt": "2026-04-29T09:00:00",
+      "endAt": "2026-04-29T12:00:00",
+      "room": "Red-1",
+      "status": "completed",
+      "hasRecap": true,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-007-4",
+      "childId": "child-007",
+      "therapistId": "aba-103",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-30",
+      "type": "therapy",
+      "sessionBlock": "PM",
+      "startAt": "2026-04-30T13:00:00",
+      "endAt": "2026-04-30T16:00:00",
+      "room": "Red-1",
+      "status": "completed",
+      "hasRecap": true,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-007-5",
+      "childId": "child-007",
+      "therapistId": "aba-103",
+      "bcbaId": "bcba-001",
+      "date": "2026-05-01",
+      "type": "therapy",
+      "sessionBlock": "AM",
+      "startAt": "2026-05-01T09:00:00",
+      "endAt": "2026-05-01T12:00:00",
+      "room": "Red-1",
+      "status": "scheduled",
+      "hasRecap": false,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-008-1",
+      "childId": "child-008",
+      "therapistId": "aba-102",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-27",
+      "type": "therapy",
+      "sessionBlock": "PM",
+      "startAt": "2026-04-27T13:00:00",
+      "endAt": "2026-04-27T16:00:00",
+      "room": "Red-2",
+      "status": "completed",
+      "hasRecap": true,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-008-2",
+      "childId": "child-008",
+      "therapistId": "aba-102",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-28",
+      "type": "therapy",
+      "sessionBlock": "AM",
+      "startAt": "2026-04-28T09:00:00",
+      "endAt": "2026-04-28T12:00:00",
+      "room": "Red-2",
+      "status": "completed",
+      "hasRecap": true,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-008-3",
+      "childId": "child-008",
+      "therapistId": "aba-102",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-29",
+      "type": "therapy",
+      "sessionBlock": "PM",
+      "startAt": "2026-04-29T13:00:00",
+      "endAt": "2026-04-29T16:00:00",
+      "room": "Red-2",
+      "status": "cancelled",
+      "hasRecap": false,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-008-4",
+      "childId": "child-008",
+      "therapistId": "aba-102",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-30",
+      "type": "therapy",
+      "sessionBlock": "AM",
+      "startAt": "2026-04-30T09:00:00",
+      "endAt": "2026-04-30T12:00:00",
+      "room": "Red-2",
+      "status": "completed",
+      "hasRecap": true,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-008-5",
+      "childId": "child-008",
+      "therapistId": "aba-102",
+      "bcbaId": "bcba-001",
+      "date": "2026-05-01",
+      "type": "therapy",
+      "sessionBlock": "PM",
+      "startAt": "2026-05-01T13:00:00",
+      "endAt": "2026-05-01T16:00:00",
+      "room": "Red-2",
+      "status": "scheduled",
+      "hasRecap": false,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-009-1",
+      "childId": "child-009",
+      "therapistId": "aba-101",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-27",
+      "type": "therapy",
+      "sessionBlock": "AM",
+      "startAt": "2026-04-27T09:00:00",
+      "endAt": "2026-04-27T12:00:00",
+      "room": "Orange-1",
+      "status": "completed",
+      "hasRecap": true,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-009-2",
+      "childId": "child-009",
+      "therapistId": "aba-101",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-28",
+      "type": "therapy",
+      "sessionBlock": "PM",
+      "startAt": "2026-04-28T13:00:00",
+      "endAt": "2026-04-28T16:00:00",
+      "room": "Orange-1",
+      "status": "completed",
+      "hasRecap": true,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-009-3",
+      "childId": "child-009",
+      "therapistId": "aba-101",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-29",
+      "type": "therapy",
+      "sessionBlock": "AM",
+      "startAt": "2026-04-29T09:00:00",
+      "endAt": "2026-04-29T12:00:00",
+      "room": "Orange-1",
+      "status": "completed",
+      "hasRecap": true,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-009-4",
+      "childId": "child-009",
+      "therapistId": "aba-101",
+      "bcbaId": "bcba-001",
+      "date": "2026-04-30",
+      "type": "therapy",
+      "sessionBlock": "PM",
+      "startAt": "2026-04-30T13:00:00",
+      "endAt": "2026-04-30T16:00:00",
+      "room": "Orange-1",
+      "status": "completed",
+      "hasRecap": true,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    },
+    {
+      "id": "sess-009-5",
+      "childId": "child-009",
+      "therapistId": "aba-101",
+      "bcbaId": "bcba-001",
+      "date": "2026-05-01",
+      "type": "therapy",
+      "sessionBlock": "AM",
+      "startAt": "2026-05-01T09:00:00",
+      "endAt": "2026-05-01T12:00:00",
+      "room": "Orange-1",
+      "status": "scheduled",
+      "hasRecap": false,
+      "location": "CommunityBridge Main Campus",
+      "createdBy": "staff-001"
+    }
+  ],
+  "sessionSummaries": [
+    {
+      "id": "sum-001-1",
+      "sessionId": "sess-001-1",
+      "childId": "child-001",
+      "therapistId": "aba-101",
+      "status": "approved",
+      "generatedAt": "2026-04-27T12:10:00",
+      "approvedAt": "2026-04-27T12:30:00",
+      "summary": {
+        "moodScore": {
+          "selectedValue": 10,
+          "selectedLabel": "Neutral"
+        },
+        "dailyRecap": {
+          "therapistNarrative": "Zahari worked on Functional Communication, Transitions, Visual Schedule and made moderate progress.",
+          "progressLevel": "moderate",
+          "independenceLevel": "partial independence",
+          "interferingBehaviorLevel": "moderate"
+        },
+        "monthlyGoal": {
+          "description": "Use functional communication during transitions."
+        },
+        "successCriteriaMet": [
+          "Completed target program opportunities",
+          "Responded to planned prompts",
+          "Care team notes updated"
+        ],
+        "programsWorkedOn": [
+          "Receptive Language",
+          "Motor Imitation",
+          "Turn Taking"
+        ],
+        "interferingBehaviors": [
+          {
+            "behavior": "Task refusal",
+            "frequency": 0,
+            "intensity": "low"
+          }
+        ],
+        "meals": [
+          {
+            "type": "Snack",
+            "status": "No meal data logged"
+          }
+        ],
+        "toileting": [
+          {
+            "status": "No toileting data logged"
+          }
+        ],
+        "pleaseBringIn": [
+          "Extra shirt"
+        ]
+      }
+    },
+    {
+      "id": "sum-001-2",
+      "sessionId": "sess-001-2",
+      "childId": "child-001",
+      "therapistId": "aba-102",
+      "status": "approved",
+      "generatedAt": "2026-04-28T16:10:00",
+      "approvedAt": "2026-04-28T16:30:00",
+      "summary": {
+        "moodScore": {
+          "selectedValue": 11,
+          "selectedLabel": "Neutral"
+        },
+        "dailyRecap": {
+          "therapistNarrative": "Zahari worked on Functional Communication, Transitions, Visual Schedule and made moderate progress.",
+          "progressLevel": "moderate",
+          "independenceLevel": "partial independence",
+          "interferingBehaviorLevel": "moderate"
+        },
+        "monthlyGoal": {
+          "description": "Use functional communication during transitions."
+        },
+        "successCriteriaMet": [
+          "Completed target program opportunities",
+          "Responded to planned prompts",
+          "Care team notes updated"
+        ],
+        "programsWorkedOn": [
+          "Visual Schedule",
+          "Motor Imitation",
+          "Independent Work"
+        ],
+        "interferingBehaviors": [
+          {
+            "behavior": "Task refusal",
+            "frequency": 1,
+            "intensity": "low"
+          }
+        ],
+        "meals": [
+          {
+            "type": "Snack",
+            "status": "Ate most of snack"
+          }
+        ],
+        "toileting": [
+          {
+            "status": "Successful bathroom trip"
+          }
+        ],
+        "pleaseBringIn": []
+      }
+    },
+    {
+      "id": "sum-001-3",
+      "sessionId": "sess-001-3",
+      "childId": "child-001",
+      "therapistId": "aba-101",
+      "status": "approved",
+      "generatedAt": "2026-04-29T12:10:00",
+      "approvedAt": "2026-04-29T12:30:00",
+      "summary": {
+        "moodScore": {
+          "selectedValue": 12,
+          "selectedLabel": "Happy"
+        },
+        "dailyRecap": {
+          "therapistNarrative": "Zahari worked on Functional Communication, Transitions, Visual Schedule and made moderate progress.",
+          "progressLevel": "moderate",
+          "independenceLevel": "partial independence",
+          "interferingBehaviorLevel": "low"
+        },
+        "monthlyGoal": {
+          "description": "Use functional communication during transitions."
+        },
+        "successCriteriaMet": [
+          "Completed target program opportunities",
+          "Responded to planned prompts",
+          "Care team notes updated"
+        ],
+        "programsWorkedOn": [
+          "Transitions",
+          "Turn Taking",
+          "Independent Work"
+        ],
+        "interferingBehaviors": [
+          {
+            "behavior": "Task refusal",
+            "frequency": 2,
+            "intensity": "moderate"
+          }
+        ],
+        "meals": [
+          {
+            "type": "Snack",
+            "status": "No meal data logged"
+          }
+        ],
+        "toileting": [
+          {
+            "status": "No toileting data logged"
+          }
+        ],
+        "pleaseBringIn": []
+      }
+    },
+    {
+      "id": "sum-001-4",
+      "sessionId": "sess-001-4",
+      "childId": "child-001",
+      "therapistId": "aba-102",
+      "status": "draft",
+      "generatedAt": "2026-04-30T16:10:00",
+      "approvedAt": null,
+      "summary": {
+        "moodScore": {
+          "selectedValue": 13,
+          "selectedLabel": "Happy"
+        },
+        "dailyRecap": {
+          "therapistNarrative": "Zahari worked on Functional Communication, Transitions, Visual Schedule and made high progress.",
+          "progressLevel": "high",
+          "independenceLevel": "mostly independent",
+          "interferingBehaviorLevel": "low"
+        },
+        "monthlyGoal": {
+          "description": "Use functional communication during transitions."
+        },
+        "successCriteriaMet": [
+          "Completed target program opportunities",
+          "Responded to planned prompts",
+          "Care team notes updated"
+        ],
+        "programsWorkedOn": [
+          "Visual Schedule",
+          "Independent Work",
+          "Receptive Language"
+        ],
+        "interferingBehaviors": [
+          {
+            "behavior": "Task refusal",
+            "frequency": 0,
+            "intensity": "low"
+          }
+        ],
+        "meals": [
+          {
+            "type": "Snack",
+            "status": "Ate most of snack"
+          }
+        ],
+        "toileting": [
+          {
+            "status": "Successful bathroom trip"
+          }
+        ],
+        "pleaseBringIn": []
+      }
+    },
+    {
+      "id": "sum-002-1",
+      "sessionId": "sess-002-1",
+      "childId": "child-002",
+      "therapistId": "aba-101",
+      "status": "approved",
+      "generatedAt": "2026-04-27T16:10:00",
+      "approvedAt": "2026-04-27T16:30:00",
+      "summary": {
+        "moodScore": {
+          "selectedValue": 10,
+          "selectedLabel": "Neutral"
+        },
+        "dailyRecap": {
+          "therapistNarrative": "Aubrey worked on Peer Play, Matching, Independent Work and made moderate progress.",
+          "progressLevel": "moderate",
+          "independenceLevel": "partial independence",
+          "interferingBehaviorLevel": "moderate"
+        },
+        "monthlyGoal": {
+          "description": "Increase spontaneous requests for preferred items."
+        },
+        "successCriteriaMet": [
+          "Completed target program opportunities",
+          "Responded to planned prompts",
+          "Care team notes updated"
+        ],
+        "programsWorkedOn": [
+          "Visual Schedule",
+          "Motor Imitation",
+          "Turn Taking"
+        ],
+        "interferingBehaviors": [
+          {
+            "behavior": "Task refusal",
+            "frequency": 1,
+            "intensity": "low"
+          }
+        ],
+        "meals": [
+          {
+            "type": "Snack",
+            "status": "Ate most of snack"
+          }
+        ],
+        "toileting": [
+          {
+            "status": "Successful bathroom trip"
+          }
+        ],
+        "pleaseBringIn": []
+      }
+    },
+    {
+      "id": "sum-002-2",
+      "sessionId": "sess-002-2",
+      "childId": "child-002",
+      "therapistId": "aba-101",
+      "status": "approved",
+      "generatedAt": "2026-04-28T12:10:00",
+      "approvedAt": "2026-04-28T12:30:00",
+      "summary": {
+        "moodScore": {
+          "selectedValue": 11,
+          "selectedLabel": "Neutral"
+        },
+        "dailyRecap": {
+          "therapistNarrative": "Aubrey worked on Peer Play, Matching, Independent Work and made moderate progress.",
+          "progressLevel": "moderate",
+          "independenceLevel": "partial independence",
+          "interferingBehaviorLevel": "moderate"
+        },
+        "monthlyGoal": {
+          "description": "Increase spontaneous requests for preferred items."
+        },
+        "successCriteriaMet": [
+          "Completed target program opportunities",
+          "Responded to planned prompts",
+          "Care team notes updated"
+        ],
+        "programsWorkedOn": [
+          "Motor Imitation",
+          "Receptive Language",
+          "Transitions"
+        ],
+        "interferingBehaviors": [
+          {
+            "behavior": "Task refusal",
+            "frequency": 2,
+            "intensity": "moderate"
+          }
+        ],
+        "meals": [
+          {
+            "type": "Snack",
+            "status": "No meal data logged"
+          }
+        ],
+        "toileting": [
+          {
+            "status": "No toileting data logged"
+          }
+        ],
+        "pleaseBringIn": []
+      }
+    },
+    {
+      "id": "sum-002-3",
+      "sessionId": "sess-002-3",
+      "childId": "child-002",
+      "therapistId": "aba-101",
+      "status": "approved",
+      "generatedAt": "2026-04-29T16:10:00",
+      "approvedAt": "2026-04-29T16:30:00",
+      "summary": {
+        "moodScore": {
+          "selectedValue": 12,
+          "selectedLabel": "Happy"
+        },
+        "dailyRecap": {
+          "therapistNarrative": "Aubrey worked on Peer Play, Matching, Independent Work and made moderate progress.",
+          "progressLevel": "moderate",
+          "independenceLevel": "partial independence",
+          "interferingBehaviorLevel": "low"
+        },
+        "monthlyGoal": {
+          "description": "Increase spontaneous requests for preferred items."
+        },
+        "successCriteriaMet": [
+          "Completed target program opportunities",
+          "Responded to planned prompts",
+          "Care team notes updated"
+        ],
+        "programsWorkedOn": [
+          "Receptive Language",
+          "Independent Work",
+          "Motor Imitation"
+        ],
+        "interferingBehaviors": [
+          {
+            "behavior": "Task refusal",
+            "frequency": 0,
+            "intensity": "low"
+          }
+        ],
+        "meals": [
+          {
+            "type": "Snack",
+            "status": "Ate most of snack"
+          }
+        ],
+        "toileting": [
+          {
+            "status": "Successful bathroom trip"
+          }
+        ],
+        "pleaseBringIn": []
+      }
+    },
+    {
+      "id": "sum-002-4",
+      "sessionId": "sess-002-4",
+      "childId": "child-002",
+      "therapistId": "aba-101",
+      "status": "draft",
+      "generatedAt": "2026-04-30T12:10:00",
+      "approvedAt": null,
+      "summary": {
+        "moodScore": {
+          "selectedValue": 13,
+          "selectedLabel": "Happy"
+        },
+        "dailyRecap": {
+          "therapistNarrative": "Aubrey worked on Peer Play, Matching, Independent Work and made high progress.",
+          "progressLevel": "high",
+          "independenceLevel": "mostly independent",
+          "interferingBehaviorLevel": "low"
+        },
+        "monthlyGoal": {
+          "description": "Increase spontaneous requests for preferred items."
+        },
+        "successCriteriaMet": [
+          "Completed target program opportunities",
+          "Responded to planned prompts",
+          "Care team notes updated"
+        ],
+        "programsWorkedOn": [
+          "Turn Taking",
+          "Functional Communication",
+          "Receptive Language"
+        ],
+        "interferingBehaviors": [
+          {
+            "behavior": "Task refusal",
+            "frequency": 1,
+            "intensity": "low"
+          }
+        ],
+        "meals": [
+          {
+            "type": "Snack",
+            "status": "No meal data logged"
+          }
+        ],
+        "toileting": [
+          {
+            "status": "No toileting data logged"
+          }
+        ],
+        "pleaseBringIn": [
+          "Extra shirt"
+        ]
+      }
+    },
+    {
+      "id": "sum-003-1",
+      "sessionId": "sess-003-1",
+      "childId": "child-003",
+      "therapistId": "aba-102",
+      "status": "approved",
+      "generatedAt": "2026-04-27T12:10:00",
+      "approvedAt": "2026-04-27T12:30:00",
+      "summary": {
+        "moodScore": {
+          "selectedValue": 8,
+          "selectedLabel": "Neutral"
+        },
+        "dailyRecap": {
+          "therapistNarrative": "Mason worked on Peer Play, Matching, Independent Work and made moderate progress.",
+          "progressLevel": "moderate",
+          "independenceLevel": "partial independence",
+          "interferingBehaviorLevel": "moderate"
+        },
+        "monthlyGoal": {
+          "description": "Participate in peer play for 10 minutes."
+        },
+        "successCriteriaMet": [
+          "Completed target program opportunities",
+          "Responded to planned prompts",
+          "Care team notes updated"
+        ],
+        "programsWorkedOn": [
+          "Receptive Language",
+          "Turn Taking",
+          "Transitions"
+        ],
+        "interferingBehaviors": [
+          {
+            "behavior": "Task refusal",
+            "frequency": 2,
+            "intensity": "moderate"
+          }
+        ],
+        "meals": [
+          {
+            "type": "Snack",
+            "status": "No meal data logged"
+          }
+        ],
+        "toileting": [
+          {
+            "status": "No toileting data logged"
+          }
+        ],
+        "pleaseBringIn": []
+      }
+    },
+    {
+      "id": "sum-003-2",
+      "sessionId": "sess-003-2",
+      "childId": "child-003",
+      "therapistId": "aba-102",
+      "status": "approved",
+      "generatedAt": "2026-04-28T16:10:00",
+      "approvedAt": "2026-04-28T16:30:00",
+      "summary": {
+        "moodScore": {
+          "selectedValue": 9,
+          "selectedLabel": "Neutral"
+        },
+        "dailyRecap": {
+          "therapistNarrative": "Mason worked on Peer Play, Matching, Independent Work and made moderate progress.",
+          "progressLevel": "moderate",
+          "independenceLevel": "partial independence",
+          "interferingBehaviorLevel": "moderate"
+        },
+        "monthlyGoal": {
+          "description": "Participate in peer play for 10 minutes."
+        },
+        "successCriteriaMet": [
+          "Completed target program opportunities",
+          "Responded to planned prompts",
+          "Care team notes updated"
+        ],
+        "programsWorkedOn": [
+          "Receptive Language",
+          "Turn Taking",
+          "Transitions"
+        ],
+        "interferingBehaviors": [
+          {
+            "behavior": "Task refusal",
+            "frequency": 0,
+            "intensity": "low"
+          }
+        ],
+        "meals": [
+          {
+            "type": "Snack",
+            "status": "Ate most of snack"
+          }
+        ],
+        "toileting": [
+          {
+            "status": "Successful bathroom trip"
+          }
+        ],
+        "pleaseBringIn": []
+      }
+    },
+    {
+      "id": "sum-003-3",
+      "sessionId": "sess-003-3",
+      "childId": "child-003",
+      "therapistId": "aba-102",
+      "status": "approved",
+      "generatedAt": "2026-04-29T12:10:00",
+      "approvedAt": "2026-04-29T12:30:00",
+      "summary": {
+        "moodScore": {
+          "selectedValue": 10,
+          "selectedLabel": "Neutral"
+        },
+        "dailyRecap": {
+          "therapistNarrative": "Mason worked on Peer Play, Matching, Independent Work and made moderate progress.",
+          "progressLevel": "moderate",
+          "independenceLevel": "partial independence",
+          "interferingBehaviorLevel": "moderate"
+        },
+        "monthlyGoal": {
+          "description": "Participate in peer play for 10 minutes."
+        },
+        "successCriteriaMet": [
+          "Completed target program opportunities",
+          "Responded to planned prompts",
+          "Care team notes updated"
+        ],
+        "programsWorkedOn": [
+          "Independent Work",
+          "Functional Communication",
+          "Visual Schedule"
+        ],
+        "interferingBehaviors": [
+          {
+            "behavior": "Task refusal",
+            "frequency": 1,
+            "intensity": "low"
+          }
+        ],
+        "meals": [
+          {
+            "type": "Snack",
+            "status": "No meal data logged"
+          }
+        ],
+        "toileting": [
+          {
+            "status": "No toileting data logged"
+          }
+        ],
+        "pleaseBringIn": [
+          "Extra shirt"
+        ]
+      }
+    },
+    {
+      "id": "sum-003-4",
+      "sessionId": "sess-003-4",
+      "childId": "child-003",
+      "therapistId": "aba-102",
+      "status": "draft",
+      "generatedAt": "2026-04-30T16:10:00",
+      "approvedAt": null,
+      "summary": {
+        "moodScore": {
+          "selectedValue": 11,
+          "selectedLabel": "Neutral"
+        },
+        "dailyRecap": {
+          "therapistNarrative": "Mason worked on Peer Play, Matching, Independent Work and made moderate progress.",
+          "progressLevel": "moderate",
+          "independenceLevel": "partial independence",
+          "interferingBehaviorLevel": "moderate"
+        },
+        "monthlyGoal": {
+          "description": "Participate in peer play for 10 minutes."
+        },
+        "successCriteriaMet": [
+          "Completed target program opportunities",
+          "Responded to planned prompts",
+          "Care team notes updated"
+        ],
+        "programsWorkedOn": [
+          "Receptive Language",
+          "Visual Schedule",
+          "Peer Play"
+        ],
+        "interferingBehaviors": [
+          {
+            "behavior": "Task refusal",
+            "frequency": 2,
+            "intensity": "moderate"
+          }
+        ],
+        "meals": [
+          {
+            "type": "Snack",
+            "status": "Ate most of snack"
+          }
+        ],
+        "toileting": [
+          {
+            "status": "Successful bathroom trip"
+          }
+        ],
+        "pleaseBringIn": []
+      }
+    },
+    {
+      "id": "sum-004-1",
+      "sessionId": "sess-004-1",
+      "childId": "child-004",
+      "therapistId": "aba-103",
+      "status": "approved",
+      "generatedAt": "2026-04-27T16:10:00",
+      "approvedAt": "2026-04-27T16:30:00",
+      "summary": {
+        "moodScore": {
+          "selectedValue": 8,
+          "selectedLabel": "Neutral"
+        },
+        "dailyRecap": {
+          "therapistNarrative": "Harper worked on Functional Communication, Transitions, Visual Schedule and made moderate progress.",
+          "progressLevel": "moderate",
+          "independenceLevel": "partial independence",
+          "interferingBehaviorLevel": "moderate"
+        },
+        "monthlyGoal": {
+          "description": "Complete independent table work for 12 minutes."
+        },
+        "successCriteriaMet": [
+          "Completed target program opportunities",
+          "Responded to planned prompts",
+          "Care team notes updated"
+        ],
+        "programsWorkedOn": [
+          "Functional Communication",
+          "Independent Work",
+          "Receptive Language"
+        ],
+        "interferingBehaviors": [
+          {
+            "behavior": "Task refusal",
+            "frequency": 0,
+            "intensity": "low"
+          }
+        ],
+        "meals": [
+          {
+            "type": "Snack",
+            "status": "Ate most of snack"
+          }
+        ],
+        "toileting": [
+          {
+            "status": "Successful bathroom trip"
+          }
+        ],
+        "pleaseBringIn": []
+      }
+    },
+    {
+      "id": "sum-004-2",
+      "sessionId": "sess-004-2",
+      "childId": "child-004",
+      "therapistId": "aba-103",
+      "status": "approved",
+      "generatedAt": "2026-04-28T12:10:00",
+      "approvedAt": "2026-04-28T12:30:00",
+      "summary": {
+        "moodScore": {
+          "selectedValue": 9,
+          "selectedLabel": "Neutral"
+        },
+        "dailyRecap": {
+          "therapistNarrative": "Harper worked on Functional Communication, Transitions, Visual Schedule and made moderate progress.",
+          "progressLevel": "moderate",
+          "independenceLevel": "partial independence",
+          "interferingBehaviorLevel": "moderate"
+        },
+        "monthlyGoal": {
+          "description": "Complete independent table work for 12 minutes."
+        },
+        "successCriteriaMet": [
+          "Completed target program opportunities",
+          "Responded to planned prompts",
+          "Care team notes updated"
+        ],
+        "programsWorkedOn": [
+          "Functional Communication",
+          "Peer Play",
+          "Motor Imitation"
+        ],
+        "interferingBehaviors": [
+          {
+            "behavior": "Task refusal",
+            "frequency": 1,
+            "intensity": "low"
+          }
+        ],
+        "meals": [
+          {
+            "type": "Snack",
+            "status": "No meal data logged"
+          }
+        ],
+        "toileting": [
+          {
+            "status": "No toileting data logged"
+          }
+        ],
+        "pleaseBringIn": [
+          "Extra shirt"
+        ]
+      }
+    },
+    {
+      "id": "sum-004-3",
+      "sessionId": "sess-004-3",
+      "childId": "child-004",
+      "therapistId": "aba-103",
+      "status": "approved",
+      "generatedAt": "2026-04-29T16:10:00",
+      "approvedAt": "2026-04-29T16:30:00",
+      "summary": {
+        "moodScore": {
+          "selectedValue": 10,
+          "selectedLabel": "Neutral"
+        },
+        "dailyRecap": {
+          "therapistNarrative": "Harper worked on Functional Communication, Transitions, Visual Schedule and made moderate progress.",
+          "progressLevel": "moderate",
+          "independenceLevel": "partial independence",
+          "interferingBehaviorLevel": "moderate"
+        },
+        "monthlyGoal": {
+          "description": "Complete independent table work for 12 minutes."
+        },
+        "successCriteriaMet": [
+          "Completed target program opportunities",
+          "Responded to planned prompts",
+          "Care team notes updated"
+        ],
+        "programsWorkedOn": [
+          "Transitions",
+          "Peer Play",
+          "Independent Work"
+        ],
+        "interferingBehaviors": [
+          {
+            "behavior": "Task refusal",
+            "frequency": 2,
+            "intensity": "moderate"
+          }
+        ],
+        "meals": [
+          {
+            "type": "Snack",
+            "status": "Ate most of snack"
+          }
+        ],
+        "toileting": [
+          {
+            "status": "Successful bathroom trip"
+          }
+        ],
+        "pleaseBringIn": []
+      }
+    },
+    {
+      "id": "sum-004-4",
+      "sessionId": "sess-004-4",
+      "childId": "child-004",
+      "therapistId": "aba-103",
+      "status": "draft",
+      "generatedAt": "2026-04-30T12:10:00",
+      "approvedAt": null,
+      "summary": {
+        "moodScore": {
+          "selectedValue": 11,
+          "selectedLabel": "Neutral"
+        },
+        "dailyRecap": {
+          "therapistNarrative": "Harper worked on Functional Communication, Transitions, Visual Schedule and made moderate progress.",
+          "progressLevel": "moderate",
+          "independenceLevel": "partial independence",
+          "interferingBehaviorLevel": "moderate"
+        },
+        "monthlyGoal": {
+          "description": "Complete independent table work for 12 minutes."
+        },
+        "successCriteriaMet": [
+          "Completed target program opportunities",
+          "Responded to planned prompts",
+          "Care team notes updated"
+        ],
+        "programsWorkedOn": [
+          "Independent Work",
+          "Peer Play",
+          "Turn Taking"
+        ],
+        "interferingBehaviors": [
+          {
+            "behavior": "Task refusal",
+            "frequency": 0,
+            "intensity": "low"
+          }
+        ],
+        "meals": [
+          {
+            "type": "Snack",
+            "status": "No meal data logged"
+          }
+        ],
+        "toileting": [
+          {
+            "status": "No toileting data logged"
+          }
+        ],
+        "pleaseBringIn": []
+      }
+    },
+    {
+      "id": "sum-005-1",
+      "sessionId": "sess-005-1",
+      "childId": "child-005",
+      "therapistId": "aba-102",
+      "status": "approved",
+      "generatedAt": "2026-04-27T12:10:00",
+      "approvedAt": "2026-04-27T12:30:00",
+      "summary": {
+        "moodScore": {
+          "selectedValue": 6,
+          "selectedLabel": "Neutral"
+        },
+        "dailyRecap": {
+          "therapistNarrative": "Lakelynn worked on Peer Play, Matching, Independent Work and made supportive progress.",
+          "progressLevel": "supportive",
+          "independenceLevel": "partial independence",
+          "interferingBehaviorLevel": "moderate"
+        },
+        "monthlyGoal": {
+          "description": "Follow visual schedule across four transitions."
+        },
+        "successCriteriaMet": [
+          "Completed target program opportunities",
+          "Responded to planned prompts",
+          "Care team notes updated"
+        ],
+        "programsWorkedOn": [
+          "Motor Imitation",
+          "Functional Communication",
+          "Visual Schedule"
+        ],
+        "interferingBehaviors": [
+          {
+            "behavior": "Task refusal",
+            "frequency": 1,
+            "intensity": "low"
+          }
+        ],
+        "meals": [
+          {
+            "type": "Snack",
+            "status": "No meal data logged"
+          }
+        ],
+        "toileting": [
+          {
+            "status": "No toileting data logged"
+          }
+        ],
+        "pleaseBringIn": [
+          "Extra shirt"
+        ]
+      }
+    },
+    {
+      "id": "sum-005-2",
+      "sessionId": "sess-005-2",
+      "childId": "child-005",
+      "therapistId": "aba-102",
+      "status": "approved",
+      "generatedAt": "2026-04-28T16:10:00",
+      "approvedAt": "2026-04-28T16:30:00",
+      "summary": {
+        "moodScore": {
+          "selectedValue": 7,
+          "selectedLabel": "Neutral"
+        },
+        "dailyRecap": {
+          "therapistNarrative": "Lakelynn worked on Peer Play, Matching, Independent Work and made supportive progress.",
+          "progressLevel": "supportive",
+          "independenceLevel": "partial independence",
+          "interferingBehaviorLevel": "moderate"
+        },
+        "monthlyGoal": {
+          "description": "Follow visual schedule across four transitions."
+        },
+        "successCriteriaMet": [
+          "Completed target program opportunities",
+          "Responded to planned prompts",
+          "Care team notes updated"
+        ],
+        "programsWorkedOn": [
+          "Peer Play",
+          "Independent Work",
+          "Receptive Language"
+        ],
+        "interferingBehaviors": [
+          {
+            "behavior": "Task refusal",
+            "frequency": 2,
+            "intensity": "moderate"
+          }
+        ],
+        "meals": [
+          {
+            "type": "Snack",
+            "status": "Ate most of snack"
+          }
+        ],
+        "toileting": [
+          {
+            "status": "Successful bathroom trip"
+          }
+        ],
+        "pleaseBringIn": []
+      }
+    },
+    {
+      "id": "sum-005-3",
+      "sessionId": "sess-005-3",
+      "childId": "child-005",
+      "therapistId": "aba-102",
+      "status": "approved",
+      "generatedAt": "2026-04-29T12:10:00",
+      "approvedAt": "2026-04-29T12:30:00",
+      "summary": {
+        "moodScore": {
+          "selectedValue": 8,
+          "selectedLabel": "Neutral"
+        },
+        "dailyRecap": {
+          "therapistNarrative": "Lakelynn worked on Peer Play, Matching, Independent Work and made moderate progress.",
+          "progressLevel": "moderate",
+          "independenceLevel": "partial independence",
+          "interferingBehaviorLevel": "moderate"
+        },
+        "monthlyGoal": {
+          "description": "Follow visual schedule across four transitions."
+        },
+        "successCriteriaMet": [
+          "Completed target program opportunities",
+          "Responded to planned prompts",
+          "Care team notes updated"
+        ],
+        "programsWorkedOn": [
+          "Turn Taking",
+          "Receptive Language",
+          "Independent Work"
+        ],
+        "interferingBehaviors": [
+          {
+            "behavior": "Task refusal",
+            "frequency": 0,
+            "intensity": "low"
+          }
+        ],
+        "meals": [
+          {
+            "type": "Snack",
+            "status": "No meal data logged"
+          }
+        ],
+        "toileting": [
+          {
+            "status": "No toileting data logged"
+          }
+        ],
+        "pleaseBringIn": []
+      }
+    },
+    {
+      "id": "sum-005-4",
+      "sessionId": "sess-005-4",
+      "childId": "child-005",
+      "therapistId": "aba-102",
+      "status": "draft",
+      "generatedAt": "2026-04-30T16:10:00",
+      "approvedAt": null,
+      "summary": {
+        "moodScore": {
+          "selectedValue": 9,
+          "selectedLabel": "Neutral"
+        },
+        "dailyRecap": {
+          "therapistNarrative": "Lakelynn worked on Peer Play, Matching, Independent Work and made moderate progress.",
+          "progressLevel": "moderate",
+          "independenceLevel": "partial independence",
+          "interferingBehaviorLevel": "moderate"
+        },
+        "monthlyGoal": {
+          "description": "Follow visual schedule across four transitions."
+        },
+        "successCriteriaMet": [
+          "Completed target program opportunities",
+          "Responded to planned prompts",
+          "Care team notes updated"
+        ],
+        "programsWorkedOn": [
+          "Visual Schedule",
+          "Functional Communication",
+          "Turn Taking"
+        ],
+        "interferingBehaviors": [
+          {
+            "behavior": "Task refusal",
+            "frequency": 1,
+            "intensity": "low"
+          }
+        ],
+        "meals": [
+          {
+            "type": "Snack",
+            "status": "Ate most of snack"
+          }
+        ],
+        "toileting": [
+          {
+            "status": "Successful bathroom trip"
+          }
+        ],
+        "pleaseBringIn": []
+      }
+    },
+    {
+      "id": "sum-006-1",
+      "sessionId": "sess-006-1",
+      "childId": "child-006",
+      "therapistId": "aba-104",
+      "status": "approved",
+      "generatedAt": "2026-04-27T16:10:00",
+      "approvedAt": "2026-04-27T16:30:00",
+      "summary": {
+        "moodScore": {
+          "selectedValue": 9,
+          "selectedLabel": "Neutral"
+        },
+        "dailyRecap": {
+          "therapistNarrative": "Eli worked on Peer Play, Matching, Independent Work and made moderate progress.",
+          "progressLevel": "moderate",
+          "independenceLevel": "partial independence",
+          "interferingBehaviorLevel": "moderate"
+        },
+        "monthlyGoal": {
+          "description": "Imitate 10 motor actions."
+        },
+        "successCriteriaMet": [
+          "Completed target program opportunities",
+          "Responded to planned prompts",
+          "Care team notes updated"
+        ],
+        "programsWorkedOn": [
+          "Motor Imitation",
+          "Independent Work",
+          "Receptive Language"
+        ],
+        "interferingBehaviors": [
+          {
+            "behavior": "Task refusal",
+            "frequency": 2,
+            "intensity": "moderate"
+          }
+        ],
+        "meals": [
+          {
+            "type": "Snack",
+            "status": "Ate most of snack"
+          }
+        ],
+        "toileting": [
+          {
+            "status": "Successful bathroom trip"
+          }
+        ],
+        "pleaseBringIn": []
+      }
+    },
+    {
+      "id": "sum-006-2",
+      "sessionId": "sess-006-2",
+      "childId": "child-006",
+      "therapistId": "aba-101",
+      "status": "approved",
+      "generatedAt": "2026-04-28T12:10:00",
+      "approvedAt": "2026-04-28T12:30:00",
+      "summary": {
+        "moodScore": {
+          "selectedValue": 10,
+          "selectedLabel": "Neutral"
+        },
+        "dailyRecap": {
+          "therapistNarrative": "Eli worked on Peer Play, Matching, Independent Work and made moderate progress.",
+          "progressLevel": "moderate",
+          "independenceLevel": "partial independence",
+          "interferingBehaviorLevel": "moderate"
+        },
+        "monthlyGoal": {
+          "description": "Imitate 10 motor actions."
+        },
+        "successCriteriaMet": [
+          "Completed target program opportunities",
+          "Responded to planned prompts",
+          "Care team notes updated"
+        ],
+        "programsWorkedOn": [
+          "Functional Communication",
+          "Visual Schedule",
+          "Receptive Language"
+        ],
+        "interferingBehaviors": [
+          {
+            "behavior": "Task refusal",
+            "frequency": 0,
+            "intensity": "low"
+          }
+        ],
+        "meals": [
+          {
+            "type": "Snack",
+            "status": "No meal data logged"
+          }
+        ],
+        "toileting": [
+          {
+            "status": "No toileting data logged"
+          }
+        ],
+        "pleaseBringIn": []
+      }
+    },
+    {
+      "id": "sum-006-3",
+      "sessionId": "sess-006-3",
+      "childId": "child-006",
+      "therapistId": "aba-104",
+      "status": "approved",
+      "generatedAt": "2026-04-29T16:10:00",
+      "approvedAt": "2026-04-29T16:30:00",
+      "summary": {
+        "moodScore": {
+          "selectedValue": 11,
+          "selectedLabel": "Neutral"
+        },
+        "dailyRecap": {
+          "therapistNarrative": "Eli worked on Peer Play, Matching, Independent Work and made moderate progress.",
+          "progressLevel": "moderate",
+          "independenceLevel": "partial independence",
+          "interferingBehaviorLevel": "moderate"
+        },
+        "monthlyGoal": {
+          "description": "Imitate 10 motor actions."
+        },
+        "successCriteriaMet": [
+          "Completed target program opportunities",
+          "Responded to planned prompts",
+          "Care team notes updated"
+        ],
+        "programsWorkedOn": [
+          "Independent Work",
+          "Motor Imitation",
+          "Transitions"
+        ],
+        "interferingBehaviors": [
+          {
+            "behavior": "Task refusal",
+            "frequency": 1,
+            "intensity": "low"
+          }
+        ],
+        "meals": [
+          {
+            "type": "Snack",
+            "status": "Ate most of snack"
+          }
+        ],
+        "toileting": [
+          {
+            "status": "Successful bathroom trip"
+          }
+        ],
+        "pleaseBringIn": []
+      }
+    },
+    {
+      "id": "sum-006-4",
+      "sessionId": "sess-006-4",
+      "childId": "child-006",
+      "therapistId": "aba-101",
+      "status": "draft",
+      "generatedAt": "2026-04-30T12:10:00",
+      "approvedAt": null,
+      "summary": {
+        "moodScore": {
+          "selectedValue": 12,
+          "selectedLabel": "Happy"
+        },
+        "dailyRecap": {
+          "therapistNarrative": "Eli worked on Peer Play, Matching, Independent Work and made moderate progress.",
+          "progressLevel": "moderate",
+          "independenceLevel": "partial independence",
+          "interferingBehaviorLevel": "low"
+        },
+        "monthlyGoal": {
+          "description": "Imitate 10 motor actions."
+        },
+        "successCriteriaMet": [
+          "Completed target program opportunities",
+          "Responded to planned prompts",
+          "Care team notes updated"
+        ],
+        "programsWorkedOn": [
+          "Visual Schedule",
+          "Peer Play",
+          "Transitions"
+        ],
+        "interferingBehaviors": [
+          {
+            "behavior": "Task refusal",
+            "frequency": 2,
+            "intensity": "moderate"
+          }
+        ],
+        "meals": [
+          {
+            "type": "Snack",
+            "status": "No meal data logged"
+          }
+        ],
+        "toileting": [
+          {
+            "status": "No toileting data logged"
+          }
+        ],
+        "pleaseBringIn": [
+          "Extra shirt"
+        ]
+      }
+    },
+    {
+      "id": "sum-007-1",
+      "sessionId": "sess-007-1",
+      "childId": "child-007",
+      "therapistId": "aba-103",
+      "status": "approved",
+      "generatedAt": "2026-04-27T12:10:00",
+      "approvedAt": "2026-04-27T12:30:00",
+      "summary": {
+        "moodScore": {
+          "selectedValue": 11,
+          "selectedLabel": "Neutral"
+        },
+        "dailyRecap": {
+          "therapistNarrative": "Sofia worked on Functional Communication, Transitions, Visual Schedule and made moderate progress.",
+          "progressLevel": "moderate",
+          "independenceLevel": "partial independence",
+          "interferingBehaviorLevel": "moderate"
+        },
+        "monthlyGoal": {
+          "description": "Transition with one prompt or less."
+        },
+        "successCriteriaMet": [
+          "Completed target program opportunities",
+          "Responded to planned prompts",
+          "Care team notes updated"
+        ],
+        "programsWorkedOn": [
+          "Receptive Language",
+          "Motor Imitation",
+          "Visual Schedule"
+        ],
+        "interferingBehaviors": [
+          {
+            "behavior": "Task refusal",
+            "frequency": 0,
+            "intensity": "low"
+          }
+        ],
+        "meals": [
+          {
+            "type": "Snack",
+            "status": "No meal data logged"
+          }
+        ],
+        "toileting": [
+          {
+            "status": "No toileting data logged"
+          }
+        ],
+        "pleaseBringIn": []
+      }
+    },
+    {
+      "id": "sum-007-2",
+      "sessionId": "sess-007-2",
+      "childId": "child-007",
+      "therapistId": "aba-103",
+      "status": "approved",
+      "generatedAt": "2026-04-28T16:10:00",
+      "approvedAt": "2026-04-28T16:30:00",
+      "summary": {
+        "moodScore": {
+          "selectedValue": 12,
+          "selectedLabel": "Happy"
+        },
+        "dailyRecap": {
+          "therapistNarrative": "Sofia worked on Functional Communication, Transitions, Visual Schedule and made moderate progress.",
+          "progressLevel": "moderate",
+          "independenceLevel": "partial independence",
+          "interferingBehaviorLevel": "low"
+        },
+        "monthlyGoal": {
+          "description": "Transition with one prompt or less."
+        },
+        "successCriteriaMet": [
+          "Completed target program opportunities",
+          "Responded to planned prompts",
+          "Care team notes updated"
+        ],
+        "programsWorkedOn": [
+          "Transitions",
+          "Independent Work",
+          "Motor Imitation"
+        ],
+        "interferingBehaviors": [
+          {
+            "behavior": "Task refusal",
+            "frequency": 1,
+            "intensity": "low"
+          }
+        ],
+        "meals": [
+          {
+            "type": "Snack",
+            "status": "Ate most of snack"
+          }
+        ],
+        "toileting": [
+          {
+            "status": "Successful bathroom trip"
+          }
+        ],
+        "pleaseBringIn": []
+      }
+    },
+    {
+      "id": "sum-007-3",
+      "sessionId": "sess-007-3",
+      "childId": "child-007",
+      "therapistId": "aba-103",
+      "status": "approved",
+      "generatedAt": "2026-04-29T12:10:00",
+      "approvedAt": "2026-04-29T12:30:00",
+      "summary": {
+        "moodScore": {
+          "selectedValue": 13,
+          "selectedLabel": "Happy"
+        },
+        "dailyRecap": {
+          "therapistNarrative": "Sofia worked on Functional Communication, Transitions, Visual Schedule and made high progress.",
+          "progressLevel": "high",
+          "independenceLevel": "mostly independent",
+          "interferingBehaviorLevel": "low"
+        },
+        "monthlyGoal": {
+          "description": "Transition with one prompt or less."
+        },
+        "successCriteriaMet": [
+          "Completed target program opportunities",
+          "Responded to planned prompts",
+          "Care team notes updated"
+        ],
+        "programsWorkedOn": [
+          "Functional Communication",
+          "Receptive Language",
+          "Turn Taking"
+        ],
+        "interferingBehaviors": [
+          {
+            "behavior": "Task refusal",
+            "frequency": 2,
+            "intensity": "moderate"
+          }
+        ],
+        "meals": [
+          {
+            "type": "Snack",
+            "status": "No meal data logged"
+          }
+        ],
+        "toileting": [
+          {
+            "status": "No toileting data logged"
+          }
+        ],
+        "pleaseBringIn": [
+          "Extra shirt"
+        ]
+      }
+    },
+    {
+      "id": "sum-007-4",
+      "sessionId": "sess-007-4",
+      "childId": "child-007",
+      "therapistId": "aba-103",
+      "status": "draft",
+      "generatedAt": "2026-04-30T16:10:00",
+      "approvedAt": null,
+      "summary": {
+        "moodScore": {
+          "selectedValue": 14,
+          "selectedLabel": "Happy"
+        },
+        "dailyRecap": {
+          "therapistNarrative": "Sofia worked on Functional Communication, Transitions, Visual Schedule and made high progress.",
+          "progressLevel": "high",
+          "independenceLevel": "mostly independent",
+          "interferingBehaviorLevel": "low"
+        },
+        "monthlyGoal": {
+          "description": "Transition with one prompt or less."
+        },
+        "successCriteriaMet": [
+          "Completed target program opportunities",
+          "Responded to planned prompts",
+          "Care team notes updated"
+        ],
+        "programsWorkedOn": [
+          "Peer Play",
+          "Transitions",
+          "Visual Schedule"
+        ],
+        "interferingBehaviors": [
+          {
+            "behavior": "Task refusal",
+            "frequency": 0,
+            "intensity": "low"
+          }
+        ],
+        "meals": [
+          {
+            "type": "Snack",
+            "status": "Ate most of snack"
+          }
+        ],
+        "toileting": [
+          {
+            "status": "Successful bathroom trip"
+          }
+        ],
+        "pleaseBringIn": []
+      }
+    },
+    {
+      "id": "sum-008-1",
+      "sessionId": "sess-008-1",
+      "childId": "child-008",
+      "therapistId": "aba-102",
+      "status": "approved",
+      "generatedAt": "2026-04-27T16:10:00",
+      "approvedAt": "2026-04-27T16:30:00",
+      "summary": {
+        "moodScore": {
+          "selectedValue": 5,
+          "selectedLabel": "Neutral"
+        },
+        "dailyRecap": {
+          "therapistNarrative": "Noah worked on Peer Play, Matching, Independent Work and made supportive progress.",
+          "progressLevel": "supportive",
+          "independenceLevel": "partial independence",
+          "interferingBehaviorLevel": "moderate"
+        },
+        "monthlyGoal": {
+          "description": "Respond to eight receptive instructions."
+        },
+        "successCriteriaMet": [
+          "Completed target program opportunities",
+          "Responded to planned prompts",
+          "Care team notes updated"
+        ],
+        "programsWorkedOn": [
+          "Visual Schedule",
+          "Functional Communication",
+          "Receptive Language"
+        ],
+        "interferingBehaviors": [
+          {
+            "behavior": "Task refusal",
+            "frequency": 1,
+            "intensity": "low"
+          }
+        ],
+        "meals": [
+          {
+            "type": "Snack",
+            "status": "Ate most of snack"
+          }
+        ],
+        "toileting": [
+          {
+            "status": "Successful bathroom trip"
+          }
+        ],
+        "pleaseBringIn": []
+      }
+    },
+    {
+      "id": "sum-008-2",
+      "sessionId": "sess-008-2",
+      "childId": "child-008",
+      "therapistId": "aba-102",
+      "status": "approved",
+      "generatedAt": "2026-04-28T12:10:00",
+      "approvedAt": "2026-04-28T12:30:00",
+      "summary": {
+        "moodScore": {
+          "selectedValue": 6,
+          "selectedLabel": "Neutral"
+        },
+        "dailyRecap": {
+          "therapistNarrative": "Noah worked on Peer Play, Matching, Independent Work and made supportive progress.",
+          "progressLevel": "supportive",
+          "independenceLevel": "partial independence",
+          "interferingBehaviorLevel": "moderate"
+        },
+        "monthlyGoal": {
+          "description": "Respond to eight receptive instructions."
+        },
+        "successCriteriaMet": [
+          "Completed target program opportunities",
+          "Responded to planned prompts",
+          "Care team notes updated"
+        ],
+        "programsWorkedOn": [
+          "Turn Taking",
+          "Visual Schedule",
+          "Transitions"
+        ],
+        "interferingBehaviors": [
+          {
+            "behavior": "Task refusal",
+            "frequency": 2,
+            "intensity": "moderate"
+          }
+        ],
+        "meals": [
+          {
+            "type": "Snack",
+            "status": "No meal data logged"
+          }
+        ],
+        "toileting": [
+          {
+            "status": "No toileting data logged"
+          }
+        ],
+        "pleaseBringIn": [
+          "Extra shirt"
+        ]
+      }
+    },
+    {
+      "id": "sum-008-4",
+      "sessionId": "sess-008-4",
+      "childId": "child-008",
+      "therapistId": "aba-102",
+      "status": "draft",
+      "generatedAt": "2026-04-30T12:10:00",
+      "approvedAt": null,
+      "summary": {
+        "moodScore": {
+          "selectedValue": 8,
+          "selectedLabel": "Neutral"
+        },
+        "dailyRecap": {
+          "therapistNarrative": "Noah worked on Peer Play, Matching, Independent Work and made moderate progress.",
+          "progressLevel": "moderate",
+          "independenceLevel": "partial independence",
+          "interferingBehaviorLevel": "moderate"
+        },
+        "monthlyGoal": {
+          "description": "Respond to eight receptive instructions."
+        },
+        "successCriteriaMet": [
+          "Completed target program opportunities",
+          "Responded to planned prompts",
+          "Care team notes updated"
+        ],
+        "programsWorkedOn": [
+          "Motor Imitation",
+          "Visual Schedule",
+          "Transitions"
+        ],
+        "interferingBehaviors": [
+          {
+            "behavior": "Task refusal",
+            "frequency": 1,
+            "intensity": "low"
+          }
+        ],
+        "meals": [
+          {
+            "type": "Snack",
+            "status": "No meal data logged"
+          }
+        ],
+        "toileting": [
+          {
+            "status": "No toileting data logged"
+          }
+        ],
+        "pleaseBringIn": []
+      }
+    },
+    {
+      "id": "sum-009-1",
+      "sessionId": "sess-009-1",
+      "childId": "child-009",
+      "therapistId": "aba-101",
+      "status": "approved",
+      "generatedAt": "2026-04-27T12:10:00",
+      "approvedAt": "2026-04-27T12:30:00",
+      "summary": {
+        "moodScore": {
+          "selectedValue": 10,
+          "selectedLabel": "Neutral"
+        },
+        "dailyRecap": {
+          "therapistNarrative": "Mila worked on Peer Play, Matching, Independent Work and made moderate progress.",
+          "progressLevel": "moderate",
+          "independenceLevel": "partial independence",
+          "interferingBehaviorLevel": "moderate"
+        },
+        "monthlyGoal": {
+          "description": "Engage in turn-taking for five minutes."
+        },
+        "successCriteriaMet": [
+          "Completed target program opportunities",
+          "Responded to planned prompts",
+          "Care team notes updated"
+        ],
+        "programsWorkedOn": [
+          "Receptive Language",
+          "Peer Play",
+          "Independent Work"
+        ],
+        "interferingBehaviors": [
+          {
+            "behavior": "Task refusal",
+            "frequency": 2,
+            "intensity": "moderate"
+          }
+        ],
+        "meals": [
+          {
+            "type": "Snack",
+            "status": "No meal data logged"
+          }
+        ],
+        "toileting": [
+          {
+            "status": "No toileting data logged"
+          }
+        ],
+        "pleaseBringIn": [
+          "Extra shirt"
+        ]
+      }
+    },
+    {
+      "id": "sum-009-2",
+      "sessionId": "sess-009-2",
+      "childId": "child-009",
+      "therapistId": "aba-101",
+      "status": "approved",
+      "generatedAt": "2026-04-28T16:10:00",
+      "approvedAt": "2026-04-28T16:30:00",
+      "summary": {
+        "moodScore": {
+          "selectedValue": 11,
+          "selectedLabel": "Neutral"
+        },
+        "dailyRecap": {
+          "therapistNarrative": "Mila worked on Peer Play, Matching, Independent Work and made moderate progress.",
+          "progressLevel": "moderate",
+          "independenceLevel": "partial independence",
+          "interferingBehaviorLevel": "moderate"
+        },
+        "monthlyGoal": {
+          "description": "Engage in turn-taking for five minutes."
+        },
+        "successCriteriaMet": [
+          "Completed target program opportunities",
+          "Responded to planned prompts",
+          "Care team notes updated"
+        ],
+        "programsWorkedOn": [
+          "Transitions",
+          "Independent Work",
+          "Receptive Language"
+        ],
+        "interferingBehaviors": [
+          {
+            "behavior": "Task refusal",
+            "frequency": 0,
+            "intensity": "low"
+          }
+        ],
+        "meals": [
+          {
+            "type": "Snack",
+            "status": "Ate most of snack"
+          }
+        ],
+        "toileting": [
+          {
+            "status": "Successful bathroom trip"
+          }
+        ],
+        "pleaseBringIn": []
+      }
+    },
+    {
+      "id": "sum-009-3",
+      "sessionId": "sess-009-3",
+      "childId": "child-009",
+      "therapistId": "aba-101",
+      "status": "approved",
+      "generatedAt": "2026-04-29T12:10:00",
+      "approvedAt": "2026-04-29T12:30:00",
+      "summary": {
+        "moodScore": {
+          "selectedValue": 12,
+          "selectedLabel": "Happy"
+        },
+        "dailyRecap": {
+          "therapistNarrative": "Mila worked on Peer Play, Matching, Independent Work and made moderate progress.",
+          "progressLevel": "moderate",
+          "independenceLevel": "partial independence",
+          "interferingBehaviorLevel": "low"
+        },
+        "monthlyGoal": {
+          "description": "Engage in turn-taking for five minutes."
+        },
+        "successCriteriaMet": [
+          "Completed target program opportunities",
+          "Responded to planned prompts",
+          "Care team notes updated"
+        ],
+        "programsWorkedOn": [
+          "Independent Work",
+          "Transitions",
+          "Visual Schedule"
+        ],
+        "interferingBehaviors": [
+          {
+            "behavior": "Task refusal",
+            "frequency": 1,
+            "intensity": "low"
+          }
+        ],
+        "meals": [
+          {
+            "type": "Snack",
+            "status": "No meal data logged"
+          }
+        ],
+        "toileting": [
+          {
+            "status": "No toileting data logged"
+          }
+        ],
+        "pleaseBringIn": []
+      }
+    },
+    {
+      "id": "sum-009-4",
+      "sessionId": "sess-009-4",
+      "childId": "child-009",
+      "therapistId": "aba-101",
+      "status": "draft",
+      "generatedAt": "2026-04-30T16:10:00",
+      "approvedAt": null,
+      "summary": {
+        "moodScore": {
+          "selectedValue": 13,
+          "selectedLabel": "Happy"
+        },
+        "dailyRecap": {
+          "therapistNarrative": "Mila worked on Peer Play, Matching, Independent Work and made high progress.",
+          "progressLevel": "high",
+          "independenceLevel": "mostly independent",
+          "interferingBehaviorLevel": "low"
+        },
+        "monthlyGoal": {
+          "description": "Engage in turn-taking for five minutes."
+        },
+        "successCriteriaMet": [
+          "Completed target program opportunities",
+          "Responded to planned prompts",
+          "Care team notes updated"
+        ],
+        "programsWorkedOn": [
+          "Visual Schedule",
+          "Functional Communication",
+          "Peer Play"
+        ],
+        "interferingBehaviors": [
+          {
+            "behavior": "Task refusal",
+            "frequency": 2,
+            "intensity": "moderate"
+          }
+        ],
+        "meals": [
+          {
+            "type": "Snack",
+            "status": "Ate most of snack"
+          }
+        ],
+        "toileting": [
+          {
+            "status": "Successful bathroom trip"
+          }
+        ],
+        "pleaseBringIn": []
+      }
+    }
+  ],
+  "progressReports": [
+    {
+      "id": "pr-001-1",
+      "childId": "child-001",
+      "therapistId": "aba-101",
+      "summary": "Zahari made moderate progress on Use functional communication during transitions.",
+      "date": "2026-04-27"
+    },
+    {
+      "id": "pr-001-2",
+      "childId": "child-001",
+      "therapistId": "aba-102",
+      "summary": "Zahari made moderate progress on Use functional communication during transitions.",
+      "date": "2026-04-28"
+    },
+    {
+      "id": "pr-001-3",
+      "childId": "child-001",
+      "therapistId": "aba-101",
+      "summary": "Zahari made moderate progress on Use functional communication during transitions.",
+      "date": "2026-04-29"
+    },
+    {
+      "id": "pr-001-4",
+      "childId": "child-001",
+      "therapistId": "aba-102",
+      "summary": "Zahari made high progress on Use functional communication during transitions.",
+      "date": "2026-04-30"
+    },
+    {
+      "id": "pr-002-1",
+      "childId": "child-002",
+      "therapistId": "aba-101",
+      "summary": "Aubrey made moderate progress on Increase spontaneous requests for preferred items.",
+      "date": "2026-04-27"
+    },
+    {
+      "id": "pr-002-2",
+      "childId": "child-002",
+      "therapistId": "aba-101",
+      "summary": "Aubrey made moderate progress on Increase spontaneous requests for preferred items.",
+      "date": "2026-04-28"
+    },
+    {
+      "id": "pr-002-3",
+      "childId": "child-002",
+      "therapistId": "aba-101",
+      "summary": "Aubrey made moderate progress on Increase spontaneous requests for preferred items.",
+      "date": "2026-04-29"
+    },
+    {
+      "id": "pr-002-4",
+      "childId": "child-002",
+      "therapistId": "aba-101",
+      "summary": "Aubrey made high progress on Increase spontaneous requests for preferred items.",
+      "date": "2026-04-30"
+    },
+    {
+      "id": "pr-003-1",
+      "childId": "child-003",
+      "therapistId": "aba-102",
+      "summary": "Mason made moderate progress on Participate in peer play for 10 minutes.",
+      "date": "2026-04-27"
+    },
+    {
+      "id": "pr-003-2",
+      "childId": "child-003",
+      "therapistId": "aba-102",
+      "summary": "Mason made moderate progress on Participate in peer play for 10 minutes.",
+      "date": "2026-04-28"
+    },
+    {
+      "id": "pr-003-3",
+      "childId": "child-003",
+      "therapistId": "aba-102",
+      "summary": "Mason made moderate progress on Participate in peer play for 10 minutes.",
+      "date": "2026-04-29"
+    },
+    {
+      "id": "pr-003-4",
+      "childId": "child-003",
+      "therapistId": "aba-102",
+      "summary": "Mason made moderate progress on Participate in peer play for 10 minutes.",
+      "date": "2026-04-30"
+    },
+    {
+      "id": "pr-004-1",
+      "childId": "child-004",
+      "therapistId": "aba-103",
+      "summary": "Harper made moderate progress on Complete independent table work for 12 minutes.",
+      "date": "2026-04-27"
+    },
+    {
+      "id": "pr-004-2",
+      "childId": "child-004",
+      "therapistId": "aba-103",
+      "summary": "Harper made moderate progress on Complete independent table work for 12 minutes.",
+      "date": "2026-04-28"
+    },
+    {
+      "id": "pr-004-3",
+      "childId": "child-004",
+      "therapistId": "aba-103",
+      "summary": "Harper made moderate progress on Complete independent table work for 12 minutes.",
+      "date": "2026-04-29"
+    },
+    {
+      "id": "pr-004-4",
+      "childId": "child-004",
+      "therapistId": "aba-103",
+      "summary": "Harper made moderate progress on Complete independent table work for 12 minutes.",
+      "date": "2026-04-30"
+    },
+    {
+      "id": "pr-005-1",
+      "childId": "child-005",
+      "therapistId": "aba-102",
+      "summary": "Lakelynn made supportive progress on Follow visual schedule across four transitions.",
+      "date": "2026-04-27"
+    },
+    {
+      "id": "pr-005-2",
+      "childId": "child-005",
+      "therapistId": "aba-102",
+      "summary": "Lakelynn made supportive progress on Follow visual schedule across four transitions.",
+      "date": "2026-04-28"
+    },
+    {
+      "id": "pr-005-3",
+      "childId": "child-005",
+      "therapistId": "aba-102",
+      "summary": "Lakelynn made moderate progress on Follow visual schedule across four transitions.",
+      "date": "2026-04-29"
+    },
+    {
+      "id": "pr-005-4",
+      "childId": "child-005",
+      "therapistId": "aba-102",
+      "summary": "Lakelynn made moderate progress on Follow visual schedule across four transitions.",
+      "date": "2026-04-30"
+    },
+    {
+      "id": "pr-006-1",
+      "childId": "child-006",
+      "therapistId": "aba-104",
+      "summary": "Eli made moderate progress on Imitate 10 motor actions.",
+      "date": "2026-04-27"
+    },
+    {
+      "id": "pr-006-2",
+      "childId": "child-006",
+      "therapistId": "aba-101",
+      "summary": "Eli made moderate progress on Imitate 10 motor actions.",
+      "date": "2026-04-28"
+    },
+    {
+      "id": "pr-006-3",
+      "childId": "child-006",
+      "therapistId": "aba-104",
+      "summary": "Eli made moderate progress on Imitate 10 motor actions.",
+      "date": "2026-04-29"
+    },
+    {
+      "id": "pr-006-4",
+      "childId": "child-006",
+      "therapistId": "aba-101",
+      "summary": "Eli made moderate progress on Imitate 10 motor actions.",
+      "date": "2026-04-30"
+    },
+    {
+      "id": "pr-007-1",
+      "childId": "child-007",
+      "therapistId": "aba-103",
+      "summary": "Sofia made moderate progress on Transition with one prompt or less.",
+      "date": "2026-04-27"
+    },
+    {
+      "id": "pr-007-2",
+      "childId": "child-007",
+      "therapistId": "aba-103",
+      "summary": "Sofia made moderate progress on Transition with one prompt or less.",
+      "date": "2026-04-28"
+    },
+    {
+      "id": "pr-007-3",
+      "childId": "child-007",
+      "therapistId": "aba-103",
+      "summary": "Sofia made high progress on Transition with one prompt or less.",
+      "date": "2026-04-29"
+    },
+    {
+      "id": "pr-007-4",
+      "childId": "child-007",
+      "therapistId": "aba-103",
+      "summary": "Sofia made high progress on Transition with one prompt or less.",
+      "date": "2026-04-30"
+    },
+    {
+      "id": "pr-008-1",
+      "childId": "child-008",
+      "therapistId": "aba-102",
+      "summary": "Noah made supportive progress on Respond to eight receptive instructions.",
+      "date": "2026-04-27"
+    },
+    {
+      "id": "pr-008-2",
+      "childId": "child-008",
+      "therapistId": "aba-102",
+      "summary": "Noah made supportive progress on Respond to eight receptive instructions.",
+      "date": "2026-04-28"
+    },
+    {
+      "id": "pr-008-4",
+      "childId": "child-008",
+      "therapistId": "aba-102",
+      "summary": "Noah made moderate progress on Respond to eight receptive instructions.",
+      "date": "2026-04-30"
+    },
+    {
+      "id": "pr-009-1",
+      "childId": "child-009",
+      "therapistId": "aba-101",
+      "summary": "Mila made moderate progress on Engage in turn-taking for five minutes.",
+      "date": "2026-04-27"
+    },
+    {
+      "id": "pr-009-2",
+      "childId": "child-009",
+      "therapistId": "aba-101",
+      "summary": "Mila made moderate progress on Engage in turn-taking for five minutes.",
+      "date": "2026-04-28"
+    },
+    {
+      "id": "pr-009-3",
+      "childId": "child-009",
+      "therapistId": "aba-101",
+      "summary": "Mila made moderate progress on Engage in turn-taking for five minutes.",
+      "date": "2026-04-29"
+    },
+    {
+      "id": "pr-009-4",
+      "childId": "child-009",
+      "therapistId": "aba-101",
+      "summary": "Mila made high progress on Engage in turn-taking for five minutes.",
+      "date": "2026-04-30"
+    }
+  ],
+  "nextSessions": [
+    {
+      "id": "ns-001",
+      "childId": "child-001",
+      "therapistId": "aba-101",
+      "date": "2026-05-01",
+      "time": "09:00"
+    },
+    {
+      "id": "ns-002",
+      "childId": "child-002",
+      "therapistId": "aba-101",
+      "date": "2026-05-01",
+      "time": "13:00"
+    },
+    {
+      "id": "ns-003",
+      "childId": "child-003",
+      "therapistId": "aba-102",
+      "date": "2026-05-01",
+      "time": "09:00"
+    },
+    {
+      "id": "ns-004",
+      "childId": "child-004",
+      "therapistId": "aba-103",
+      "date": "2026-05-01",
+      "time": "13:00"
+    },
+    {
+      "id": "ns-005",
+      "childId": "child-005",
+      "therapistId": "aba-102",
+      "date": "2026-05-01",
+      "time": "09:00"
+    },
+    {
+      "id": "ns-006",
+      "childId": "child-006",
+      "therapistId": "aba-104",
+      "date": "2026-05-01",
+      "time": "13:00"
+    },
+    {
+      "id": "ns-007",
+      "childId": "child-007",
+      "therapistId": "aba-103",
+      "date": "2026-05-01",
+      "time": "09:00"
+    },
+    {
+      "id": "ns-008",
+      "childId": "child-008",
+      "therapistId": "aba-102",
+      "date": "2026-05-01",
+      "time": "13:00"
+    },
+    {
+      "id": "ns-009",
+      "childId": "child-009",
+      "therapistId": "aba-101",
+      "date": "2026-05-01",
+      "time": "09:00"
+    }
+  ],
+  "moodScores": [
+    {
+      "id": "mh-001",
+      "childId": "child-001",
+      "scores": [
+        {
+          "date": "2026-04-27",
+          "score": 10,
+          "label": "Neutral"
+        },
+        {
+          "date": "2026-04-28",
+          "score": 11,
+          "label": "Neutral"
+        },
+        {
+          "date": "2026-04-29",
+          "score": 12,
+          "label": "Positive"
+        },
+        {
+          "date": "2026-04-30",
+          "score": 13,
+          "label": "Positive"
+        },
+        {
+          "date": "2026-05-01",
+          "score": 14,
+          "label": "Positive"
+        }
+      ]
+    },
+    {
+      "id": "mh-002",
+      "childId": "child-002",
+      "scores": [
+        {
+          "date": "2026-04-27",
+          "score": 10,
+          "label": "Neutral"
+        },
+        {
+          "date": "2026-04-28",
+          "score": 11,
+          "label": "Neutral"
+        },
+        {
+          "date": "2026-04-29",
+          "score": 12,
+          "label": "Positive"
+        },
+        {
+          "date": "2026-04-30",
+          "score": 13,
+          "label": "Positive"
+        },
+        {
+          "date": "2026-05-01",
+          "score": 14,
+          "label": "Positive"
+        }
+      ]
+    },
+    {
+      "id": "mh-003",
+      "childId": "child-003",
+      "scores": [
+        {
+          "date": "2026-04-27",
+          "score": 8,
+          "label": "Neutral"
+        },
+        {
+          "date": "2026-04-28",
+          "score": 9,
+          "label": "Neutral"
+        },
+        {
+          "date": "2026-04-29",
+          "score": 10,
+          "label": "Neutral"
+        },
+        {
+          "date": "2026-04-30",
+          "score": 11,
+          "label": "Neutral"
+        },
+        {
+          "date": "2026-05-01",
+          "score": 12,
+          "label": "Positive"
+        }
+      ]
+    },
+    {
+      "id": "mh-004",
+      "childId": "child-004",
+      "scores": [
+        {
+          "date": "2026-04-27",
+          "score": 8,
+          "label": "Neutral"
+        },
+        {
+          "date": "2026-04-28",
+          "score": 9,
+          "label": "Neutral"
+        },
+        {
+          "date": "2026-04-29",
+          "score": 10,
+          "label": "Neutral"
+        },
+        {
+          "date": "2026-04-30",
+          "score": 11,
+          "label": "Neutral"
+        },
+        {
+          "date": "2026-05-01",
+          "score": 12,
+          "label": "Positive"
+        }
+      ]
+    },
+    {
+      "id": "mh-005",
+      "childId": "child-005",
+      "scores": [
+        {
+          "date": "2026-04-27",
+          "score": 6,
+          "label": "Needs Support"
+        },
+        {
+          "date": "2026-04-28",
+          "score": 7,
+          "label": "Needs Support"
+        },
+        {
+          "date": "2026-04-29",
+          "score": 8,
+          "label": "Neutral"
+        },
+        {
+          "date": "2026-04-30",
+          "score": 9,
+          "label": "Neutral"
+        },
+        {
+          "date": "2026-05-01",
+          "score": 10,
+          "label": "Neutral"
+        }
+      ]
+    },
+    {
+      "id": "mh-006",
+      "childId": "child-006",
+      "scores": [
+        {
+          "date": "2026-04-27",
+          "score": 9,
+          "label": "Neutral"
+        },
+        {
+          "date": "2026-04-28",
+          "score": 10,
+          "label": "Neutral"
+        },
+        {
+          "date": "2026-04-29",
+          "score": 11,
+          "label": "Neutral"
+        },
+        {
+          "date": "2026-04-30",
+          "score": 12,
+          "label": "Positive"
+        },
+        {
+          "date": "2026-05-01",
+          "score": 13,
+          "label": "Positive"
+        }
+      ]
+    },
+    {
+      "id": "mh-007",
+      "childId": "child-007",
+      "scores": [
+        {
+          "date": "2026-04-27",
+          "score": 11,
+          "label": "Neutral"
+        },
+        {
+          "date": "2026-04-28",
+          "score": 12,
+          "label": "Positive"
+        },
+        {
+          "date": "2026-04-29",
+          "score": 13,
+          "label": "Positive"
+        },
+        {
+          "date": "2026-04-30",
+          "score": 14,
+          "label": "Positive"
+        },
+        {
+          "date": "2026-05-01",
+          "score": 15,
+          "label": "Positive"
+        }
+      ]
+    },
+    {
+      "id": "mh-008",
+      "childId": "child-008",
+      "scores": [
+        {
+          "date": "2026-04-27",
+          "score": 5,
+          "label": "Needs Support"
+        },
+        {
+          "date": "2026-04-28",
+          "score": 6,
+          "label": "Needs Support"
+        },
+        {
+          "date": "2026-04-29",
+          "score": 7,
+          "label": "Needs Support"
+        },
+        {
+          "date": "2026-04-30",
+          "score": 8,
+          "label": "Neutral"
+        },
+        {
+          "date": "2026-05-01",
+          "score": 9,
+          "label": "Neutral"
+        }
+      ]
+    },
+    {
+      "id": "mh-009",
+      "childId": "child-009",
+      "scores": [
+        {
+          "date": "2026-04-27",
+          "score": 10,
+          "label": "Neutral"
+        },
+        {
+          "date": "2026-04-28",
+          "score": 11,
+          "label": "Neutral"
+        },
+        {
+          "date": "2026-04-29",
+          "score": 12,
+          "label": "Positive"
+        },
+        {
+          "date": "2026-04-30",
+          "score": 13,
+          "label": "Positive"
+        },
+        {
+          "date": "2026-05-01",
+          "score": 14,
+          "label": "Positive"
+        }
+      ]
+    }
+  ],
+  "messageThreads": {
+    "parent": [
+      {
+        "threadId": "pth-001",
+        "participants": [
+          "par-001",
+          "aba-101"
+        ],
+        "unreadCount": 1,
+        "messages": [
+          {
+            "from": "par-001",
+            "text": "How did Zahari do with transitions today?",
+            "time": "2026-04-27T15:05:00"
+          },
+          {
+            "from": "aba-101",
+            "text": "He used his communication card and made moderate progress.",
+            "time": "2026-04-27T15:08:00"
+          }
+        ]
+      },
+      {
+        "threadId": "pth-002",
+        "participants": [
+          "par-001",
+          "office-001"
+        ],
+        "unreadCount": 0,
+        "messages": [
+          {
+            "from": "par-001",
+            "text": "Can you confirm our authorization status?",
+            "time": "2026-04-28T10:10:00"
+          },
+          {
+            "from": "office-001",
+            "text": "Yes, there are 48 hours remaining for Zahari.",
+            "time": "2026-04-28T10:18:00"
+          }
+        ]
+      },
+      {
+        "threadId": "pth-003",
+        "participants": [
+          "par-006",
+          "staff-002"
+        ],
+        "unreadCount": 0,
+        "messages": [
+          {
+            "from": "par-006",
+            "text": "Will Noah need extra supplies this week?",
+            "time": "2026-04-29T11:30:00"
+          },
+          {
+            "from": "staff-002",
+            "text": "Please send an extra shirt and preferred snack.",
+            "time": "2026-04-29T11:33:00"
+          }
+        ]
+      }
+    ],
+    "therapist": [
+      {
+        "threadId": "tth-001",
+        "participants": [
+          "aba-101",
+          "bcba-001"
+        ],
+        "messages": [
+          {
+            "from": "aba-101",
+            "text": "Can you review Zahari's transition goal data?",
+            "time": "2026-04-27T12:40:00"
+          },
+          {
+            "from": "bcba-001",
+            "text": "Yes, send the summary after your PM session.",
+            "time": "2026-04-27T12:45:00"
+          }
+        ]
+      },
+      {
+        "threadId": "tth-002",
+        "participants": [
+          "aba-102",
+          "aba-103"
+        ],
+        "messages": [
+          {
+            "from": "aba-102",
+            "text": "Can you cover Green-1 during lunch?",
+            "time": "2026-04-28T11:20:00"
+          },
+          {
+            "from": "aba-103",
+            "text": "Yes, I can take it.",
+            "time": "2026-04-28T11:22:00"
+          }
+        ]
+      }
+    ],
+    "admin": [
+      {
+        "threadId": "ath-001",
+        "participants": [
+          "staff-001",
+          "staff-003"
+        ],
+        "messages": [
+          {
+            "from": "staff-001",
+            "text": "Enrollment forms are ready for review.",
+            "time": "2026-04-27T08:00:00"
+          },
+          {
+            "from": "staff-003",
+            "text": "Great, send them to parents after QA.",
+            "time": "2026-04-27T08:05:00"
+          }
+        ]
+      },
+      {
+        "threadId": "ath-002",
+        "participants": [
+          "staff-002",
+          "staff-004"
+        ],
+        "messages": [
+          {
+            "from": "staff-002",
+            "text": "Pickup line is backed up today.",
+            "time": "2026-04-30T16:10:00"
+          },
+          {
+            "from": "staff-004",
+            "text": "I updated the route notice.",
+            "time": "2026-04-30T16:12:00"
+          }
+        ]
+      }
+    ]
+  },
+  "urgentMemos": [
+    {
+      "id": "memo-001",
+      "title": "Room Change",
+      "message": "Blue-2 will meet in Green-1 today.",
+      "priority": "urgent",
+      "time": "2026-04-27T07:30:00",
+      "status": "pending",
+      "type": "admin_memo"
+    },
+    {
+      "id": "memo-002",
+      "title": "Health Reminder",
+      "message": "Please send an extra change of clothes this week.",
+      "priority": "normal",
+      "time": "2026-04-28T07:30:00",
+      "status": "read",
+      "type": "admin_memo"
+    },
+    {
+      "id": "memo-003",
+      "title": "Pickup Delay",
+      "message": "Pickup line is running 15 minutes behind.",
+      "priority": "urgent",
+      "time": "2026-04-29T15:30:00",
+      "status": "pending",
+      "type": "admin_memo"
+    },
+    {
+      "id": "memo-004",
+      "title": "Staff Coverage",
+      "message": "ABA team coverage updated for Friday.",
+      "priority": "normal",
+      "time": "2026-04-30T09:00:00",
+      "status": "resolved",
+      "type": "admin_memo"
+    },
+    {
+      "id": "memo-005",
+      "title": "Center Closed Early",
+      "message": "The center closes at 3:30 PM for staff training.",
+      "priority": "urgent",
+      "time": "2026-05-01T08:00:00",
+      "status": "pending",
+      "type": "admin_memo"
+    }
+  ],
+  "timeChangeProposals": [
+    {
+      "id": "proposal-001",
+      "childId": "child-001",
+      "type": "pickup",
+      "proposedISO": "2026-04-27T12:45:00",
+      "note": "Parent requested a 15 minute late pickup.",
+      "proposerId": "par-001",
+      "scope": "temporary",
+      "status": "pending",
+      "createdAt": "2026-04-27T08:30:00"
+    },
+    {
+      "id": "proposal-002",
+      "childId": "child-003",
+      "type": "dropoff",
+      "proposedISO": "2026-04-28T09:30:00",
+      "note": "Accepted test case.",
+      "proposerId": "par-002",
+      "scope": "temporary",
+      "status": "accepted",
+      "createdAt": "2026-04-28T08:00:00"
+    },
+    {
+      "id": "proposal-003",
+      "childId": "child-004",
+      "type": "pickup",
+      "proposedISO": "2026-04-29T16:30:00",
+      "note": "Rejected test case.",
+      "proposerId": "par-003",
+      "scope": "temporary",
+      "status": "rejected",
+      "createdAt": "2026-04-29T10:30:00"
+    },
+    {
+      "id": "proposal-004",
+      "childId": "child-006",
+      "type": "dropoff",
+      "proposedISO": "2026-05-01T08:45:00",
+      "note": "Permanent schedule change request.",
+      "proposerId": "par-004",
+      "scope": "permanent",
+      "status": "pending",
+      "createdAt": "2026-04-30T14:20:00"
+    }
+  ],
+  "insurancePlans": [
+    {
+      "id": "ins-001",
+      "childId": "child-001",
+      "planType": "primary",
+      "provider": "Demo Health Plan",
+      "subscriberName": "Zahari Cook",
+      "relationToSubscriber": "Self",
+      "memberId": "120990673290",
+      "groupNumber": "GRP-001",
+      "expirationDate": null,
+      "authorizationStatus": "active",
+      "billingContact": "billing@communitybridge.app"
+    },
+    {
+      "id": "ins-002",
+      "childId": "child-002",
+      "planType": "primary",
+      "provider": "CareFirst Demo",
+      "subscriberName": "Aubrey Cook",
+      "relationToSubscriber": "Self",
+      "memberId": "120990673291",
+      "groupNumber": "GRP-002",
+      "expirationDate": "2026-12-31",
+      "authorizationStatus": "active",
+      "billingContact": "billing@communitybridge.app"
+    },
+    {
+      "id": "ins-003",
+      "childId": "child-003",
+      "planType": "primary",
+      "provider": "BridgeCare Insurance",
+      "subscriberName": "Mason Thompson",
+      "relationToSubscriber": "Child",
+      "memberId": "120990673292",
+      "groupNumber": "GRP-003",
+      "expirationDate": "2026-12-31",
+      "authorizationStatus": "pending",
+      "billingContact": "billing@communitybridge.app"
+    },
+    {
+      "id": "ins-004",
+      "childId": "child-004",
+      "planType": "primary",
+      "provider": "Demo Health Plan",
+      "subscriberName": "Harper Moore",
+      "relationToSubscriber": "Child",
+      "memberId": "120990673293",
+      "groupNumber": "GRP-004",
+      "expirationDate": "2026-12-31",
+      "authorizationStatus": "active",
+      "billingContact": "billing@communitybridge.app"
+    },
+    {
+      "id": "ins-005",
+      "childId": "child-005",
+      "planType": "primary",
+      "provider": "CareFirst Demo",
+      "subscriberName": "Lakelynn Moore",
+      "relationToSubscriber": "Child",
+      "memberId": "120990673294",
+      "groupNumber": "GRP-001",
+      "expirationDate": null,
+      "authorizationStatus": "active",
+      "billingContact": "billing@communitybridge.app"
+    },
+    {
+      "id": "ins-006",
+      "childId": "child-006",
+      "planType": "primary",
+      "provider": "BridgeCare Insurance",
+      "subscriberName": "Eli Johnson",
+      "relationToSubscriber": "Child",
+      "memberId": "120990673295",
+      "groupNumber": "GRP-002",
+      "expirationDate": "2026-12-31",
+      "authorizationStatus": "needs_review",
+      "billingContact": "billing@communitybridge.app"
+    },
+    {
+      "id": "ins-007",
+      "childId": "child-007",
+      "planType": "primary",
+      "provider": "Demo Health Plan",
+      "subscriberName": "Sofia Grant",
+      "relationToSubscriber": "Child",
+      "memberId": "120990673296",
+      "groupNumber": "GRP-003",
+      "expirationDate": "2026-12-31",
+      "authorizationStatus": "active",
+      "billingContact": "billing@communitybridge.app"
+    },
+    {
+      "id": "ins-008",
+      "childId": "child-008",
+      "planType": "primary",
+      "provider": "CareFirst Demo",
+      "subscriberName": "Noah Ramirez",
+      "relationToSubscriber": "Child",
+      "memberId": "120990673297",
+      "groupNumber": "GRP-004",
+      "expirationDate": "2026-12-31",
+      "authorizationStatus": "expired",
+      "billingContact": "billing@communitybridge.app"
+    },
+    {
+      "id": "ins-009",
+      "childId": "child-009",
+      "planType": "primary",
+      "provider": "BridgeCare Insurance",
+      "subscriberName": "Mila Ramirez",
+      "relationToSubscriber": "Child",
+      "memberId": "120990673298",
+      "groupNumber": "GRP-001",
+      "expirationDate": null,
+      "authorizationStatus": "active",
+      "billingContact": "billing@communitybridge.app"
+    },
+    {
+      "id": "ins-010",
+      "childId": "child-010",
+      "planType": "primary",
+      "provider": "Demo Health Plan",
+      "subscriberName": "Leo Ramirez",
+      "relationToSubscriber": "Child",
+      "memberId": "120990673299",
+      "groupNumber": "GRP-002",
+      "expirationDate": "2026-12-31",
+      "authorizationStatus": "intake",
+      "billingContact": "billing@communitybridge.app"
+    }
+  ],
+  "invoices": [
+    {
+      "id": "invoice-001",
+      "childId": "child-001",
+      "amountDue": 0,
+      "status": "paid",
+      "description": "Demo services balance",
+      "dueDate": "2026-05-15"
+    },
+    {
+      "id": "invoice-002",
+      "childId": "child-002",
+      "amountDue": 45,
+      "status": "open",
+      "description": "Demo services balance",
+      "dueDate": "2026-05-15"
+    },
+    {
+      "id": "invoice-003",
+      "childId": "child-003",
+      "amountDue": 120,
+      "status": "overdue",
+      "description": "Demo services balance",
+      "dueDate": "2026-05-15"
+    },
+    {
+      "id": "invoice-004",
+      "childId": "child-004",
+      "amountDue": 0,
+      "status": "paid",
+      "description": "Demo services balance",
+      "dueDate": "2026-05-15"
+    },
+    {
+      "id": "invoice-005",
+      "childId": "child-005",
+      "amountDue": 30,
+      "status": "open",
+      "description": "Demo services balance",
+      "dueDate": "2026-05-15"
+    },
+    {
+      "id": "invoice-006",
+      "childId": "child-006",
+      "amountDue": 75,
+      "status": "needs_review",
+      "description": "Demo services balance",
+      "dueDate": "2026-05-15"
+    },
+    {
+      "id": "invoice-007",
+      "childId": "child-007",
+      "amountDue": 0,
+      "status": "paid",
+      "description": "Demo services balance",
+      "dueDate": "2026-05-15"
+    },
+    {
+      "id": "invoice-008",
+      "childId": "child-008",
+      "amountDue": 220,
+      "status": "overdue",
+      "description": "Demo services balance",
+      "dueDate": "2026-05-15"
+    },
+    {
+      "id": "invoice-009",
+      "childId": "child-009",
+      "amountDue": 15,
+      "status": "open",
+      "description": "Demo services balance",
+      "dueDate": "2026-05-15"
+    },
+    {
+      "id": "invoice-010",
+      "childId": "child-010",
+      "amountDue": 0,
+      "status": "intake",
+      "description": "Demo services balance",
+      "dueDate": "2026-05-15"
+    }
+  ],
+  "authorizations": [
+    {
+      "id": "auth-001",
+      "childId": "child-001",
+      "approvedHours": 120,
+      "remainingHours": 48,
+      "status": "active",
+      "startDate": "2026-04-01",
+      "expirationDate": "2026-05-15"
+    },
+    {
+      "id": "auth-002",
+      "childId": "child-002",
+      "approvedHours": 100,
+      "remainingHours": 52,
+      "status": "active",
+      "startDate": "2026-04-01",
+      "expirationDate": "2026-12-31"
+    },
+    {
+      "id": "auth-003",
+      "childId": "child-003",
+      "approvedHours": 80,
+      "remainingHours": 12,
+      "status": "pending",
+      "startDate": "2026-04-01",
+      "expirationDate": "2026-12-31"
+    },
+    {
+      "id": "auth-004",
+      "childId": "child-004",
+      "approvedHours": 110,
+      "remainingHours": 65,
+      "status": "active",
+      "startDate": "2026-04-01",
+      "expirationDate": "2026-05-15"
+    },
+    {
+      "id": "auth-005",
+      "childId": "child-005",
+      "approvedHours": 90,
+      "remainingHours": 31,
+      "status": "active",
+      "startDate": "2026-04-01",
+      "expirationDate": "2026-12-31"
+    },
+    {
+      "id": "auth-006",
+      "childId": "child-006",
+      "approvedHours": 75,
+      "remainingHours": 0,
+      "status": "needs_review",
+      "startDate": "2026-04-01",
+      "expirationDate": "2026-12-31"
+    },
+    {
+      "id": "auth-007",
+      "childId": "child-007",
+      "approvedHours": 120,
+      "remainingHours": 88,
+      "status": "active",
+      "startDate": "2026-04-01",
+      "expirationDate": "2026-05-15"
+    },
+    {
+      "id": "auth-008",
+      "childId": "child-008",
+      "approvedHours": 60,
+      "remainingHours": 5,
+      "status": "expired",
+      "startDate": "2026-04-01",
+      "expirationDate": "2026-12-31"
+    },
+    {
+      "id": "auth-009",
+      "childId": "child-009",
+      "approvedHours": 100,
+      "remainingHours": 44,
+      "status": "active",
+      "startDate": "2026-04-01",
+      "expirationDate": "2026-12-31"
+    },
+    {
+      "id": "auth-010",
+      "childId": "child-010",
+      "approvedHours": 0,
+      "remainingHours": 0,
+      "status": "intake",
+      "startDate": "2026-04-01",
+      "expirationDate": "2026-05-15"
+    }
+  ],
+  "posts": [
+    {
+      "id": "post-001",
+      "title": "Zahari Cook Update",
+      "body": "Zahari made moderate progress on Use functional communication during transitions.",
+      "author": {
+        "id": "aba-101",
+        "name": "Jordan Ellis",
+        "role": "therapist"
+      },
+      "createdAt": "2026-04-27T13:00:00",
+      "likes": 1,
+      "shares": 1,
+      "comments": [
+        {
+          "id": "comment-001-1",
+          "body": "Thank you for the update!",
+          "author": {
+            "id": "par-001",
+            "name": "Alicia Cook"
+          },
+          "reactions": {
+            "heart": 1
+          },
+          "replies": [
+            {
+              "id": "reply-001-1",
+              "body": "You're welcome!",
+              "author": {
+                "id": "aba-101",
+                "name": "Care Team"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "post-002",
+      "title": "Zahari Cook Update",
+      "body": "Zahari made moderate progress on Use functional communication during transitions.",
+      "author": {
+        "id": "aba-102",
+        "name": "Samantha Reyes",
+        "role": "therapist"
+      },
+      "createdAt": "2026-04-28T13:00:00",
+      "likes": 2,
+      "shares": 0,
+      "comments": []
+    },
+    {
+      "id": "post-003",
+      "title": "Zahari Cook Update",
+      "body": "Zahari made moderate progress on Use functional communication during transitions.",
+      "author": {
+        "id": "aba-101",
+        "name": "Jordan Ellis",
+        "role": "therapist"
+      },
+      "createdAt": "2026-04-29T13:00:00",
+      "likes": 3,
+      "shares": 1,
+      "comments": [
+        {
+          "id": "comment-003-1",
+          "body": "Thank you for the update!",
+          "author": {
+            "id": "par-001",
+            "name": "Alicia Cook"
+          },
+          "reactions": {
+            "heart": 1
+          },
+          "replies": [
+            {
+              "id": "reply-003-1",
+              "body": "You're welcome!",
+              "author": {
+                "id": "aba-101",
+                "name": "Care Team"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "post-004",
+      "title": "Zahari Cook Update",
+      "body": "Zahari made high progress on Use functional communication during transitions.",
+      "author": {
+        "id": "aba-102",
+        "name": "Samantha Reyes",
+        "role": "therapist"
+      },
+      "createdAt": "2026-04-30T13:00:00",
+      "likes": 0,
+      "shares": 0,
+      "comments": []
+    },
+    {
+      "id": "post-005",
+      "title": "Aubrey Cook Update",
+      "body": "Aubrey made moderate progress on Increase spontaneous requests for preferred items.",
+      "author": {
+        "id": "aba-101",
+        "name": "Jordan Ellis",
+        "role": "therapist"
+      },
+      "createdAt": "2026-04-27T13:00:00",
+      "likes": 1,
+      "shares": 1,
+      "comments": [
+        {
+          "id": "comment-005-1",
+          "body": "Thank you for the update!",
+          "author": {
+            "id": "par-001",
+            "name": "Alicia Cook"
+          },
+          "reactions": {
+            "heart": 1
+          },
+          "replies": [
+            {
+              "id": "reply-005-1",
+              "body": "You're welcome!",
+              "author": {
+                "id": "aba-101",
+                "name": "Care Team"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "post-006",
+      "title": "Aubrey Cook Update",
+      "body": "Aubrey made moderate progress on Increase spontaneous requests for preferred items.",
+      "author": {
+        "id": "aba-101",
+        "name": "Jordan Ellis",
+        "role": "therapist"
+      },
+      "createdAt": "2026-04-28T13:00:00",
+      "likes": 2,
+      "shares": 0,
+      "comments": []
+    },
+    {
+      "id": "post-007",
+      "title": "Aubrey Cook Update",
+      "body": "Aubrey made moderate progress on Increase spontaneous requests for preferred items.",
+      "author": {
+        "id": "aba-101",
+        "name": "Jordan Ellis",
+        "role": "therapist"
+      },
+      "createdAt": "2026-04-29T13:00:00",
+      "likes": 3,
+      "shares": 1,
+      "comments": [
+        {
+          "id": "comment-007-1",
+          "body": "Thank you for the update!",
+          "author": {
+            "id": "par-001",
+            "name": "Alicia Cook"
+          },
+          "reactions": {
+            "heart": 1
+          },
+          "replies": [
+            {
+              "id": "reply-007-1",
+              "body": "You're welcome!",
+              "author": {
+                "id": "aba-101",
+                "name": "Care Team"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "post-008",
+      "title": "Aubrey Cook Update",
+      "body": "Aubrey made high progress on Increase spontaneous requests for preferred items.",
+      "author": {
+        "id": "aba-101",
+        "name": "Jordan Ellis",
+        "role": "therapist"
+      },
+      "createdAt": "2026-04-30T13:00:00",
+      "likes": 0,
+      "shares": 0,
+      "comments": []
+    },
+    {
+      "id": "post-009",
+      "title": "Mason Thompson Update",
+      "body": "Mason made moderate progress on Participate in peer play for 10 minutes.",
+      "author": {
+        "id": "aba-102",
+        "name": "Samantha Reyes",
+        "role": "therapist"
+      },
+      "createdAt": "2026-04-27T13:00:00",
+      "likes": 1,
+      "shares": 1,
+      "comments": [
+        {
+          "id": "comment-009-1",
+          "body": "Thank you for the update!",
+          "author": {
+            "id": "par-002",
+            "name": "Brian Thompson"
+          },
+          "reactions": {
+            "heart": 1
+          },
+          "replies": [
+            {
+              "id": "reply-009-1",
+              "body": "You're welcome!",
+              "author": {
+                "id": "aba-102",
+                "name": "Care Team"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "post-010",
+      "title": "Mason Thompson Update",
+      "body": "Mason made moderate progress on Participate in peer play for 10 minutes.",
+      "author": {
+        "id": "aba-102",
+        "name": "Samantha Reyes",
+        "role": "therapist"
+      },
+      "createdAt": "2026-04-28T13:00:00",
+      "likes": 2,
+      "shares": 0,
+      "comments": []
+    }
+  ],
+  "meals": [
+    {
+      "id": "meal-001-1",
+      "childId": "child-001",
+      "sessionId": "sess-001-1",
+      "date": "2026-04-27",
+      "mealType": "Snack",
+      "status": "Ate most",
+      "notes": "Preferred fruit and crackers."
+    },
+    {
+      "id": "meal-001-2",
+      "childId": "child-001",
+      "sessionId": "sess-001-2",
+      "date": "2026-04-28",
+      "mealType": "Snack",
+      "status": "Ate most",
+      "notes": "Preferred fruit and crackers."
+    },
+    {
+      "id": "meal-001-3",
+      "childId": "child-001",
+      "sessionId": "sess-001-3",
+      "date": "2026-04-29",
+      "mealType": "Snack",
+      "status": "Ate most",
+      "notes": "Preferred fruit and crackers."
+    },
+    {
+      "id": "meal-001-4",
+      "childId": "child-001",
+      "sessionId": "sess-001-4",
+      "date": "2026-04-30",
+      "mealType": "Snack",
+      "status": "Ate most",
+      "notes": "Preferred fruit and crackers."
+    },
+    {
+      "id": "meal-002-1",
+      "childId": "child-002",
+      "sessionId": "sess-002-1",
+      "date": "2026-04-27",
+      "mealType": "Snack",
+      "status": "Ate most",
+      "notes": "Preferred fruit and crackers."
+    },
+    {
+      "id": "meal-002-2",
+      "childId": "child-002",
+      "sessionId": "sess-002-2",
+      "date": "2026-04-28",
+      "mealType": "Snack",
+      "status": "Ate most",
+      "notes": "Preferred fruit and crackers."
+    },
+    {
+      "id": "meal-002-3",
+      "childId": "child-002",
+      "sessionId": "sess-002-3",
+      "date": "2026-04-29",
+      "mealType": "Snack",
+      "status": "Ate most",
+      "notes": "Preferred fruit and crackers."
+    },
+    {
+      "id": "meal-002-4",
+      "childId": "child-002",
+      "sessionId": "sess-002-4",
+      "date": "2026-04-30",
+      "mealType": "Snack",
+      "status": "Ate most",
+      "notes": "Preferred fruit and crackers."
+    },
+    {
+      "id": "meal-003-1",
+      "childId": "child-003",
+      "sessionId": "sess-003-1",
+      "date": "2026-04-27",
+      "mealType": "Snack",
+      "status": "Ate most",
+      "notes": "Preferred fruit and crackers."
+    },
+    {
+      "id": "meal-003-2",
+      "childId": "child-003",
+      "sessionId": "sess-003-2",
+      "date": "2026-04-28",
+      "mealType": "Snack",
+      "status": "Ate most",
+      "notes": "Preferred fruit and crackers."
+    },
+    {
+      "id": "meal-003-3",
+      "childId": "child-003",
+      "sessionId": "sess-003-3",
+      "date": "2026-04-29",
+      "mealType": "Snack",
+      "status": "Ate most",
+      "notes": "Preferred fruit and crackers."
+    },
+    {
+      "id": "meal-003-4",
+      "childId": "child-003",
+      "sessionId": "sess-003-4",
+      "date": "2026-04-30",
+      "mealType": "Snack",
+      "status": "Ate most",
+      "notes": "Preferred fruit and crackers."
+    },
+    {
+      "id": "meal-004-1",
+      "childId": "child-004",
+      "sessionId": "sess-004-1",
+      "date": "2026-04-27",
+      "mealType": "Snack",
+      "status": "Ate most",
+      "notes": "Preferred fruit and crackers."
+    },
+    {
+      "id": "meal-004-2",
+      "childId": "child-004",
+      "sessionId": "sess-004-2",
+      "date": "2026-04-28",
+      "mealType": "Snack",
+      "status": "Ate most",
+      "notes": "Preferred fruit and crackers."
+    },
+    {
+      "id": "meal-004-3",
+      "childId": "child-004",
+      "sessionId": "sess-004-3",
+      "date": "2026-04-29",
+      "mealType": "Snack",
+      "status": "Ate most",
+      "notes": "Preferred fruit and crackers."
+    },
+    {
+      "id": "meal-004-4",
+      "childId": "child-004",
+      "sessionId": "sess-004-4",
+      "date": "2026-04-30",
+      "mealType": "Snack",
+      "status": "Ate most",
+      "notes": "Preferred fruit and crackers."
+    },
+    {
+      "id": "meal-005-1",
+      "childId": "child-005",
+      "sessionId": "sess-005-1",
+      "date": "2026-04-27",
+      "mealType": "Snack",
+      "status": "Ate most",
+      "notes": "Preferred fruit and crackers."
+    },
+    {
+      "id": "meal-005-2",
+      "childId": "child-005",
+      "sessionId": "sess-005-2",
+      "date": "2026-04-28",
+      "mealType": "Snack",
+      "status": "Ate most",
+      "notes": "Preferred fruit and crackers."
+    },
+    {
+      "id": "meal-005-3",
+      "childId": "child-005",
+      "sessionId": "sess-005-3",
+      "date": "2026-04-29",
+      "mealType": "Snack",
+      "status": "Ate most",
+      "notes": "Preferred fruit and crackers."
+    },
+    {
+      "id": "meal-005-4",
+      "childId": "child-005",
+      "sessionId": "sess-005-4",
+      "date": "2026-04-30",
+      "mealType": "Snack",
+      "status": "Ate most",
+      "notes": "Preferred fruit and crackers."
+    },
+    {
+      "id": "meal-006-1",
+      "childId": "child-006",
+      "sessionId": "sess-006-1",
+      "date": "2026-04-27",
+      "mealType": "Snack",
+      "status": "Ate most",
+      "notes": "Preferred fruit and crackers."
+    },
+    {
+      "id": "meal-006-2",
+      "childId": "child-006",
+      "sessionId": "sess-006-2",
+      "date": "2026-04-28",
+      "mealType": "Snack",
+      "status": "Ate most",
+      "notes": "Preferred fruit and crackers."
+    },
+    {
+      "id": "meal-006-3",
+      "childId": "child-006",
+      "sessionId": "sess-006-3",
+      "date": "2026-04-29",
+      "mealType": "Snack",
+      "status": "Ate most",
+      "notes": "Preferred fruit and crackers."
+    },
+    {
+      "id": "meal-006-4",
+      "childId": "child-006",
+      "sessionId": "sess-006-4",
+      "date": "2026-04-30",
+      "mealType": "Snack",
+      "status": "Ate most",
+      "notes": "Preferred fruit and crackers."
+    },
+    {
+      "id": "meal-007-1",
+      "childId": "child-007",
+      "sessionId": "sess-007-1",
+      "date": "2026-04-27",
+      "mealType": "Snack",
+      "status": "Ate most",
+      "notes": "Preferred fruit and crackers."
+    },
+    {
+      "id": "meal-007-2",
+      "childId": "child-007",
+      "sessionId": "sess-007-2",
+      "date": "2026-04-28",
+      "mealType": "Snack",
+      "status": "Ate most",
+      "notes": "Preferred fruit and crackers."
+    },
+    {
+      "id": "meal-007-3",
+      "childId": "child-007",
+      "sessionId": "sess-007-3",
+      "date": "2026-04-29",
+      "mealType": "Snack",
+      "status": "Ate most",
+      "notes": "Preferred fruit and crackers."
+    },
+    {
+      "id": "meal-007-4",
+      "childId": "child-007",
+      "sessionId": "sess-007-4",
+      "date": "2026-04-30",
+      "mealType": "Snack",
+      "status": "Ate most",
+      "notes": "Preferred fruit and crackers."
+    },
+    {
+      "id": "meal-008-1",
+      "childId": "child-008",
+      "sessionId": "sess-008-1",
+      "date": "2026-04-27",
+      "mealType": "Snack",
+      "status": "Ate most",
+      "notes": "Preferred fruit and crackers."
+    },
+    {
+      "id": "meal-008-2",
+      "childId": "child-008",
+      "sessionId": "sess-008-2",
+      "date": "2026-04-28",
+      "mealType": "Snack",
+      "status": "Ate most",
+      "notes": "Preferred fruit and crackers."
+    },
+    {
+      "id": "meal-008-4",
+      "childId": "child-008",
+      "sessionId": "sess-008-4",
+      "date": "2026-04-30",
+      "mealType": "Snack",
+      "status": "Ate most",
+      "notes": "Preferred fruit and crackers."
+    },
+    {
+      "id": "meal-009-1",
+      "childId": "child-009",
+      "sessionId": "sess-009-1",
+      "date": "2026-04-27",
+      "mealType": "Snack",
+      "status": "Ate most",
+      "notes": "Preferred fruit and crackers."
+    },
+    {
+      "id": "meal-009-2",
+      "childId": "child-009",
+      "sessionId": "sess-009-2",
+      "date": "2026-04-28",
+      "mealType": "Snack",
+      "status": "Ate most",
+      "notes": "Preferred fruit and crackers."
+    },
+    {
+      "id": "meal-009-3",
+      "childId": "child-009",
+      "sessionId": "sess-009-3",
+      "date": "2026-04-29",
+      "mealType": "Snack",
+      "status": "Ate most",
+      "notes": "Preferred fruit and crackers."
+    },
+    {
+      "id": "meal-009-4",
+      "childId": "child-009",
+      "sessionId": "sess-009-4",
+      "date": "2026-04-30",
+      "mealType": "Snack",
+      "status": "Ate most",
+      "notes": "Preferred fruit and crackers."
+    }
+  ],
+  "toileting": [
+    {
+      "id": "toilet-001-1",
+      "childId": "child-001",
+      "sessionId": "sess-001-1",
+      "date": "2026-04-27",
+      "status": "successful",
+      "notes": "Prompted once."
+    },
+    {
+      "id": "toilet-001-2",
+      "childId": "child-001",
+      "sessionId": "sess-001-2",
+      "date": "2026-04-28",
+      "status": "successful",
+      "notes": "Prompted once."
+    },
+    {
+      "id": "toilet-001-3",
+      "childId": "child-001",
+      "sessionId": "sess-001-3",
+      "date": "2026-04-29",
+      "status": "successful",
+      "notes": "Prompted once."
+    },
+    {
+      "id": "toilet-001-4",
+      "childId": "child-001",
+      "sessionId": "sess-001-4",
+      "date": "2026-04-30",
+      "status": "successful",
+      "notes": "Prompted once."
+    },
+    {
+      "id": "toilet-002-1",
+      "childId": "child-002",
+      "sessionId": "sess-002-1",
+      "date": "2026-04-27",
+      "status": "successful",
+      "notes": "Prompted once."
+    },
+    {
+      "id": "toilet-002-2",
+      "childId": "child-002",
+      "sessionId": "sess-002-2",
+      "date": "2026-04-28",
+      "status": "successful",
+      "notes": "Prompted once."
+    },
+    {
+      "id": "toilet-002-3",
+      "childId": "child-002",
+      "sessionId": "sess-002-3",
+      "date": "2026-04-29",
+      "status": "successful",
+      "notes": "Prompted once."
+    },
+    {
+      "id": "toilet-002-4",
+      "childId": "child-002",
+      "sessionId": "sess-002-4",
+      "date": "2026-04-30",
+      "status": "successful",
+      "notes": "Prompted once."
+    },
+    {
+      "id": "toilet-003-1",
+      "childId": "child-003",
+      "sessionId": "sess-003-1",
+      "date": "2026-04-27",
+      "status": "successful",
+      "notes": "Prompted once."
+    },
+    {
+      "id": "toilet-003-2",
+      "childId": "child-003",
+      "sessionId": "sess-003-2",
+      "date": "2026-04-28",
+      "status": "successful",
+      "notes": "Prompted once."
+    },
+    {
+      "id": "toilet-003-3",
+      "childId": "child-003",
+      "sessionId": "sess-003-3",
+      "date": "2026-04-29",
+      "status": "successful",
+      "notes": "Prompted once."
+    },
+    {
+      "id": "toilet-003-4",
+      "childId": "child-003",
+      "sessionId": "sess-003-4",
+      "date": "2026-04-30",
+      "status": "successful",
+      "notes": "Prompted once."
+    },
+    {
+      "id": "toilet-004-1",
+      "childId": "child-004",
+      "sessionId": "sess-004-1",
+      "date": "2026-04-27",
+      "status": "successful",
+      "notes": "Prompted once."
+    },
+    {
+      "id": "toilet-004-2",
+      "childId": "child-004",
+      "sessionId": "sess-004-2",
+      "date": "2026-04-28",
+      "status": "successful",
+      "notes": "Prompted once."
+    },
+    {
+      "id": "toilet-004-3",
+      "childId": "child-004",
+      "sessionId": "sess-004-3",
+      "date": "2026-04-29",
+      "status": "successful",
+      "notes": "Prompted once."
+    },
+    {
+      "id": "toilet-004-4",
+      "childId": "child-004",
+      "sessionId": "sess-004-4",
+      "date": "2026-04-30",
+      "status": "successful",
+      "notes": "Prompted once."
+    },
+    {
+      "id": "toilet-005-1",
+      "childId": "child-005",
+      "sessionId": "sess-005-1",
+      "date": "2026-04-27",
+      "status": "successful",
+      "notes": "Prompted once."
+    },
+    {
+      "id": "toilet-005-2",
+      "childId": "child-005",
+      "sessionId": "sess-005-2",
+      "date": "2026-04-28",
+      "status": "successful",
+      "notes": "Prompted once."
+    },
+    {
+      "id": "toilet-005-3",
+      "childId": "child-005",
+      "sessionId": "sess-005-3",
+      "date": "2026-04-29",
+      "status": "successful",
+      "notes": "Prompted once."
+    },
+    {
+      "id": "toilet-005-4",
+      "childId": "child-005",
+      "sessionId": "sess-005-4",
+      "date": "2026-04-30",
+      "status": "successful",
+      "notes": "Prompted once."
+    },
+    {
+      "id": "toilet-006-1",
+      "childId": "child-006",
+      "sessionId": "sess-006-1",
+      "date": "2026-04-27",
+      "status": "successful",
+      "notes": "Prompted once."
+    },
+    {
+      "id": "toilet-006-2",
+      "childId": "child-006",
+      "sessionId": "sess-006-2",
+      "date": "2026-04-28",
+      "status": "successful",
+      "notes": "Prompted once."
+    },
+    {
+      "id": "toilet-006-3",
+      "childId": "child-006",
+      "sessionId": "sess-006-3",
+      "date": "2026-04-29",
+      "status": "successful",
+      "notes": "Prompted once."
+    },
+    {
+      "id": "toilet-006-4",
+      "childId": "child-006",
+      "sessionId": "sess-006-4",
+      "date": "2026-04-30",
+      "status": "successful",
+      "notes": "Prompted once."
+    },
+    {
+      "id": "toilet-007-1",
+      "childId": "child-007",
+      "sessionId": "sess-007-1",
+      "date": "2026-04-27",
+      "status": "successful",
+      "notes": "Prompted once."
+    },
+    {
+      "id": "toilet-007-2",
+      "childId": "child-007",
+      "sessionId": "sess-007-2",
+      "date": "2026-04-28",
+      "status": "successful",
+      "notes": "Prompted once."
+    },
+    {
+      "id": "toilet-007-3",
+      "childId": "child-007",
+      "sessionId": "sess-007-3",
+      "date": "2026-04-29",
+      "status": "successful",
+      "notes": "Prompted once."
+    },
+    {
+      "id": "toilet-007-4",
+      "childId": "child-007",
+      "sessionId": "sess-007-4",
+      "date": "2026-04-30",
+      "status": "successful",
+      "notes": "Prompted once."
+    },
+    {
+      "id": "toilet-008-1",
+      "childId": "child-008",
+      "sessionId": "sess-008-1",
+      "date": "2026-04-27",
+      "status": "successful",
+      "notes": "Prompted once."
+    },
+    {
+      "id": "toilet-008-2",
+      "childId": "child-008",
+      "sessionId": "sess-008-2",
+      "date": "2026-04-28",
+      "status": "successful",
+      "notes": "Prompted once."
+    },
+    {
+      "id": "toilet-008-4",
+      "childId": "child-008",
+      "sessionId": "sess-008-4",
+      "date": "2026-04-30",
+      "status": "successful",
+      "notes": "Prompted once."
+    },
+    {
+      "id": "toilet-009-1",
+      "childId": "child-009",
+      "sessionId": "sess-009-1",
+      "date": "2026-04-27",
+      "status": "successful",
+      "notes": "Prompted once."
+    },
+    {
+      "id": "toilet-009-2",
+      "childId": "child-009",
+      "sessionId": "sess-009-2",
+      "date": "2026-04-28",
+      "status": "successful",
+      "notes": "Prompted once."
+    },
+    {
+      "id": "toilet-009-3",
+      "childId": "child-009",
+      "sessionId": "sess-009-3",
+      "date": "2026-04-29",
+      "status": "successful",
+      "notes": "Prompted once."
+    },
+    {
+      "id": "toilet-009-4",
+      "childId": "child-009",
+      "sessionId": "sess-009-4",
+      "date": "2026-04-30",
+      "status": "successful",
+      "notes": "Prompted once."
+    }
+  ],
+  "behaviorEvents": [
+    {
+      "id": "beh-001-1",
+      "childId": "child-001",
+      "sessionId": "sess-001-1",
+      "date": "2026-04-27",
+      "behavior": "Task refusal",
+      "frequency": 0,
+      "intensity": "low",
+      "response": "Redirected with visual schedule."
+    },
+    {
+      "id": "beh-001-2",
+      "childId": "child-001",
+      "sessionId": "sess-001-2",
+      "date": "2026-04-28",
+      "behavior": "Task refusal",
+      "frequency": 1,
+      "intensity": "low",
+      "response": "Redirected with visual schedule."
+    },
+    {
+      "id": "beh-001-3",
+      "childId": "child-001",
+      "sessionId": "sess-001-3",
+      "date": "2026-04-29",
+      "behavior": "Task refusal",
+      "frequency": 2,
+      "intensity": "moderate",
+      "response": "Redirected with visual schedule."
+    },
+    {
+      "id": "beh-001-4",
+      "childId": "child-001",
+      "sessionId": "sess-001-4",
+      "date": "2026-04-30",
+      "behavior": "Task refusal",
+      "frequency": 0,
+      "intensity": "low",
+      "response": "Redirected with visual schedule."
+    },
+    {
+      "id": "beh-002-1",
+      "childId": "child-002",
+      "sessionId": "sess-002-1",
+      "date": "2026-04-27",
+      "behavior": "Task refusal",
+      "frequency": 1,
+      "intensity": "low",
+      "response": "Redirected with visual schedule."
+    },
+    {
+      "id": "beh-002-2",
+      "childId": "child-002",
+      "sessionId": "sess-002-2",
+      "date": "2026-04-28",
+      "behavior": "Task refusal",
+      "frequency": 2,
+      "intensity": "moderate",
+      "response": "Redirected with visual schedule."
+    },
+    {
+      "id": "beh-002-3",
+      "childId": "child-002",
+      "sessionId": "sess-002-3",
+      "date": "2026-04-29",
+      "behavior": "Task refusal",
+      "frequency": 0,
+      "intensity": "low",
+      "response": "Redirected with visual schedule."
+    },
+    {
+      "id": "beh-002-4",
+      "childId": "child-002",
+      "sessionId": "sess-002-4",
+      "date": "2026-04-30",
+      "behavior": "Task refusal",
+      "frequency": 1,
+      "intensity": "low",
+      "response": "Redirected with visual schedule."
+    },
+    {
+      "id": "beh-003-1",
+      "childId": "child-003",
+      "sessionId": "sess-003-1",
+      "date": "2026-04-27",
+      "behavior": "Task refusal",
+      "frequency": 2,
+      "intensity": "moderate",
+      "response": "Redirected with visual schedule."
+    },
+    {
+      "id": "beh-003-2",
+      "childId": "child-003",
+      "sessionId": "sess-003-2",
+      "date": "2026-04-28",
+      "behavior": "Task refusal",
+      "frequency": 0,
+      "intensity": "low",
+      "response": "Redirected with visual schedule."
+    },
+    {
+      "id": "beh-003-3",
+      "childId": "child-003",
+      "sessionId": "sess-003-3",
+      "date": "2026-04-29",
+      "behavior": "Task refusal",
+      "frequency": 1,
+      "intensity": "low",
+      "response": "Redirected with visual schedule."
+    },
+    {
+      "id": "beh-003-4",
+      "childId": "child-003",
+      "sessionId": "sess-003-4",
+      "date": "2026-04-30",
+      "behavior": "Task refusal",
+      "frequency": 2,
+      "intensity": "moderate",
+      "response": "Redirected with visual schedule."
+    },
+    {
+      "id": "beh-004-1",
+      "childId": "child-004",
+      "sessionId": "sess-004-1",
+      "date": "2026-04-27",
+      "behavior": "Task refusal",
+      "frequency": 0,
+      "intensity": "low",
+      "response": "Redirected with visual schedule."
+    },
+    {
+      "id": "beh-004-2",
+      "childId": "child-004",
+      "sessionId": "sess-004-2",
+      "date": "2026-04-28",
+      "behavior": "Task refusal",
+      "frequency": 1,
+      "intensity": "low",
+      "response": "Redirected with visual schedule."
+    },
+    {
+      "id": "beh-004-3",
+      "childId": "child-004",
+      "sessionId": "sess-004-3",
+      "date": "2026-04-29",
+      "behavior": "Task refusal",
+      "frequency": 2,
+      "intensity": "moderate",
+      "response": "Redirected with visual schedule."
+    },
+    {
+      "id": "beh-004-4",
+      "childId": "child-004",
+      "sessionId": "sess-004-4",
+      "date": "2026-04-30",
+      "behavior": "Task refusal",
+      "frequency": 0,
+      "intensity": "low",
+      "response": "Redirected with visual schedule."
+    },
+    {
+      "id": "beh-005-1",
+      "childId": "child-005",
+      "sessionId": "sess-005-1",
+      "date": "2026-04-27",
+      "behavior": "Task refusal",
+      "frequency": 1,
+      "intensity": "low",
+      "response": "Redirected with visual schedule."
+    },
+    {
+      "id": "beh-005-2",
+      "childId": "child-005",
+      "sessionId": "sess-005-2",
+      "date": "2026-04-28",
+      "behavior": "Task refusal",
+      "frequency": 2,
+      "intensity": "moderate",
+      "response": "Redirected with visual schedule."
+    },
+    {
+      "id": "beh-005-3",
+      "childId": "child-005",
+      "sessionId": "sess-005-3",
+      "date": "2026-04-29",
+      "behavior": "Task refusal",
+      "frequency": 0,
+      "intensity": "low",
+      "response": "Redirected with visual schedule."
+    },
+    {
+      "id": "beh-005-4",
+      "childId": "child-005",
+      "sessionId": "sess-005-4",
+      "date": "2026-04-30",
+      "behavior": "Task refusal",
+      "frequency": 1,
+      "intensity": "low",
+      "response": "Redirected with visual schedule."
+    },
+    {
+      "id": "beh-006-1",
+      "childId": "child-006",
+      "sessionId": "sess-006-1",
+      "date": "2026-04-27",
+      "behavior": "Task refusal",
+      "frequency": 2,
+      "intensity": "moderate",
+      "response": "Redirected with visual schedule."
+    },
+    {
+      "id": "beh-006-2",
+      "childId": "child-006",
+      "sessionId": "sess-006-2",
+      "date": "2026-04-28",
+      "behavior": "Task refusal",
+      "frequency": 0,
+      "intensity": "low",
+      "response": "Redirected with visual schedule."
+    },
+    {
+      "id": "beh-006-3",
+      "childId": "child-006",
+      "sessionId": "sess-006-3",
+      "date": "2026-04-29",
+      "behavior": "Task refusal",
+      "frequency": 1,
+      "intensity": "low",
+      "response": "Redirected with visual schedule."
+    },
+    {
+      "id": "beh-006-4",
+      "childId": "child-006",
+      "sessionId": "sess-006-4",
+      "date": "2026-04-30",
+      "behavior": "Task refusal",
+      "frequency": 2,
+      "intensity": "moderate",
+      "response": "Redirected with visual schedule."
+    },
+    {
+      "id": "beh-007-1",
+      "childId": "child-007",
+      "sessionId": "sess-007-1",
+      "date": "2026-04-27",
+      "behavior": "Task refusal",
+      "frequency": 0,
+      "intensity": "low",
+      "response": "Redirected with visual schedule."
+    },
+    {
+      "id": "beh-007-2",
+      "childId": "child-007",
+      "sessionId": "sess-007-2",
+      "date": "2026-04-28",
+      "behavior": "Task refusal",
+      "frequency": 1,
+      "intensity": "low",
+      "response": "Redirected with visual schedule."
+    },
+    {
+      "id": "beh-007-3",
+      "childId": "child-007",
+      "sessionId": "sess-007-3",
+      "date": "2026-04-29",
+      "behavior": "Task refusal",
+      "frequency": 2,
+      "intensity": "moderate",
+      "response": "Redirected with visual schedule."
+    },
+    {
+      "id": "beh-007-4",
+      "childId": "child-007",
+      "sessionId": "sess-007-4",
+      "date": "2026-04-30",
+      "behavior": "Task refusal",
+      "frequency": 0,
+      "intensity": "low",
+      "response": "Redirected with visual schedule."
+    },
+    {
+      "id": "beh-008-1",
+      "childId": "child-008",
+      "sessionId": "sess-008-1",
+      "date": "2026-04-27",
+      "behavior": "Task refusal",
+      "frequency": 1,
+      "intensity": "low",
+      "response": "Redirected with visual schedule."
+    },
+    {
+      "id": "beh-008-2",
+      "childId": "child-008",
+      "sessionId": "sess-008-2",
+      "date": "2026-04-28",
+      "behavior": "Task refusal",
+      "frequency": 2,
+      "intensity": "moderate",
+      "response": "Redirected with visual schedule."
+    },
+    {
+      "id": "beh-008-4",
+      "childId": "child-008",
+      "sessionId": "sess-008-4",
+      "date": "2026-04-30",
+      "behavior": "Task refusal",
+      "frequency": 1,
+      "intensity": "low",
+      "response": "Redirected with visual schedule."
+    },
+    {
+      "id": "beh-009-1",
+      "childId": "child-009",
+      "sessionId": "sess-009-1",
+      "date": "2026-04-27",
+      "behavior": "Task refusal",
+      "frequency": 2,
+      "intensity": "moderate",
+      "response": "Redirected with visual schedule."
+    },
+    {
+      "id": "beh-009-2",
+      "childId": "child-009",
+      "sessionId": "sess-009-2",
+      "date": "2026-04-28",
+      "behavior": "Task refusal",
+      "frequency": 0,
+      "intensity": "low",
+      "response": "Redirected with visual schedule."
+    },
+    {
+      "id": "beh-009-3",
+      "childId": "child-009",
+      "sessionId": "sess-009-3",
+      "date": "2026-04-29",
+      "behavior": "Task refusal",
+      "frequency": 1,
+      "intensity": "low",
+      "response": "Redirected with visual schedule."
+    },
+    {
+      "id": "beh-009-4",
+      "childId": "child-009",
+      "sessionId": "sess-009-4",
+      "date": "2026-04-30",
+      "behavior": "Task refusal",
+      "frequency": 2,
+      "intensity": "moderate",
+      "response": "Redirected with visual schedule."
+    }
+  ],
+  "quickLogs": [
+    {
+      "id": "ql-001-1",
+      "childId": "child-001",
+      "sessionId": "sess-001-1",
+      "type": "quick_note",
+      "note": "Demo quick log for tablet workflow.",
+      "createdBy": "aba-101",
+      "createdAt": "2026-04-27T10:15:00"
+    },
+    {
+      "id": "ql-001-2",
+      "childId": "child-001",
+      "sessionId": "sess-001-2",
+      "type": "incident",
+      "note": "Demo quick log for tablet workflow.",
+      "createdBy": "aba-102",
+      "createdAt": "2026-04-28T14:15:00"
+    },
+    {
+      "id": "ql-001-3",
+      "childId": "child-001",
+      "sessionId": "sess-001-3",
+      "type": "unexpected_data",
+      "note": "Demo quick log for tablet workflow.",
+      "createdBy": "aba-101",
+      "createdAt": "2026-04-29T10:15:00"
+    },
+    {
+      "id": "ql-001-4",
+      "childId": "child-001",
+      "sessionId": "sess-001-4",
+      "type": "quick_note",
+      "note": "Demo quick log for tablet workflow.",
+      "createdBy": "aba-102",
+      "createdAt": "2026-04-30T14:15:00"
+    },
+    {
+      "id": "ql-002-1",
+      "childId": "child-002",
+      "sessionId": "sess-002-1",
+      "type": "incident",
+      "note": "Demo quick log for tablet workflow.",
+      "createdBy": "aba-101",
+      "createdAt": "2026-04-27T14:15:00"
+    },
+    {
+      "id": "ql-002-2",
+      "childId": "child-002",
+      "sessionId": "sess-002-2",
+      "type": "unexpected_data",
+      "note": "Demo quick log for tablet workflow.",
+      "createdBy": "aba-101",
+      "createdAt": "2026-04-28T10:15:00"
+    },
+    {
+      "id": "ql-002-3",
+      "childId": "child-002",
+      "sessionId": "sess-002-3",
+      "type": "quick_note",
+      "note": "Demo quick log for tablet workflow.",
+      "createdBy": "aba-101",
+      "createdAt": "2026-04-29T14:15:00"
+    },
+    {
+      "id": "ql-002-4",
+      "childId": "child-002",
+      "sessionId": "sess-002-4",
+      "type": "incident",
+      "note": "Demo quick log for tablet workflow.",
+      "createdBy": "aba-101",
+      "createdAt": "2026-04-30T10:15:00"
+    },
+    {
+      "id": "ql-003-1",
+      "childId": "child-003",
+      "sessionId": "sess-003-1",
+      "type": "unexpected_data",
+      "note": "Demo quick log for tablet workflow.",
+      "createdBy": "aba-102",
+      "createdAt": "2026-04-27T10:15:00"
+    },
+    {
+      "id": "ql-003-2",
+      "childId": "child-003",
+      "sessionId": "sess-003-2",
+      "type": "quick_note",
+      "note": "Demo quick log for tablet workflow.",
+      "createdBy": "aba-102",
+      "createdAt": "2026-04-28T14:15:00"
+    },
+    {
+      "id": "ql-003-3",
+      "childId": "child-003",
+      "sessionId": "sess-003-3",
+      "type": "incident",
+      "note": "Demo quick log for tablet workflow.",
+      "createdBy": "aba-102",
+      "createdAt": "2026-04-29T10:15:00"
+    },
+    {
+      "id": "ql-003-4",
+      "childId": "child-003",
+      "sessionId": "sess-003-4",
+      "type": "unexpected_data",
+      "note": "Demo quick log for tablet workflow.",
+      "createdBy": "aba-102",
+      "createdAt": "2026-04-30T14:15:00"
+    },
+    {
+      "id": "ql-004-1",
+      "childId": "child-004",
+      "sessionId": "sess-004-1",
+      "type": "quick_note",
+      "note": "Demo quick log for tablet workflow.",
+      "createdBy": "aba-103",
+      "createdAt": "2026-04-27T14:15:00"
+    },
+    {
+      "id": "ql-004-2",
+      "childId": "child-004",
+      "sessionId": "sess-004-2",
+      "type": "incident",
+      "note": "Demo quick log for tablet workflow.",
+      "createdBy": "aba-103",
+      "createdAt": "2026-04-28T10:15:00"
+    },
+    {
+      "id": "ql-004-3",
+      "childId": "child-004",
+      "sessionId": "sess-004-3",
+      "type": "unexpected_data",
+      "note": "Demo quick log for tablet workflow.",
+      "createdBy": "aba-103",
+      "createdAt": "2026-04-29T14:15:00"
+    },
+    {
+      "id": "ql-004-4",
+      "childId": "child-004",
+      "sessionId": "sess-004-4",
+      "type": "quick_note",
+      "note": "Demo quick log for tablet workflow.",
+      "createdBy": "aba-103",
+      "createdAt": "2026-04-30T10:15:00"
+    },
+    {
+      "id": "ql-005-1",
+      "childId": "child-005",
+      "sessionId": "sess-005-1",
+      "type": "incident",
+      "note": "Demo quick log for tablet workflow.",
+      "createdBy": "aba-102",
+      "createdAt": "2026-04-27T10:15:00"
+    },
+    {
+      "id": "ql-005-2",
+      "childId": "child-005",
+      "sessionId": "sess-005-2",
+      "type": "unexpected_data",
+      "note": "Demo quick log for tablet workflow.",
+      "createdBy": "aba-102",
+      "createdAt": "2026-04-28T14:15:00"
+    },
+    {
+      "id": "ql-005-3",
+      "childId": "child-005",
+      "sessionId": "sess-005-3",
+      "type": "quick_note",
+      "note": "Demo quick log for tablet workflow.",
+      "createdBy": "aba-102",
+      "createdAt": "2026-04-29T10:15:00"
+    },
+    {
+      "id": "ql-005-4",
+      "childId": "child-005",
+      "sessionId": "sess-005-4",
+      "type": "incident",
+      "note": "Demo quick log for tablet workflow.",
+      "createdBy": "aba-102",
+      "createdAt": "2026-04-30T14:15:00"
+    },
+    {
+      "id": "ql-006-1",
+      "childId": "child-006",
+      "sessionId": "sess-006-1",
+      "type": "unexpected_data",
+      "note": "Demo quick log for tablet workflow.",
+      "createdBy": "aba-104",
+      "createdAt": "2026-04-27T14:15:00"
+    },
+    {
+      "id": "ql-006-2",
+      "childId": "child-006",
+      "sessionId": "sess-006-2",
+      "type": "quick_note",
+      "note": "Demo quick log for tablet workflow.",
+      "createdBy": "aba-101",
+      "createdAt": "2026-04-28T10:15:00"
+    },
+    {
+      "id": "ql-006-3",
+      "childId": "child-006",
+      "sessionId": "sess-006-3",
+      "type": "incident",
+      "note": "Demo quick log for tablet workflow.",
+      "createdBy": "aba-104",
+      "createdAt": "2026-04-29T14:15:00"
+    },
+    {
+      "id": "ql-006-4",
+      "childId": "child-006",
+      "sessionId": "sess-006-4",
+      "type": "unexpected_data",
+      "note": "Demo quick log for tablet workflow.",
+      "createdBy": "aba-101",
+      "createdAt": "2026-04-30T10:15:00"
+    },
+    {
+      "id": "ql-007-1",
+      "childId": "child-007",
+      "sessionId": "sess-007-1",
+      "type": "quick_note",
+      "note": "Demo quick log for tablet workflow.",
+      "createdBy": "aba-103",
+      "createdAt": "2026-04-27T10:15:00"
+    },
+    {
+      "id": "ql-007-2",
+      "childId": "child-007",
+      "sessionId": "sess-007-2",
+      "type": "incident",
+      "note": "Demo quick log for tablet workflow.",
+      "createdBy": "aba-103",
+      "createdAt": "2026-04-28T14:15:00"
+    },
+    {
+      "id": "ql-007-3",
+      "childId": "child-007",
+      "sessionId": "sess-007-3",
+      "type": "unexpected_data",
+      "note": "Demo quick log for tablet workflow.",
+      "createdBy": "aba-103",
+      "createdAt": "2026-04-29T10:15:00"
+    },
+    {
+      "id": "ql-007-4",
+      "childId": "child-007",
+      "sessionId": "sess-007-4",
+      "type": "quick_note",
+      "note": "Demo quick log for tablet workflow.",
+      "createdBy": "aba-103",
+      "createdAt": "2026-04-30T14:15:00"
+    },
+    {
+      "id": "ql-008-1",
+      "childId": "child-008",
+      "sessionId": "sess-008-1",
+      "type": "incident",
+      "note": "Demo quick log for tablet workflow.",
+      "createdBy": "aba-102",
+      "createdAt": "2026-04-27T14:15:00"
+    },
+    {
+      "id": "ql-008-2",
+      "childId": "child-008",
+      "sessionId": "sess-008-2",
+      "type": "unexpected_data",
+      "note": "Demo quick log for tablet workflow.",
+      "createdBy": "aba-102",
+      "createdAt": "2026-04-28T10:15:00"
+    },
+    {
+      "id": "ql-008-4",
+      "childId": "child-008",
+      "sessionId": "sess-008-4",
+      "type": "incident",
+      "note": "Demo quick log for tablet workflow.",
+      "createdBy": "aba-102",
+      "createdAt": "2026-04-30T10:15:00"
+    },
+    {
+      "id": "ql-009-1",
+      "childId": "child-009",
+      "sessionId": "sess-009-1",
+      "type": "unexpected_data",
+      "note": "Demo quick log for tablet workflow.",
+      "createdBy": "aba-101",
+      "createdAt": "2026-04-27T10:15:00"
+    },
+    {
+      "id": "ql-009-2",
+      "childId": "child-009",
+      "sessionId": "sess-009-2",
+      "type": "quick_note",
+      "note": "Demo quick log for tablet workflow.",
+      "createdBy": "aba-101",
+      "createdAt": "2026-04-28T14:15:00"
+    },
+    {
+      "id": "ql-009-3",
+      "childId": "child-009",
+      "sessionId": "sess-009-3",
+      "type": "incident",
+      "note": "Demo quick log for tablet workflow.",
+      "createdBy": "aba-101",
+      "createdAt": "2026-04-29T10:15:00"
+    },
+    {
+      "id": "ql-009-4",
+      "childId": "child-009",
+      "sessionId": "sess-009-4",
+      "type": "unexpected_data",
+      "note": "Demo quick log for tablet workflow.",
+      "createdBy": "aba-101",
+      "createdAt": "2026-04-30T14:15:00"
+    }
+  ],
+  "attendance": [
+    {
+      "id": "att-001-1",
+      "childId": "child-001",
+      "sessionId": "sess-001-1",
+      "date": "2026-04-27",
+      "status": "present",
+      "checkInAt": "2026-04-27T09:03:00",
+      "checkOutAt": "2026-04-27T12:02:00",
+      "checkedInBy": "aba-101"
+    },
+    {
+      "id": "att-001-2",
+      "childId": "child-001",
+      "sessionId": "sess-001-2",
+      "date": "2026-04-28",
+      "status": "present",
+      "checkInAt": "2026-04-28T13:03:00",
+      "checkOutAt": "2026-04-28T16:02:00",
+      "checkedInBy": "aba-102"
+    },
+    {
+      "id": "att-001-3",
+      "childId": "child-001",
+      "sessionId": "sess-001-3",
+      "date": "2026-04-29",
+      "status": "present",
+      "checkInAt": "2026-04-29T09:03:00",
+      "checkOutAt": "2026-04-29T12:02:00",
+      "checkedInBy": "aba-101"
+    },
+    {
+      "id": "att-001-4",
+      "childId": "child-001",
+      "sessionId": "sess-001-4",
+      "date": "2026-04-30",
+      "status": "present",
+      "checkInAt": "2026-04-30T13:03:00",
+      "checkOutAt": "2026-04-30T16:02:00",
+      "checkedInBy": "aba-102"
+    },
+    {
+      "id": "att-001-5",
+      "childId": "child-001",
+      "sessionId": "sess-001-5",
+      "date": "2026-05-01",
+      "status": "scheduled",
+      "checkInAt": null,
+      "checkOutAt": null,
+      "checkedInBy": null
+    },
+    {
+      "id": "att-002-1",
+      "childId": "child-002",
+      "sessionId": "sess-002-1",
+      "date": "2026-04-27",
+      "status": "present",
+      "checkInAt": "2026-04-27T13:03:00",
+      "checkOutAt": "2026-04-27T16:02:00",
+      "checkedInBy": "aba-101"
+    },
+    {
+      "id": "att-002-2",
+      "childId": "child-002",
+      "sessionId": "sess-002-2",
+      "date": "2026-04-28",
+      "status": "present",
+      "checkInAt": "2026-04-28T09:03:00",
+      "checkOutAt": "2026-04-28T12:02:00",
+      "checkedInBy": "aba-101"
+    },
+    {
+      "id": "att-002-3",
+      "childId": "child-002",
+      "sessionId": "sess-002-3",
+      "date": "2026-04-29",
+      "status": "present",
+      "checkInAt": "2026-04-29T13:03:00",
+      "checkOutAt": "2026-04-29T16:02:00",
+      "checkedInBy": "aba-101"
+    },
+    {
+      "id": "att-002-4",
+      "childId": "child-002",
+      "sessionId": "sess-002-4",
+      "date": "2026-04-30",
+      "status": "present",
+      "checkInAt": "2026-04-30T09:03:00",
+      "checkOutAt": "2026-04-30T12:02:00",
+      "checkedInBy": "aba-101"
+    },
+    {
+      "id": "att-002-5",
+      "childId": "child-002",
+      "sessionId": "sess-002-5",
+      "date": "2026-05-01",
+      "status": "scheduled",
+      "checkInAt": null,
+      "checkOutAt": null,
+      "checkedInBy": null
+    },
+    {
+      "id": "att-003-1",
+      "childId": "child-003",
+      "sessionId": "sess-003-1",
+      "date": "2026-04-27",
+      "status": "present",
+      "checkInAt": "2026-04-27T09:03:00",
+      "checkOutAt": "2026-04-27T12:02:00",
+      "checkedInBy": "aba-102"
+    },
+    {
+      "id": "att-003-2",
+      "childId": "child-003",
+      "sessionId": "sess-003-2",
+      "date": "2026-04-28",
+      "status": "present",
+      "checkInAt": "2026-04-28T13:03:00",
+      "checkOutAt": "2026-04-28T16:02:00",
+      "checkedInBy": "aba-102"
+    },
+    {
+      "id": "att-003-3",
+      "childId": "child-003",
+      "sessionId": "sess-003-3",
+      "date": "2026-04-29",
+      "status": "present",
+      "checkInAt": "2026-04-29T09:03:00",
+      "checkOutAt": "2026-04-29T12:02:00",
+      "checkedInBy": "aba-102"
+    },
+    {
+      "id": "att-003-4",
+      "childId": "child-003",
+      "sessionId": "sess-003-4",
+      "date": "2026-04-30",
+      "status": "present",
+      "checkInAt": "2026-04-30T13:03:00",
+      "checkOutAt": "2026-04-30T16:02:00",
+      "checkedInBy": "aba-102"
+    },
+    {
+      "id": "att-003-5",
+      "childId": "child-003",
+      "sessionId": "sess-003-5",
+      "date": "2026-05-01",
+      "status": "scheduled",
+      "checkInAt": null,
+      "checkOutAt": null,
+      "checkedInBy": null
+    },
+    {
+      "id": "att-004-1",
+      "childId": "child-004",
+      "sessionId": "sess-004-1",
+      "date": "2026-04-27",
+      "status": "present",
+      "checkInAt": "2026-04-27T13:03:00",
+      "checkOutAt": "2026-04-27T16:02:00",
+      "checkedInBy": "aba-103"
+    },
+    {
+      "id": "att-004-2",
+      "childId": "child-004",
+      "sessionId": "sess-004-2",
+      "date": "2026-04-28",
+      "status": "present",
+      "checkInAt": "2026-04-28T09:03:00",
+      "checkOutAt": "2026-04-28T12:02:00",
+      "checkedInBy": "aba-103"
+    },
+    {
+      "id": "att-004-3",
+      "childId": "child-004",
+      "sessionId": "sess-004-3",
+      "date": "2026-04-29",
+      "status": "present",
+      "checkInAt": "2026-04-29T13:03:00",
+      "checkOutAt": "2026-04-29T16:02:00",
+      "checkedInBy": "aba-103"
+    },
+    {
+      "id": "att-004-4",
+      "childId": "child-004",
+      "sessionId": "sess-004-4",
+      "date": "2026-04-30",
+      "status": "present",
+      "checkInAt": "2026-04-30T09:03:00",
+      "checkOutAt": "2026-04-30T12:02:00",
+      "checkedInBy": "aba-103"
+    },
+    {
+      "id": "att-004-5",
+      "childId": "child-004",
+      "sessionId": "sess-004-5",
+      "date": "2026-05-01",
+      "status": "scheduled",
+      "checkInAt": null,
+      "checkOutAt": null,
+      "checkedInBy": null
+    },
+    {
+      "id": "att-005-1",
+      "childId": "child-005",
+      "sessionId": "sess-005-1",
+      "date": "2026-04-27",
+      "status": "present",
+      "checkInAt": "2026-04-27T09:03:00",
+      "checkOutAt": "2026-04-27T12:02:00",
+      "checkedInBy": "aba-102"
+    },
+    {
+      "id": "att-005-2",
+      "childId": "child-005",
+      "sessionId": "sess-005-2",
+      "date": "2026-04-28",
+      "status": "present",
+      "checkInAt": "2026-04-28T13:03:00",
+      "checkOutAt": "2026-04-28T16:02:00",
+      "checkedInBy": "aba-102"
+    },
+    {
+      "id": "att-005-3",
+      "childId": "child-005",
+      "sessionId": "sess-005-3",
+      "date": "2026-04-29",
+      "status": "present",
+      "checkInAt": "2026-04-29T09:03:00",
+      "checkOutAt": "2026-04-29T12:02:00",
+      "checkedInBy": "aba-102"
+    },
+    {
+      "id": "att-005-4",
+      "childId": "child-005",
+      "sessionId": "sess-005-4",
+      "date": "2026-04-30",
+      "status": "present",
+      "checkInAt": "2026-04-30T13:03:00",
+      "checkOutAt": "2026-04-30T16:02:00",
+      "checkedInBy": "aba-102"
+    },
+    {
+      "id": "att-005-5",
+      "childId": "child-005",
+      "sessionId": "sess-005-5",
+      "date": "2026-05-01",
+      "status": "scheduled",
+      "checkInAt": null,
+      "checkOutAt": null,
+      "checkedInBy": null
+    },
+    {
+      "id": "att-006-1",
+      "childId": "child-006",
+      "sessionId": "sess-006-1",
+      "date": "2026-04-27",
+      "status": "present",
+      "checkInAt": "2026-04-27T13:03:00",
+      "checkOutAt": "2026-04-27T16:02:00",
+      "checkedInBy": "aba-104"
+    },
+    {
+      "id": "att-006-2",
+      "childId": "child-006",
+      "sessionId": "sess-006-2",
+      "date": "2026-04-28",
+      "status": "present",
+      "checkInAt": "2026-04-28T09:03:00",
+      "checkOutAt": "2026-04-28T12:02:00",
+      "checkedInBy": "aba-101"
+    },
+    {
+      "id": "att-006-3",
+      "childId": "child-006",
+      "sessionId": "sess-006-3",
+      "date": "2026-04-29",
+      "status": "present",
+      "checkInAt": "2026-04-29T13:03:00",
+      "checkOutAt": "2026-04-29T16:02:00",
+      "checkedInBy": "aba-104"
+    },
+    {
+      "id": "att-006-4",
+      "childId": "child-006",
+      "sessionId": "sess-006-4",
+      "date": "2026-04-30",
+      "status": "present",
+      "checkInAt": "2026-04-30T09:03:00",
+      "checkOutAt": "2026-04-30T12:02:00",
+      "checkedInBy": "aba-101"
+    },
+    {
+      "id": "att-006-5",
+      "childId": "child-006",
+      "sessionId": "sess-006-5",
+      "date": "2026-05-01",
+      "status": "scheduled",
+      "checkInAt": null,
+      "checkOutAt": null,
+      "checkedInBy": null
+    },
+    {
+      "id": "att-007-1",
+      "childId": "child-007",
+      "sessionId": "sess-007-1",
+      "date": "2026-04-27",
+      "status": "present",
+      "checkInAt": "2026-04-27T09:03:00",
+      "checkOutAt": "2026-04-27T12:02:00",
+      "checkedInBy": "aba-103"
+    },
+    {
+      "id": "att-007-2",
+      "childId": "child-007",
+      "sessionId": "sess-007-2",
+      "date": "2026-04-28",
+      "status": "present",
+      "checkInAt": "2026-04-28T13:03:00",
+      "checkOutAt": "2026-04-28T16:02:00",
+      "checkedInBy": "aba-103"
+    },
+    {
+      "id": "att-007-3",
+      "childId": "child-007",
+      "sessionId": "sess-007-3",
+      "date": "2026-04-29",
+      "status": "present",
+      "checkInAt": "2026-04-29T09:03:00",
+      "checkOutAt": "2026-04-29T12:02:00",
+      "checkedInBy": "aba-103"
+    },
+    {
+      "id": "att-007-4",
+      "childId": "child-007",
+      "sessionId": "sess-007-4",
+      "date": "2026-04-30",
+      "status": "present",
+      "checkInAt": "2026-04-30T13:03:00",
+      "checkOutAt": "2026-04-30T16:02:00",
+      "checkedInBy": "aba-103"
+    },
+    {
+      "id": "att-007-5",
+      "childId": "child-007",
+      "sessionId": "sess-007-5",
+      "date": "2026-05-01",
+      "status": "scheduled",
+      "checkInAt": null,
+      "checkOutAt": null,
+      "checkedInBy": null
+    },
+    {
+      "id": "att-008-1",
+      "childId": "child-008",
+      "sessionId": "sess-008-1",
+      "date": "2026-04-27",
+      "status": "present",
+      "checkInAt": "2026-04-27T13:03:00",
+      "checkOutAt": "2026-04-27T16:02:00",
+      "checkedInBy": "aba-102"
+    },
+    {
+      "id": "att-008-2",
+      "childId": "child-008",
+      "sessionId": "sess-008-2",
+      "date": "2026-04-28",
+      "status": "present",
+      "checkInAt": "2026-04-28T09:03:00",
+      "checkOutAt": "2026-04-28T12:02:00",
+      "checkedInBy": "aba-102"
+    },
+    {
+      "id": "att-008-3",
+      "childId": "child-008",
+      "sessionId": "sess-008-3",
+      "date": "2026-04-29",
+      "status": "cancelled",
+      "checkInAt": null,
+      "checkOutAt": null,
+      "checkedInBy": null
+    },
+    {
+      "id": "att-008-4",
+      "childId": "child-008",
+      "sessionId": "sess-008-4",
+      "date": "2026-04-30",
+      "status": "present",
+      "checkInAt": "2026-04-30T09:03:00",
+      "checkOutAt": "2026-04-30T12:02:00",
+      "checkedInBy": "aba-102"
+    },
+    {
+      "id": "att-008-5",
+      "childId": "child-008",
+      "sessionId": "sess-008-5",
+      "date": "2026-05-01",
+      "status": "scheduled",
+      "checkInAt": null,
+      "checkOutAt": null,
+      "checkedInBy": null
+    },
+    {
+      "id": "att-009-1",
+      "childId": "child-009",
+      "sessionId": "sess-009-1",
+      "date": "2026-04-27",
+      "status": "present",
+      "checkInAt": "2026-04-27T09:03:00",
+      "checkOutAt": "2026-04-27T12:02:00",
+      "checkedInBy": "aba-101"
+    },
+    {
+      "id": "att-009-2",
+      "childId": "child-009",
+      "sessionId": "sess-009-2",
+      "date": "2026-04-28",
+      "status": "present",
+      "checkInAt": "2026-04-28T13:03:00",
+      "checkOutAt": "2026-04-28T16:02:00",
+      "checkedInBy": "aba-101"
+    },
+    {
+      "id": "att-009-3",
+      "childId": "child-009",
+      "sessionId": "sess-009-3",
+      "date": "2026-04-29",
+      "status": "present",
+      "checkInAt": "2026-04-29T09:03:00",
+      "checkOutAt": "2026-04-29T12:02:00",
+      "checkedInBy": "aba-101"
+    },
+    {
+      "id": "att-009-4",
+      "childId": "child-009",
+      "sessionId": "sess-009-4",
+      "date": "2026-04-30",
+      "status": "present",
+      "checkInAt": "2026-04-30T13:03:00",
+      "checkOutAt": "2026-04-30T16:02:00",
+      "checkedInBy": "aba-101"
+    },
+    {
+      "id": "att-009-5",
+      "childId": "child-009",
+      "sessionId": "sess-009-5",
+      "date": "2026-05-01",
+      "status": "scheduled",
+      "checkInAt": null,
+      "checkOutAt": null,
+      "checkedInBy": null
+    }
+  ],
+  "programDocuments": [
+    {
+      "id": "program-doc-001",
+      "programId": "program-aba-001",
+      "title": "Functional Communication Plan",
+      "url": "https://communitybridge.app/demo-docs/functional-communication-plan.pdf",
+      "type": "pdf"
+    },
+    {
+      "id": "program-doc-002",
+      "programId": "program-aba-001",
+      "title": "Transition Support Plan",
+      "url": "https://communitybridge.app/demo-docs/transition-support-plan.pdf",
+      "type": "pdf"
+    },
+    {
+      "id": "program-doc-003",
+      "programId": "program-aba-001",
+      "title": "Caregiver Training Guide",
+      "url": "https://communitybridge.app/demo-docs/caregiver-training-guide.pdf",
+      "type": "pdf"
+    }
+  ],
+  "campusDocuments": [
+    {
+      "id": "campus-doc-001",
+      "campusId": "campus-main-001",
+      "title": "Pickup Policy",
+      "url": "https://communitybridge.app/demo-docs/pickup-policy.pdf",
+      "type": "pdf"
+    },
+    {
+      "id": "campus-doc-002",
+      "campusId": "campus-main-001",
+      "title": "Health Policy",
+      "url": "https://communitybridge.app/demo-docs/health-policy.pdf",
+      "type": "pdf"
+    }
+  ],
+  "parentResources": [
+    {
+      "id": "resource-001",
+      "title": "What to Bring to Session",
+      "category": "Getting Started",
+      "url": "https://communitybridge.app/resources/what-to-bring"
+    },
+    {
+      "id": "resource-002",
+      "title": "Understanding ABA Progress Notes",
+      "category": "ABA Basics",
+      "url": "https://communitybridge.app/resources/progress-notes"
+    },
+    {
+      "id": "resource-003",
+      "title": "Preparing for Schedule Changes",
+      "category": "Care Coordination",
+      "url": "https://communitybridge.app/resources/schedule-changes"
+    }
+  ],
+  "notificationPreferences": [
+    {
+      "id": "pref-parent-001",
+      "userId": "user-parent-review",
+      "pushMessages": true,
+      "pushSessionReminders": true,
+      "emailRecaps": true,
+      "smsAlerts": false,
+      "reminderLeadTimeMinutes": 60
+    },
+    {
+      "id": "pref-therapist-001",
+      "userId": "user-therapist-review",
+      "pushMessages": true,
+      "pushSessionReminders": true,
+      "emailRecaps": false,
+      "smsAlerts": false,
+      "reminderLeadTimeMinutes": 30
+    }
+  ],
+  "pushTokens": [
+    {
+      "id": "push-001",
+      "userId": "user-parent-review",
+      "platform": "ios",
+      "token": "ExponentPushToken[demo-parent]",
+      "createdAt": "2026-04-27T08:00:00"
+    }
+  ],
+  "arrivalPings": [
+    {
+      "id": "arrival-001",
+      "parentId": "par-001",
+      "childId": "child-001",
+      "campusId": "campus-main-001",
+      "distanceMeters": 75,
+      "createdAt": "2026-04-27T12:20:00",
+      "status": "nearby"
+    }
+  ],
+  "mediaUploads": [
+    {
+      "id": "media-001",
+      "ownerId": "aba-101",
+      "childId": "child-001",
+      "type": "image",
+      "title": "Visual Schedule Snapshot",
+      "url": "https://communitybridge.app/uploads/demo/visual-schedule.png",
+      "createdAt": "2026-04-27T10:10:00"
+    },
+    {
+      "id": "media-002",
+      "ownerId": "staff-001",
+      "type": "document",
+      "title": "Billing Export CSV",
+      "url": "https://communitybridge.app/uploads/demo/billing-export.csv",
+      "createdAt": "2026-04-28T09:30:00"
+    }
+  ],
+  "exportJobs": [
+    {
+      "id": "export-001",
+      "title": "Billing Export",
+      "category": "billing",
+      "format": "csv",
+      "status": "completed",
+      "recordsCount": 10,
+      "artifactUrl": "https://communitybridge.app/uploads/demo/billing-export.csv",
+      "createdAt": "2026-04-27T09:00:00"
+    },
+    {
+      "id": "export-002",
+      "title": "Reports Export",
+      "category": "reports",
+      "format": "pdf",
+      "status": "queued",
+      "recordsCount": 50,
+      "artifactUrl": "",
+      "createdAt": "2026-04-28T09:15:00"
+    },
+    {
+      "id": "export-003",
+      "title": "Directory Export",
+      "category": "directory",
+      "format": "csv",
+      "status": "failed",
+      "recordsCount": 0,
+      "artifactUrl": "",
+      "error": "Demo failed export state for QA",
+      "createdAt": "2026-04-29T09:15:00"
+    }
+  ],
+  "auditLogs": [
+    {
+      "id": "audit-001",
+      "actorId": "staff-001",
+      "action": "billing.export.completed",
+      "summary": "Billing export completed.",
+      "createdAt": "2026-04-27T09:10:00"
+    },
+    {
+      "id": "audit-002",
+      "actorId": "bcba-001",
+      "action": "authorization.reviewed",
+      "summary": "Authorization reviewed by BCBA.",
+      "createdAt": "2026-04-27T09:15:00"
+    },
+    {
+      "id": "audit-003",
+      "actorId": "staff-001",
+      "action": "schedule.updated",
+      "summary": "Session schedule updated.",
+      "createdAt": "2026-04-27T09:20:00"
+    },
+    {
+      "id": "audit-004",
+      "actorId": "par-001",
+      "action": "message.sent",
+      "summary": "Care team message sent.",
+      "createdAt": "2026-04-27T15:05:00"
+    },
+    {
+      "id": "audit-005",
+      "actorId": "aba-101",
+      "action": "session.summary.created",
+      "summary": "Session summary created.",
+      "createdAt": "2026-04-27T12:15:00"
+    }
+  ],
+  "orgSettings": {
+    "id": "org-settings-001",
+    "organizationId": "org-demo-001",
+    "appName": "CommunityBridge",
+    "primaryColor": "#00345F",
+    "accentColor": "#73C832",
+    "supportEmail": "support@communitybridge.app",
+    "privacyUrl": "https://communitybridge.app/privacy",
+    "termsUrl": "https://communitybridge.app/terms"
+  },
+  "featureFlags": {
+    "demoMode": true,
+    "paymentsEnabled": true,
+    "exportsEnabled": true,
+    "arrivalDetectionEnabled": true,
+    "sessionTrackingEnabled": true,
+    "moodHistoryEnabled": true
+  }
+}

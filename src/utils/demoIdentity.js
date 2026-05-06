@@ -1,7 +1,10 @@
-const { isSpecialAccessUser } = require('./authState');
-const { seededDemoRoleIdentities } = require('../seed/demoModeSeed');
+const { isDemoReviewerUser, isSpecialAccessUser } = require('./authState');
 
-const DEMO_ROLE_IDENTITIES = Object.freeze(seededDemoRoleIdentities);
+const DEMO_ROLE_IDENTITIES = Object.freeze({
+  admin: { id: 'admin-demo', name: 'Jordan Admin', email: 'admin-demo@communitybridge.app', role: 'admin' },
+  therapist: { id: 'ABA-001', name: 'Daniel Lopez', email: 'daniel.lopez@communitybridge.app', role: 'therapist' },
+  parent: { id: 'PT-001', name: 'Carlos Garcia', email: 'carlos.garcia@communitybridge.app', role: 'parent' },
+});
 const isDevRuntime = typeof __DEV__ !== 'undefined' && Boolean(__DEV__);
 
 function hasScreenshotSeedRequest() {
@@ -33,6 +36,7 @@ function getDemoRoleIdentity(role, fallbackUser) {
 function getEffectiveChatIdentity(user) {
   if (!user) return user;
   if (!isSpecialAccessUser(user?.email)) return user;
+  if (isDemoReviewerUser(user?.email) && user?.id) return user;
   if (hasScreenshotSeedRequest() && user?.id) return user;
   return getDemoRoleIdentity(user?.role, user) || user;
 }

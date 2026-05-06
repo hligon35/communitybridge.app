@@ -14,7 +14,7 @@ const DEV_SWITCHER_VISIBILITY_KEY = '@communitybridge/dev-switcher-visible';
 
 export default function DevRoleSwitcher() {
   const { setRole, user, isDemoReviewer } = useAuth();
-  const { clearAllData, resetDemoData, resetScreenshotSeed } = useData();
+  const { clearAllData, resetScreenshotSeed } = useData();
   const tenant = useTenant() || {};
   const isDevAccount = isDevSwitcherUser(user?.email);
   const isReviewAccount = isDemoReviewer || isDemoReviewerUser(user?.email);
@@ -107,16 +107,6 @@ export default function DevRoleSwitcher() {
     }
   }
 
-  function seedDemoMode() {
-    try {
-      logPress('DevTools:SeedDemoMode');
-      resetDemoData();
-      Alert.alert('Demo Mode seeded', `Loaded demo parents, ${THERAPY_ROLE_LABELS.therapists.toLowerCase()}, children, posts, chats, memos, alerts, and proposals across the app.`);
-    } catch (e) {
-      Alert.alert('Error', 'Could not seed demo mode');
-    }
-  }
-
   function seedScreenshotMode() {
     try {
       logPress('DevTools:SeedScreenshotMode');
@@ -129,7 +119,7 @@ export default function DevRoleSwitcher() {
 
   function clearDemoData() {
     logPress('DevTools:ClearDemoDataPrompt');
-    Alert.alert('Confirm', 'Clear all seeded demo data?', [
+    Alert.alert('Confirm', 'Clear all seeded review data?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Clear',
@@ -138,9 +128,9 @@ export default function DevRoleSwitcher() {
           try {
             logPress('DevTools:ClearDemoDataConfirm');
             await clearAllData();
-            Alert.alert('Cleared', 'Seeded demo data removed.');
+            Alert.alert('Cleared', 'Seeded review data removed.');
           } catch (e) {
-            Alert.alert('Error', 'Could not clear demo data');
+            Alert.alert('Error', 'Could not clear seeded review data');
           }
         },
       },
@@ -181,15 +171,12 @@ export default function DevRoleSwitcher() {
               <Text style={styles.demoBannerText}>This panel is only available to the review account and drives a seeded local walkthrough.</Text>
             </View>
           ) : null}
-          <Text style={styles.sectionLabel}>Demo Mode</Text>
-          <TouchableOpacity onPress={seedDemoMode} style={styles.menuBtn}>
-            <Text>Seed demo data</Text>
-          </TouchableOpacity>
+          <Text style={styles.sectionLabel}>Review Data</Text>
           <TouchableOpacity onPress={seedScreenshotMode} style={styles.menuBtn}>
             <Text>Screenshot seed</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={clearDemoData} style={styles.menuBtn}>
-            <Text>Clear demo data</Text>
+            <Text>Clear seeded data</Text>
           </TouchableOpacity>
 
           <View style={styles.divider} />
