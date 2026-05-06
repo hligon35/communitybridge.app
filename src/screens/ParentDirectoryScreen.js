@@ -5,6 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 // header provided by ScreenWrapper
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { MaterialIcons } from '@expo/vector-icons';
+import AppIconButton from '../components/AppIconButton';
 import { avatarSourceFor } from '../utils/idVisibility';
 
 export default function ParentDirectoryScreen() {
@@ -51,8 +52,8 @@ export default function ParentDirectoryScreen() {
         </View>
       </TouchableOpacity>
       <View style={styles.actions}>
-        <TouchableOpacity activeOpacity={0.85} onPress={() => openPhone(item.phone)} style={styles.iconBtn}><MaterialIcons name="call" size={18} color="#2563eb" /></TouchableOpacity>
-        <TouchableOpacity activeOpacity={0.85} onPress={() => openEmail(item.email)} style={styles.iconBtn}><MaterialIcons name="email" size={18} color="#2563eb" /></TouchableOpacity>
+        <AppIconButton accessibilityLabel="Call parent" name="call" iconSize={18} size={36} onPress={() => openPhone(item.phone)} style={styles.iconBtn} />
+        <AppIconButton accessibilityLabel="Email parent" name="email" iconSize={18} size={36} onPress={() => openEmail(item.email)} style={styles.iconBtn} />
       </View>
     </View>
   );
@@ -80,21 +81,5 @@ const styles = StyleSheet.create({
   empty: { padding: 24, alignItems: 'center' },
   actions: { flexDirection: 'row', alignItems: 'center', marginLeft: 8 },
   iconTouch: { paddingHorizontal: 8 },
-  iconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#e6e7ea',
-    backgroundColor: '#fff',
-    // subtle push look
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 1.5,
-    elevation: 2,
-    marginHorizontal: 6,
-  },
+  iconBtn: { marginHorizontal: 6 },
 });

@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { MaterialIcons } from '@expo/vector-icons';
+import AppDropdown from '../components/AppDropdown';
 import { ScreenWrapper } from '../components/ScreenWrapper';
+import AppIconButton from '../components/AppIconButton';
 import { useAuth } from '../AuthContext';
 import { useData } from '../DataContext';
 import { isBcbaRole, isOfficeAdminRole } from '../core/tenant/models';
@@ -27,7 +28,6 @@ export default function FacultyDirectoryScreen() {
   const [workspaceMap, setWorkspaceMap] = useState({});
   const [query, setQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
-  const [roleMenuOpen, setRoleMenuOpen] = useState(false);
   const [selectedStaffId, setSelectedStaffId] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [loadError, setLoadError] = useState('');
@@ -166,13 +166,13 @@ export default function FacultyDirectoryScreen() {
     <ScreenWrapper
       style={styles.screen}
       bannerRight={isOffice ? (
-        <TouchableOpacity
+        <AppIconButton
           accessibilityLabel="Add staff"
+          name="add"
+          iconSize={22}
           style={styles.bannerAddButton}
           onPress={() => showAction('Add staff', 'Staff creation stays in the office identity workflow and can be connected here.')}
-        >
-          <MaterialIcons name="add" size={22} color="#ffffff" />
-        </TouchableOpacity>
+        />
       ) : null}
     >
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -180,33 +180,15 @@ export default function FacultyDirectoryScreen() {
         <View style={styles.filtersCard}>
           <View style={styles.filtersRow}>
             <View style={styles.filterDropdownWrap}>
-              <TouchableOpacity style={styles.filterDropdownButton} onPress={() => setRoleMenuOpen((value) => !value)} activeOpacity={0.9}>
-                <View style={styles.filterDropdownValueRow}>
-                  <Text numberOfLines={1} style={styles.filterDropdownValue}>{activeRoleFilter.label}</Text>
-                  <MaterialIcons name={roleMenuOpen ? 'arrow-drop-up' : 'arrow-drop-down'} size={18} color="#475569" />
-                </View>
-              </TouchableOpacity>
-              {roleMenuOpen ? (
-                <Pressable style={styles.filterDropdownOverlay} onPress={() => setRoleMenuOpen(false)}>
-                  <View style={styles.filterDropdownMenu}>
-                    {roleFilterOptions.map((item) => {
-                      const active = roleFilter === item.key;
-                      return (
-                        <TouchableOpacity
-                          key={item.key}
-                          style={[styles.filterDropdownItem, active ? styles.filterDropdownItemActive : null]}
-                          onPress={() => {
-                            setRoleFilter(item.key);
-                            setRoleMenuOpen(false);
-                          }}
-                        >
-                          <Text style={[styles.filterDropdownItemText, active ? styles.filterDropdownItemTextActive : null]}>{item.label}</Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                </Pressable>
-              ) : null}
+              <AppDropdown
+                minMenuWidth={132}
+                onSelect={setRoleFilter}
+                options={roleFilterOptions.map((item) => ({ value: item.key, label: item.label }))}
+                placeholder="Role"
+                selectedValue={roleFilter}
+                value={activeRoleFilter.label}
+                width={132}
+              />
             </View>
             <TextInput value={query} onChangeText={setQuery} placeholder="Search staff" style={[styles.input, styles.filtersSearchInput]} />
           </View>
@@ -237,13 +219,13 @@ export default function FacultyDirectoryScreen() {
                   </View>
                   {isOffice ? (
                     <View style={styles.profileHeaderActions}>
-                      <TouchableOpacity
+                      <AppIconButton
                         accessibilityLabel="Update credentials"
-                        style={[styles.profileHeaderIconButton, styles.profileHeaderSecondaryIconButton]}
+                        name="verified-user"
+                        iconSize={18}
+                        style={styles.profileHeaderIconButton}
                         onPress={() => navigation.navigate('FacultyDetail', { facultyId: selectedStaff.id, initialTab: 'credentials' })}
-                      >
-                        <MaterialIcons name="verified-user" size={18} color="#0f172a" />
-                      </TouchableOpacity>
+                      />
                     </View>
                   ) : null}
                 </View>
@@ -269,16 +251,7 @@ const styles = StyleSheet.create({
   errorText: { color: '#b91c1c', marginBottom: 12 },
   filtersCard: { marginTop: 14, borderRadius: 18, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e5e7eb', padding: 16 },
   filtersRow: { flexDirection: 'row', alignItems: 'center' },
-  filterDropdownWrap: { width: 132, marginRight: 12, position: 'relative', zIndex: 2 },
-  filterDropdownButton: { minHeight: 50, borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 0, backgroundColor: '#fff', justifyContent: 'center' },
-  filterDropdownValueRow: { flexDirection: 'row', alignItems: 'center' },
-  filterDropdownValue: { flex: 1, color: '#0f172a', fontWeight: '700', marginRight: 4 },
-  filterDropdownOverlay: { position: 'absolute', left: 0, right: 0, top: 0 },
-  filterDropdownMenu: { marginTop: 54, borderRadius: 12, borderWidth: 1, borderColor: '#dbe4f0', backgroundColor: '#fff', paddingVertical: 4, shadowColor: '#0f172a', shadowOpacity: 0.12, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 8 },
-  filterDropdownItem: { paddingHorizontal: 12, paddingVertical: 9 },
-  filterDropdownItemActive: { backgroundColor: '#eff6ff' },
-  filterDropdownItemText: { color: '#0f172a', fontWeight: '700' },
-  filterDropdownItemTextActive: { color: '#1d4ed8' },
+  filterDropdownWrap: { width: 132, marginRight: 12, zIndex: 2 },
   input: { borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#fff' },
   filtersSearchInput: { flex: 1 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 12 },
@@ -298,9 +271,8 @@ const styles = StyleSheet.create({
   profileHeader: { flexDirection: 'row', alignItems: 'center' },
   profileAvatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#e2e8f0' },
   profileHeaderActions: { flexDirection: 'row', alignItems: 'center', marginLeft: 12 },
-  profileHeaderIconButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#2563eb', alignItems: 'center', justifyContent: 'center', marginLeft: 12 },
-  profileHeaderSecondaryIconButton: { backgroundColor: '#e2e8f0', marginLeft: 0 },
-  bannerAddButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#2563eb', alignItems: 'center', justifyContent: 'center' },
+  profileHeaderIconButton: { marginLeft: 0 },
+  bannerAddButton: null,
   profileName: { fontSize: 22, fontWeight: '800', color: '#0f172a' },
   profileMeta: { marginTop: 6, color: '#64748b' },
   tabContent: { marginTop: 8, borderRadius: 16, backgroundColor: '#f8fafc', padding: 16 },

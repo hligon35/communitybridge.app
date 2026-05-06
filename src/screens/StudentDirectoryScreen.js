@@ -1,8 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Alert, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { ScreenWrapper } from '../components/ScreenWrapper';
+import AppDropdown from '../components/AppDropdown';
+import AppIconButton from '../components/AppIconButton';
 import { useAuth } from '../AuthContext';
 import { useData } from '../DataContext';
 import { useTenant } from '../core/tenant/TenantContext';
@@ -41,72 +43,20 @@ function TabButton({ label, active, onPress }) {
 }
 
 function InlineFilterDropdown({ label, value, options = [], selectedValue, onSelect, width = 126 }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [menuAnchor, setMenuAnchor] = useState(null);
-  const buttonRef = useRef(null);
-
-  function handleOpen() {
-    if (menuOpen) {
-      setMenuOpen(false);
-      return;
-    }
-    if (buttonRef.current?.measureInWindow) {
-      buttonRef.current.measureInWindow((x, y, measuredWidth, height) => {
-        setMenuAnchor({ x, y, width: measuredWidth, height });
-        setMenuOpen(true);
-      });
-      return;
-    }
-    setMenuAnchor({ x: 12, y: 56, width, height: 46 });
-    setMenuOpen(true);
-  }
-
-  if (!options.length) return null;
-
   return (
-    <View style={[styles.inlineFilterWrap, { width }]}>
-      <TouchableOpacity ref={buttonRef} style={styles.inlineFilterButton} onPress={handleOpen} activeOpacity={0.9}>
-        <Text numberOfLines={1} style={[styles.inlineFilterValue, !value ? styles.inlineFilterPlaceholder : null]}>
-          {value || label}
-        </Text>
-        <MaterialIcons name={menuOpen ? 'arrow-drop-up' : 'arrow-drop-down'} size={18} color="#475569" />
-      </TouchableOpacity>
-
-      {menuOpen ? (
-        <Modal animationType="none" transparent visible onRequestClose={() => setMenuOpen(false)}>
-          <Pressable style={styles.inlineFilterBackdrop} onPress={() => setMenuOpen(false)}>
-            <View
-              style={[
-                styles.inlineFilterMenu,
-                {
-                  left: menuAnchor?.x ?? 12,
-                  top: (menuAnchor?.y ?? 56) + (menuAnchor?.height ?? 46) + 6,
-                  width: Math.max(menuAnchor?.width ?? width, width),
-                },
-              ]}
-            >
-              {options.map((option) => {
-                const active = option.value === selectedValue;
-                return (
-                  <TouchableOpacity
-                    key={`${label}-${option.value}`}
-                    style={[styles.inlineFilterItem, active ? styles.inlineFilterItemActive : null]}
-                    onPress={() => {
-                      onSelect(option.value);
-                      setMenuOpen(false);
-                    }}
-                  >
-                    <Text style={[styles.inlineFilterItemText, active ? styles.inlineFilterItemTextActive : null]} numberOfLines={1}>
-                      {option.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </Pressable>
-        </Modal>
-      ) : null}
-    </View>
+    <AppDropdown
+      buttonStyle={styles.inlineFilterButton}
+      containerStyle={[styles.inlineFilterWrap, { width }]}
+      minMenuWidth={width}
+      onSelect={onSelect}
+      options={options}
+      placeholder={label}
+      placeholderTextStyle={styles.inlineFilterPlaceholder}
+      selectedValue={selectedValue}
+      textStyle={styles.inlineFilterValue}
+      value={value}
+      width={width}
+    />
   );
 }
 
@@ -148,7 +98,6 @@ export default function StudentDirectoryScreen() {
   const [activeTab, setActiveTab] = useState('overview');
   const [enrollOpen, setEnrollOpen] = useState(false);
   const [enrollSaving, setEnrollSaving] = useState(false);
-  const [relationshipMenuGuardianId, setRelationshipMenuGuardianId] = useState('');
   const [enrollDraft, setEnrollDraft] = useState({
     name: '',
     enrollmentCode: '',
@@ -257,7 +206,6 @@ export default function StudentDirectoryScreen() {
         guardians: nextGuardians.length ? nextGuardians : [createGuardianDraft()],
       };
     });
-    setRelationshipMenuGuardianId((current) => (current === guardianId ? '' : current));
   }
 
   function resetEnrollDraft() {
@@ -267,7 +215,6 @@ export default function StudentDirectoryScreen() {
       room: '',
       guardians: [createGuardianDraft()],
     });
-    setRelationshipMenuGuardianId('');
   }
 
   async function submitEnrollment() {
@@ -400,9 +347,7 @@ export default function StudentDirectoryScreen() {
             />
             <TextInput value={query} onChangeText={setQuery} placeholder="Search students" style={[styles.input, styles.filtersSearchInput]} />
             {isOffice ? (
-              <TouchableOpacity accessibilityLabel="Enroll learner" style={styles.filtersIconButton} onPress={() => setEnrollOpen(true)}>
-                <MaterialIcons name="add" size={22} color="#ffffff" />
-              </TouchableOpacity>
+              <AppIconButton accessibilityLabel="Enroll learner" name="add" iconSize={22} size={46} style={styles.filtersIconButton} onPress={() => setEnrollOpen(true)} />
             ) : null}
           </View>
         </View>
@@ -430,6 +375,22 @@ export default function StudentDirectoryScreen() {
                     <Text style={styles.profileName}>{selectedChild.name}</Text>
                     <Text style={styles.profileMeta}>Room {selectedChild.room || 'Unassigned'} • {selectedChild.session || 'Session unassigned'}</Text>
                   </View>
+                  {isOffice ? (
+                    <View style={styles.profileHeaderActions}>
+                      <AppIconButton
+                        accessibilityLabel="Edit student info"
+                        name="edit"
+                        style={styles.profileHeaderIconButton}
+                        onPress={() => openAction('Edit student info', 'Student editing can continue through the student profile workspace.')}
+                      />
+                      <AppIconButton
+                        accessibilityLabel={`Assign BCBA / ${THERAPY_ROLE_LABELS.therapist}`}
+                        name="person-add-alt-1"
+                        style={styles.profileHeaderIconButton}
+                        onPress={() => navigation.navigate('ScheduleCalendar', { childId: selectedChild.id, editorMode: 'assignment' })}
+                      />
+                    </View>
+                  ) : null}
                 </View>
 
                 <View style={styles.chipRow}>
@@ -438,25 +399,13 @@ export default function StudentDirectoryScreen() {
 
                 <View style={styles.tabContent}>{renderTabContent()}</View>
 
-                <View style={styles.actionStrip}>
-                  {isOffice ? (
-                    <>
-                      <TouchableOpacity style={styles.primaryButton} onPress={() => openAction('Edit student info', 'Student editing can continue through the student profile workspace.')}>
-                        <Text style={styles.primaryButtonText}>Edit Student Info</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.secondaryButton} onPress={() => openAction('Assign BCBA / Therapist', 'Assignment controls belong in the office staffing workflow and are ready for connection here.')}>
-                        <Text style={styles.secondaryButtonText}>{`Assign BCBA / ${THERAPY_ROLE_LABELS.therapist}`}</Text>
-                      </TouchableOpacity>
-                    </>
-                  ) : (
+                {!isOffice ? (
+                  <View style={styles.actionStrip}>
                     <TouchableOpacity style={styles.primaryButton} onPress={() => navigation.navigate('ProgramDirectory', { studentId: selectedChild.id, focusMode: 'editor' })}>
                       <Text style={styles.primaryButtonText}>Add Program</Text>
                     </TouchableOpacity>
-                  )}
-                  <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate('ChildDetail', { childId: selectedChild.id })}>
-                    <Text style={styles.secondaryButtonText}>Open Full Profile</Text>
-                  </TouchableOpacity>
-                </View>
+                  </View>
+                ) : null}
               </>
             ) : <Text style={styles.empty}>No student selected.</Text>}
           </View>
@@ -486,27 +435,16 @@ export default function StudentDirectoryScreen() {
                 </View>
 
                 <Text style={styles.guardianLabel}>Relationship</Text>
-                <TouchableOpacity style={styles.dropdownButton} onPress={() => setRelationshipMenuGuardianId((current) => current === guardian.id ? '' : guardian.id)} disabled={enrollSaving}>
-                  <Text style={styles.dropdownButtonText}>{guardianRelationshipLabel(guardian.relationship)}</Text>
-                  <Text style={styles.dropdownChevron}>▼</Text>
-                </TouchableOpacity>
-                {relationshipMenuGuardianId === guardian.id ? (
-                  <View style={styles.dropdownMenu}>
-                    {GUARDIAN_RELATIONSHIP_OPTIONS.map((option) => (
-                      <TouchableOpacity
-                        key={option.value}
-                        style={[styles.dropdownOption, guardian.relationship === option.value ? styles.dropdownOptionActive : null]}
-                        onPress={() => {
-                          updateGuardian(guardian.id, 'relationship', option.value);
-                          setRelationshipMenuGuardianId('');
-                        }}
-                        disabled={enrollSaving}
-                      >
-                        <Text style={[styles.dropdownOptionText, guardian.relationship === option.value ? styles.dropdownOptionTextActive : null]}>{option.label}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                ) : null}
+                <AppDropdown
+                  buttonStyle={styles.dropdownButton}
+                  disabled={enrollSaving}
+                  onSelect={(optionValue) => updateGuardian(guardian.id, 'relationship', optionValue)}
+                  options={GUARDIAN_RELATIONSHIP_OPTIONS}
+                  placeholder="Relationship"
+                  selectedValue={guardian.relationship}
+                  textStyle={styles.dropdownButtonText}
+                  value={guardianRelationshipLabel(guardian.relationship)}
+                />
 
                 <Text style={styles.guardianLabel}>Full name</Text>
                 <TextInput value={guardian.name} onChangeText={(value) => updateGuardian(guardian.id, 'name', value)} placeholder="Guardian full name" style={styles.input} editable={!enrollSaving} />
@@ -555,23 +493,17 @@ const styles = StyleSheet.create({
   inputLocked: { backgroundColor: '#f1f5f9', color: '#475569' },
   filtersRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 10 },
   filtersSearchInput: { flex: 1, minWidth: 220 },
-  filtersIconButton: { width: 46, height: 46, borderRadius: 12, backgroundColor: '#2563eb', alignItems: 'center', justifyContent: 'center' },
+  filtersIconButton: { borderRadius: 23 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 12 },
   chipRowSingleLine: { flexDirection: 'row', flexWrap: 'nowrap', marginTop: 12, paddingRight: 8 },
   tabButton: { borderRadius: 999, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#f1f5f9', marginRight: 8, marginBottom: 8 },
   tabButtonActive: { backgroundColor: '#2563eb' },
   tabButtonText: { color: '#0f172a', fontWeight: '700' },
   tabButtonTextActive: { color: '#ffffff' },
-  inlineFilterWrap: { position: 'relative', zIndex: 20 },
-  inlineFilterButton: { height: 46, borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 12, paddingHorizontal: 14, backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  inlineFilterWrap: { zIndex: 20 },
+  inlineFilterButton: {},
   inlineFilterValue: { flex: 1, color: '#0f172a', fontWeight: '600', marginRight: 8 },
   inlineFilterPlaceholder: { color: '#64748b', fontWeight: '500' },
-  inlineFilterBackdrop: { flex: 1, zIndex: 999 },
-  inlineFilterMenu: { position: 'absolute', zIndex: 1000, borderRadius: 12, borderWidth: 1, borderColor: '#dbe4f0', backgroundColor: '#fff', paddingVertical: 4, shadowColor: '#0f172a', shadowOpacity: 0.12, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 16 },
-  inlineFilterItem: { paddingHorizontal: 14, paddingVertical: 10 },
-  inlineFilterItemActive: { backgroundColor: '#eff6ff' },
-  inlineFilterItemText: { color: '#0f172a', fontWeight: '600' },
-  inlineFilterItemTextActive: { color: '#1d4ed8' },
   layoutRow: { marginTop: 14, flexDirection: 'row' },
   rosterPanel: { width: '34%', borderRadius: 18, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e5e7eb', padding: 14, marginRight: 12 },
   detailPanel: { flex: 1, borderRadius: 18, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e5e7eb', padding: 16 },
@@ -583,6 +515,8 @@ const styles = StyleSheet.create({
   rosterMeta: { marginTop: 4, color: '#64748b', fontSize: 12 },
   profileHeader: { flexDirection: 'row', alignItems: 'center' },
   profileAvatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#e2e8f0' },
+  profileHeaderActions: { flexDirection: 'row', alignItems: 'center', marginLeft: 12 },
+  profileHeaderIconButton: { marginLeft: 8 },
   profileName: { fontSize: 22, fontWeight: '800', color: '#0f172a' },
   profileMeta: { marginTop: 6, color: '#64748b' },
   tabContent: { marginTop: 8, borderRadius: 16, backgroundColor: '#f8fafc', padding: 16 },
@@ -609,13 +543,7 @@ const styles = StyleSheet.create({
   guardianLabel: { marginTop: 10, marginBottom: 6, color: '#0f172a', fontWeight: '700' },
   guardianAddButton: { alignSelf: 'flex-start', marginTop: 12, borderRadius: 10, backgroundColor: '#dbeafe', paddingVertical: 10, paddingHorizontal: 12 },
   guardianAddButtonText: { color: '#1d4ed8', fontWeight: '800' },
-  dropdownButton: { marginTop: 4, borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  dropdownButton: { marginTop: 4 },
   dropdownButtonText: { color: '#0f172a', fontWeight: '600' },
-  dropdownChevron: { color: '#64748b', fontSize: 12 },
-  dropdownMenu: { marginTop: 8, borderRadius: 12, borderWidth: 1, borderColor: '#cbd5e1', backgroundColor: '#fff', overflow: 'hidden' },
-  dropdownOption: { paddingHorizontal: 14, paddingVertical: 12 },
-  dropdownOptionActive: { backgroundColor: '#eff6ff' },
-  dropdownOptionText: { color: '#0f172a', fontWeight: '600' },
-  dropdownOptionTextActive: { color: '#1d4ed8' },
   modalActions: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 18 },
 });

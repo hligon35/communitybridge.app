@@ -4,6 +4,7 @@ import { useData } from '../DataContext';
 import { useAuth } from '../AuthContext';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { MaterialIcons } from '@expo/vector-icons';
+import AppIconButton from '../components/AppIconButton';
 import { logPress } from '../utils/logger';
 import { HelpButton } from '../components/TopButtons';
 import { buildVisibleThreads } from '../utils/chatThreads';
@@ -134,28 +135,14 @@ export default function ChatsScreen({ navigation }) {
 
   function HeaderIconButton({ name, onPress, accessibilityLabel, active }) {
     return (
-      <TouchableOpacity
+      <AppIconButton
         onPress={onPress}
         accessibilityLabel={accessibilityLabel}
+        name={name}
+        active={active}
+        size={36}
         hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
-        style={{
-            width: 36,
-            height: 36,
-            borderRadius: 10,
-          alignItems: 'center',
-          justifyContent: 'center',
-            backgroundColor: active ? '#dbeafe' : '#f8fafc',
-            borderWidth: 1,
-            borderColor: active ? '#93c5fd' : '#e2e8f0',
-            shadowColor: '#0f172a',
-            shadowOpacity: active ? 0.12 : 0.06,
-            shadowRadius: 10,
-            shadowOffset: { width: 0, height: 4 },
-            elevation: active ? 3 : 2,
-        }}
-      >
-          <MaterialIcons name={name} size={20} color={active ? '#1d4ed8' : '#0f172a'} />
-      </TouchableOpacity>
+      />
     );
   }
 

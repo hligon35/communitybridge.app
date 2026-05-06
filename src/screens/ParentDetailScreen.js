@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, Linking, Modal, TouchableWithoutFeedback, Alert, Platform } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { MaterialIcons } from '@expo/vector-icons';
+import AppIconButton from '../components/AppIconButton';
 import { useData } from '../DataContext';
 import { useAuth } from '../AuthContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -116,21 +117,17 @@ export default function ParentDetailScreen() {
           </View>
           <View style={styles.headerActionsRight}>
             {parent.phone ? (
-              <TouchableOpacity activeOpacity={0.85} style={styles.profileIconBtn} onPress={() => openPhone(parent.phone)}>
-                <MaterialIcons name="call" size={18} color="#2563eb" />
-              </TouchableOpacity>
+              <AppIconButton accessibilityLabel="Call parent" name="call" iconSize={18} size={36} style={styles.profileIconBtn} onPress={() => openPhone(parent.phone)} />
             ) : null}
             {parent.email ? (
-              <TouchableOpacity activeOpacity={0.85} style={styles.profileIconBtn} onPress={() => openEmail(parent.email)}>
-                <MaterialIcons name="email" size={18} color="#2563eb" />
-              </TouchableOpacity>
+              <AppIconButton accessibilityLabel="Email parent" name="email" iconSize={18} size={36} style={styles.profileIconBtn} onPress={() => openEmail(parent.email)} />
             ) : null}
           </View>
         </View>
 
           <View style={styles.iconActionsRow}>
           <View style={styles.iconCol}>
-            <TouchableOpacity style={styles.iconButton} onPress={async () => {
+            <AppIconButton accessibilityLabel="Chat with parent" name="chat" style={styles.iconButton} onPress={async () => {
               try {
                 const adminId = user?.id || (user?.name || 'admin');
                 // find existing thread where both admin and parent are participants
@@ -151,21 +148,15 @@ export default function ParentDetailScreen() {
                   navigation.navigate('ChatThread', { threadId: newThreadId });
                 }
               } catch (e) { console.warn('open chat failed', e); }
-            }}>
-              <MaterialIcons name="chat" size={22} color={isWeb ? '#fff' : '#2563eb'} />
-            </TouchableOpacity>
+            }} />
             <Text style={styles.iconLabel}>Chat</Text>
           </View>
           <View style={styles.iconCol}>
-            <TouchableOpacity style={styles.iconButton} onPress={() => setShowTimeModal(true)}>
-              <MaterialIcons name="notification-important" size={22} color={isWeb ? '#fff' : '#2563eb'} />
-            </TouchableOpacity>
+            <AppIconButton accessibilityLabel="Open urgent memo" name="notification-important" style={styles.iconButton} onPress={() => setShowTimeModal(true)} />
             <Text style={styles.iconLabel}>Urgent Memo</Text>
           </View>
           <View style={styles.iconCol}>
-            <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('UserMonitor', { initialUserId: parent.id })}>
-              <MaterialIcons name="manage-account" size={22} color={isWeb ? '#fff' : '#2563eb'} />
-            </TouchableOpacity>
+            <AppIconButton accessibilityLabel="Manage parent" name="manage-account" style={styles.iconButton} onPress={() => navigation.navigate('UserMonitor', { initialUserId: parent.id })} />
             <Text style={styles.iconLabel}>Manage</Text>
           </View>
         </View>
@@ -364,17 +355,7 @@ const styles = StyleSheet.create({
   personRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
   iconActionsRow: { flexDirection: 'row', marginTop: 12, justifyContent: 'space-between', alignItems: 'center' },
   iconCol: { alignItems: 'center', flex: 1 },
-  iconButton: {
-    width: 48,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'transparent',
-    ...Platform.select({
-      web: { borderRadius: 24, backgroundColor: '#2563eb' },
-      default: null,
-    }),
-  },
+  iconButton: { width: 48, height: 48 },
   iconLabel: { marginTop: 6, fontWeight: '700', fontSize: 12 },
   therapistRow: { flexDirection: 'row', alignItems: 'center', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#eef2f7', marginTop: 8 },
   therapistGridItem: { flexDirection: 'row', alignItems: 'center', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#eef2f7' },
@@ -406,26 +387,5 @@ const styles = StyleSheet.create({
     }),
   },
   headerActionsRight: { alignItems: 'center', justifyContent: 'center', marginLeft: 12 },
-  profileIconBtn: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: 6,
-    backgroundColor: 'transparent',
-    ...Platform.select({
-      web: {
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: '#e6e7ea',
-        backgroundColor: '#fff',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.08,
-        shadowRadius: 1.5,
-        elevation: 2,
-      },
-      default: null,
-    }),
-  },
+  profileIconBtn: { marginVertical: 6 },
 });

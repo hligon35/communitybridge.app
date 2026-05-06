@@ -58,9 +58,9 @@
     ],
     "icon": "./assets/icon.png",
     "splash": {
-      "image": "./assets/icon.png",
+      "image": "./assets/titlelogo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#000000"
+      "backgroundColor": "#f7f5ef"
     },
     "android": {
       "package": "com.azlabsllc.communitybridge",

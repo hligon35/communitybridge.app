@@ -5,6 +5,7 @@ import { useData } from '../DataContext';
 import { useAuth } from '../AuthContext';
 import { avatarSourceFor } from '../utils/idVisibility';
 import { MaterialIcons } from '@expo/vector-icons';
+import AppIconButton from '../components/AppIconButton';
 import MoodTrackerCard from '../components/MoodTrackerCard';
 import { isAdminRole, isStaffRole } from '../core/tenant/models';
 import SessionSummarySnapshot from '../components/SessionSummarySnapshot';
@@ -150,8 +151,8 @@ export default function ChildDetailScreen() {
                   </View>
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  {p.phone ? <TouchableOpacity style={{ padding: 8 }} onPress={() => openPhone(p.phone)}><MaterialIcons name="call" size={18} color="#2563eb" /></TouchableOpacity> : null}
-                  {p.email ? <TouchableOpacity style={{ padding: 8 }} onPress={() => openEmail(p.email)}><MaterialIcons name="email" size={18} color="#2563eb" /></TouchableOpacity> : null}
+                  {p.phone ? <AppIconButton accessibilityLabel="Call parent" name="call" iconSize={18} size={36} style={{ marginLeft: 8 }} onPress={() => openPhone(p.phone)} /> : null}
+                  {p.email ? <AppIconButton accessibilityLabel="Email parent" name="email" iconSize={18} size={36} style={{ marginLeft: 8 }} onPress={() => openEmail(p.email)} /> : null}
                 </View>
               </TouchableOpacity>
             ))}

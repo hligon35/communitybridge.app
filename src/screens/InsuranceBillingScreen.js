@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Alert, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import * as FileSystem from 'expo-file-system';
-import { MaterialIcons } from '@expo/vector-icons';
 import { ScreenWrapper } from '../components/ScreenWrapper';
+import AppDropdown from '../components/AppDropdown';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../AuthContext';
 import { useData } from '../DataContext';
@@ -20,109 +20,25 @@ function Block({ title, children, style }) {
 }
 
 function HeaderLearnerPicker({ children, selectedLearnerId, onSelect }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [menuAnchor, setMenuAnchor] = useState(null);
-  const buttonRef = useRef(null);
   const items = Array.isArray(children) ? children.filter(Boolean) : [];
   const selectedLearner = items.find((child) => child?.id === selectedLearnerId) || items[0] || null;
   const buttonLabel = selectedLearner?.name || 'Select learner';
   const disabled = items.length <= 1;
 
-  function chooseLearner(nextId) {
-    if (!nextId) return;
-    onSelect(nextId);
-    setMenuOpen(false);
-  }
-
-  function openWebMenu() {
-    if (!buttonRef.current?.measureInWindow) {
-      setMenuAnchor({ x: 12, y: 56, width: 188, height: 36 });
-      setMenuOpen(true);
-      return;
-    }
-    buttonRef.current.measureInWindow((x, y, width, height) => {
-      setMenuAnchor({ x, y, width, height });
-      setMenuOpen(true);
-    });
-  }
-
-  function openNativeChooser() {
-    Alert.alert(
-      'Select learner',
-      'Choose the learner for billing details.',
-      [
-        ...items.map((child) => ({
-          text: child?.name || 'Learner',
-          onPress: () => chooseLearner(child?.id),
-        })),
-        { text: 'Cancel', style: 'cancel', onPress: () => setMenuOpen(false) },
-      ]
-    );
-  }
-
-  function handlePress() {
-    if (!items.length) return;
-    if (Platform.OS === 'web') {
-      if (menuOpen) {
-        setMenuOpen(false);
-        return;
-      }
-      openWebMenu();
-      return;
-    }
-    openNativeChooser();
-  }
-
   return (
-    <View style={styles.headerPickerWrap}>
-      <TouchableOpacity
-        accessibilityLabel={selectedLearner ? `Selected learner ${buttonLabel}` : 'Select learner'}
-        disabled={!items.length}
-        onPress={handlePress}
-        ref={buttonRef}
-        style={[styles.headerPickerButton, !items.length ? styles.headerPickerButtonDisabled : null]}
-      >
-        <Text style={styles.headerPickerCaption}>Learner</Text>
-        <View style={styles.headerPickerRow}>
-          <Text numberOfLines={1} style={[styles.headerPickerValue, disabled ? styles.headerPickerValueLocked : null]}>
-            {buttonLabel}
-          </Text>
-          {!disabled ? <MaterialIcons color="#475569" name={menuOpen ? 'arrow-drop-up' : 'arrow-drop-down'} size={20} /> : null}
-        </View>
-      </TouchableOpacity>
-
-      {Platform.OS === 'web' && menuOpen && items.length > 1 ? (
-        <Modal animationType="none" onRequestClose={() => setMenuOpen(false)} transparent visible>
-          <Pressable style={styles.headerPickerBackdrop} onPress={() => setMenuOpen(false)}>
-            <View
-              style={[
-                styles.headerPickerMenu,
-                {
-                  left: menuAnchor?.x ?? 12,
-                  top: (menuAnchor?.y ?? 56) + (menuAnchor?.height ?? 36) + 6,
-                  width: Math.max(menuAnchor?.width ?? 188, 188),
-                },
-              ]}
-            >
-              {items.map((child) => {
-                const active = child?.id === selectedLearner?.id;
-                return (
-                  <TouchableOpacity
-                    key={child.id}
-                    onPress={() => chooseLearner(child.id)}
-                    style={[styles.headerPickerMenuItem, active ? styles.headerPickerMenuItemActive : null]}
-                  >
-                    <Text numberOfLines={1} style={[styles.headerPickerMenuText, active ? styles.headerPickerMenuTextActive : null]}>
-                      {child?.name || 'Learner'}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </Pressable>
-        </Modal>
-      ) : null}
-    </View>
+    <AppDropdown
+      accessibilityLabel={selectedLearner ? `Selected learner ${buttonLabel}` : 'Select learner'}
+      containerStyle={styles.headerPickerWrap}
+      disabled={!items.length || disabled}
+      minMenuWidth={188}
+      onSelect={onSelect}
+      options={items.map((child) => ({ value: child?.id, label: child?.name || 'Learner' }))}
+      placeholder="Learner"
+      selectedValue={selectedLearner?.id || ''}
+      textStyle={styles.headerPickerValue}
+      value={buttonLabel}
+      width={188}
+    />
   );
 }
 
@@ -630,47 +546,7 @@ const styles = StyleSheet.create({
   splitCard: { width: '48%', marginTop: 0 },
   cardTitle: { fontSize: 16, fontWeight: '800', color: '#0f172a', marginBottom: 12 },
   headerPickerWrap: { minWidth: 156, maxWidth: 176 },
-  headerPickerButton: {
-    minHeight: 36,
-    borderRadius: 12,
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#dbe4ee',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  headerPickerButtonDisabled: { opacity: 0.72 },
-  headerPickerCaption: { color: '#64748b', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.3 },
-  headerPickerRow: { marginTop: 1, flexDirection: 'row', alignItems: 'center' },
-  headerPickerValue: { flex: 1, color: '#0f172a', fontWeight: '700', fontSize: 13 },
-  headerPickerValueLocked: { paddingRight: 2 },
-  headerPickerBackdrop: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
-  headerPickerMenu: {
-    position: 'absolute',
-    borderRadius: 14,
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#dbe4ee',
-    paddingVertical: 6,
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.12,
-    shadowOffset: { width: 0, height: 6 },
-    shadowRadius: 18,
-    elevation: 3,
-    zIndex: 40,
-  },
-  headerPickerMenuItem: { paddingVertical: 10, paddingHorizontal: 12 },
-  headerPickerMenuItemActive: { backgroundColor: '#eff6ff' },
-  headerPickerMenuText: { color: '#334155', fontWeight: '600' },
-  headerPickerMenuTextActive: { color: '#1d4ed8', fontWeight: '800' },
+  headerPickerValue: { flex: 1, color: '#0f172a', fontWeight: '600', fontSize: 16 },
   rowText: { color: '#475569', lineHeight: 20, marginBottom: 8 },
   digitalCard: { borderRadius: 18, backgroundColor: '#1e3a8a', padding: 18 },
   digitalCardName: { color: '#ffffff', fontSize: 22, fontWeight: '800' },

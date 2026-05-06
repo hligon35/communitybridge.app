@@ -9,7 +9,7 @@ import { ADMIN_SECTION_KEYS, canAccessAdminSection, canAccessAdminWorkspace, isB
 import { isChildLinkedToTherapist } from '../features/sessionTracking/utils/dashboardSessionTarget';
 import useIsTabletLayout from '../hooks/useIsTabletLayout';
 import { navigationRef } from '../navigationRef';
-import { THERAPY_ROLE_LABELS, getWorkspaceLabel } from '../utils/roleTerminology';
+import { THERAPY_ROLE_LABELS, getDisplayRoleLabel, getWorkspaceLabel } from '../utils/roleTerminology';
 import LogoTitle from './LogoTitle';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -50,7 +50,12 @@ export default function TabletNavigationShell({ currentRoute, children }) {
   const showAdminWorkspace = canAccessAdminWorkspace(user?.role);
   const isParentWorkspace = !showAdminWorkspace && !isStaff;
   const workspaceLabel = getWorkspaceLabel(user?.role);
-  const greeting = String(user?.name || user?.firstName || '').trim() || (showAdminWorkspace ? 'Welcome back' : 'Hello');
+  const preferredUserName = String(user?.firstName || '').trim()
+    || String(user?.name || '').trim().split(/\s+/).filter(Boolean)[0]
+    || String(user?.email || '').trim()
+    || 'User';
+  const roleLabel = getDisplayRoleLabel(user?.role || '') || 'User';
+  const drawerGreeting = `Hello, ${preferredUserName} (${roleLabel}).`;
   const showQuickAdd = !showAdminWorkspace && isStaff;
   const showBcbaQuickActions = showAdminWorkspace && isBcbaRole(user?.role);
   const showHeaderQuickMenu = showQuickAdd || showBcbaQuickActions;
@@ -293,9 +298,6 @@ export default function TabletNavigationShell({ currentRoute, children }) {
           <View style={[styles.topBar, styles.mobileTopBar]}>
             <View style={[styles.brandRow, styles.mobileBrandRow]}>
               <LogoTitle width={128} height={40} />
-              <View style={[styles.greetingWrap, styles.mobileGreetingWrap]}>
-                <Text style={[styles.topTitle, styles.mobileTopTitle]} numberOfLines={1}>Hello, {greeting}</Text>
-              </View>
             </View>
             <View style={[styles.headerActions, styles.mobileHeaderActions]}>
               <TouchableOpacity style={styles.iconOnlyButton} onPress={() => setMobileNavOpen(true)} accessibilityLabel="Open navigation menu">
@@ -318,13 +320,13 @@ export default function TabletNavigationShell({ currentRoute, children }) {
             <ScrollView style={styles.mobileNavScroll} contentContainerStyle={styles.mobileNavScrollContent} showsVerticalScrollIndicator>
               {renderNavItems(false, () => setMobileNavOpen(false))}
               <View style={styles.mobileUtilitySection}>
-                <TouchableOpacity style={[styles.mobileUtilityButton, updateBusy ? styles.mobileUtilityButtonDisabled : null]} onPress={checkForOtaUpdate} disabled={updateBusy}>
-                  <Image source={checkUpdatesIcon} style={[styles.mobileUtilityIcon, updateBusy ? styles.drawerUtilityIconDisabled : null]} resizeMode="contain" />
-                  <Text style={styles.mobileUtilityText}>{updateBusy ? 'Checking for updates...' : 'Check for updates'}</Text>
-                </TouchableOpacity>
                 <TouchableOpacity style={styles.mobileUtilityButton} onPress={() => { setMobileNavOpen(false); openTarget({ root: 'Settings', screen: 'Help' }); }}>
                   <MaterialIcons name="help-outline" size={20} color="#1d4ed8" />
                   <Text style={styles.mobileUtilityText}>Help</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.mobileUtilityButton, updateBusy ? styles.mobileUtilityButtonDisabled : null]} onPress={checkForOtaUpdate} disabled={updateBusy}>
+                  <Image source={checkUpdatesIcon} style={[styles.mobileUtilityIcon, updateBusy ? styles.drawerUtilityIconDisabled : null]} resizeMode="contain" />
+                  <Text style={styles.mobileUtilityText}>{updateBusy ? 'Checking for updates...' : 'Check for updates'}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.mobileLogoutButton} onPress={() => { setMobileNavOpen(false); logout?.(); }}>
                   <MaterialIcons name="logout" size={20} color="#b91c1c" />
@@ -346,6 +348,11 @@ export default function TabletNavigationShell({ currentRoute, children }) {
           <View style={[styles.drawerBrandWrap, collapsed ? styles.drawerBrandWrapCollapsed : null]}>
             <LogoTitle width={collapsed ? 90 : 180} height={collapsed ? 90 : 90} />
           </View>
+          {!collapsed ? (
+            <View style={styles.drawerIdentityWrap}>
+              <Text style={styles.drawerIdentityText} numberOfLines={2}>{drawerGreeting}</Text>
+            </View>
+          ) : null}
           {Platform.OS !== 'web' ? (
             <TouchableOpacity style={styles.drawerToggle} onPress={() => setCollapsed((value) => !value)}>
               <MaterialIcons name={collapsed ? 'menu' : 'menu-open'} size={22} color="#e2e8f0" />
@@ -354,28 +361,28 @@ export default function TabletNavigationShell({ currentRoute, children }) {
           ) : null}
 
           {renderNavItems(collapsed)}
-          <TouchableOpacity style={[styles.drawerUtilityButton, updateBusy ? styles.drawerUtilityButtonDisabled : null]} onPress={checkForOtaUpdate} disabled={updateBusy}>
-            <Image source={checkUpdatesIcon} style={[styles.drawerUtilityIcon, updateBusy ? styles.drawerUtilityIconDisabled : null]} resizeMode="contain" />
-            {!collapsed ? <Text style={styles.drawerUtilityText}>{updateBusy ? 'Checking…' : 'Check for updates'}</Text> : null}
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.logoutButton} onPress={() => logout?.()}>
-            <MaterialIcons name="logout" size={20} color="#fecaca" />
-            {!collapsed ? <Text style={styles.logoutText}>Logout</Text> : null}
-          </TouchableOpacity>
+          <View style={styles.drawerUtilitySection}>
+            <TouchableOpacity style={styles.drawerUtilityButton} onPress={() => openTarget({ root: 'Settings', screen: 'Help' })}>
+              <MaterialIcons name="help-outline" size={20} color="#bfdbfe" />
+              {!collapsed ? <Text style={styles.drawerUtilityText}>Help</Text> : null}
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.drawerUtilityButton, updateBusy ? styles.drawerUtilityButtonDisabled : null]} onPress={checkForOtaUpdate} disabled={updateBusy}>
+              <Image source={checkUpdatesIcon} style={[styles.drawerUtilityIcon, updateBusy ? styles.drawerUtilityIconDisabled : null]} resizeMode="contain" />
+              {!collapsed ? <Text style={styles.drawerUtilityText}>{updateBusy ? 'Checking…' : 'Check for updates'}</Text> : null}
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.logoutButton} onPress={() => logout?.()}>
+              <MaterialIcons name="logout" size={20} color="#fecaca" />
+              {!collapsed ? <Text style={styles.logoutText}>Logout</Text> : null}
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={[styles.contentWrap, { paddingTop: 12, paddingBottom: Math.max(insets.bottom, 12) }]}>
           {showHeaderQuickMenu && quickMenuOpen ? <TouchableOpacity style={styles.quickMenuDismissLayer} activeOpacity={1} onPress={() => setQuickMenuOpen(false)} /> : null}
-          <View style={styles.topBar}>
-            <View style={styles.brandRow}>
-              {!collapsed ? (
-                <View style={styles.greetingWrap}>
-                  <Text style={styles.topTitle}>Hello, {greeting}</Text>
-                </View>
-              ) : null}
-            </View>
-            <View style={styles.headerActions}>
-              {showHeaderQuickMenu ? (
+          {showHeaderQuickMenu ? (
+            <View style={styles.topBar}>
+              <View style={styles.brandRow} />
+              <View style={styles.headerActions}>
                 <View style={styles.quickAddAnchor}>
                   <TouchableOpacity style={[styles.iconOnlyButton, styles.quickAddButton, quickMenuOpen ? styles.iconOnlyButtonActive : null]} onPress={() => setQuickMenuOpen((value) => !value)} accessibilityLabel={showBcbaQuickActions ? 'Quick actions' : 'Quick add'}>
                     <MaterialIcons name="add" size={20} color="#1d4ed8" />
@@ -403,12 +410,9 @@ export default function TabletNavigationShell({ currentRoute, children }) {
                     </View>
                   ) : null}
                 </View>
-              ) : null}
-              <TouchableOpacity style={styles.iconOnlyButton} onPress={() => openTarget({ root: 'Settings', screen: 'Help' })}>
-                <MaterialIcons name="help-outline" size={20} color="#1d4ed8" />
-              </TouchableOpacity>
+              </View>
             </View>
-          </View>
+          ) : null}
           <Modal visible={!!quickLogDraft} transparent animationType="fade" onRequestClose={() => !quickLogSaving && setQuickLogDraft(null)}>
             <View style={styles.modalOverlay}>
               <View style={styles.modalCard}>
@@ -448,6 +452,8 @@ const styles = StyleSheet.create({
   drawerCollapsed: { width: 92, paddingHorizontal: 10 },
   drawerBrandWrap: { alignItems: 'flex-start', justifyContent: 'center', marginBottom: 14 },
   drawerBrandWrapCollapsed: { alignItems: 'center' },
+  drawerIdentityWrap: { marginBottom: 16, paddingHorizontal: 6 },
+  drawerIdentityText: { color: '#e2e8f0', fontWeight: '800', fontSize: 16, lineHeight: 22 },
   drawerToggle: { flexDirection: 'row', alignItems: 'center', marginBottom: 18 },
   drawerToggleText: { color: '#e2e8f0', fontWeight: '700', marginLeft: 10 },
   group: { marginBottom: 18 },
@@ -456,7 +462,8 @@ const styles = StyleSheet.create({
   navItemActive: { backgroundColor: '#e0f2fe' },
   navLabel: { color: '#e2e8f0', fontWeight: '700', marginLeft: 10 },
   navLabelActive: { color: '#0f172a' },
-  drawerUtilityButton: { marginTop: 'auto', flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 14, backgroundColor: '#1e293b', marginBottom: 8 },
+  drawerUtilitySection: { marginTop: 'auto' },
+  drawerUtilityButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 14, backgroundColor: '#1e293b', marginBottom: 8 },
   drawerUtilityButtonDisabled: { opacity: 0.72 },
   drawerUtilityIcon: { width: 20, height: 20 },
   drawerUtilityIconDisabled: { opacity: 0.5 },

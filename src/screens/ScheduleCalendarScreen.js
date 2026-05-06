@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useRoute } from '@react-navigation/native';
 import { ScreenWrapper } from '../components/ScreenWrapper';
+import AppDropdown from '../components/AppDropdown';
+import AppIconButton from '../components/AppIconButton';
 import TimeField from '../components/TimeField';
 import { useAuth } from '../AuthContext';
 import { useData } from '../DataContext';
@@ -18,44 +20,59 @@ function todayStamp(hours = 9, minutes = 0) {
   return date;
 }
 
-function sameDay(left, right) {
-  if (!(left instanceof Date) || !(right instanceof Date)) return false;
-  return left.getFullYear() === right.getFullYear() && left.getMonth() === right.getMonth() && left.getDate() === right.getDate();
+function sameDay(a, b) {
+  if (!(a instanceof Date) || !(b instanceof Date)) return false;
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
-function buildCalendarDays(anchorDate) {
-  const monthStart = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1);
-  const calendarStart = new Date(monthStart);
-  calendarStart.setDate(monthStart.getDate() - monthStart.getDay());
+function buildCalendarDays(selectedDate) {
+  const baseDate = selectedDate instanceof Date && Number.isFinite(selectedDate.getTime()) ? selectedDate : new Date();
+  const monthStart = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1, 12, 0, 0, 0);
+  const gridStart = new Date(monthStart);
+  gridStart.setDate(monthStart.getDate() - monthStart.getDay());
   return Array.from({ length: 42 }, (_, index) => {
-    const date = new Date(calendarStart);
-    date.setDate(calendarStart.getDate() + index);
-    return date;
+    const next = new Date(gridStart);
+    next.setDate(gridStart.getDate() + index);
+    return next;
   });
 }
 
-function buildSessionCards(children = []) {
-  return (children || []).slice(0, 10).map((child, index) => {
-    const therapist = child?.session === 'PM' ? child?.pmTherapist : child?.amTherapist || child?.pmTherapist || child?.bcaTherapist;
-    const staffName = typeof therapist === 'string' ? therapist : therapist?.name || child?.bcaTherapist?.name || 'Unassigned';
-    const start = child?.dropoffTimeISO ? new Date(child.dropoffTimeISO) : todayStamp(8 + index, 0);
-    const end = child?.pickupTimeISO ? new Date(child.pickupTimeISO) : todayStamp(9 + index, 0);
-    return {
-      id: child?.id || `session-${index}`,
-      student: child?.name || 'Student',
-      staff: staffName,
-      location: child?.room || 'Room TBD',
-      status: index % 4 === 0 ? 'canceled' : index % 3 === 0 ? 'completed' : 'scheduled',
-      start,
-      end,
-    };
-  });
+function buildSessionCards(children) {
+  return (Array.isArray(children) ? children : [])
+    .filter((child) => child?.id)
+    .map((child) => {
+      const start = child?.dropoffTimeISO ? new Date(child.dropoffTimeISO) : todayStamp(9, 0);
+      const end = child?.pickupTimeISO ? new Date(child.pickupTimeISO) : todayStamp(10, 0);
+      const sessionLabel = String(child?.session || (start.getHours() >= 12 ? 'PM' : 'AM')).toUpperCase() === 'PM' ? 'PM' : 'AM';
+      const sessionStaff = sessionLabel === 'PM' ? child?.pmTherapist : child?.amTherapist;
+      const fallbackStaff = Array.isArray(child?.assignedABA) && child.assignedABA.length
+        ? child.assignedABA[0]
+        : Array.isArray(child?.assigned_ABA) && child.assigned_ABA.length
+          ? child.assigned_ABA[0]
+          : child?.bcaTherapist;
+      const resolvedStaff = sessionStaff || fallbackStaff;
+      const staffLabel = typeof resolvedStaff === 'object'
+        ? resolvedStaff?.name || resolvedStaff?.email || 'Unassigned'
+        : String(resolvedStaff || 'Unassigned');
+      return {
+        id: child.id,
+        student: child?.name || 'Learner',
+        staff: staffLabel,
+        location: String(child?.room || 'Room TBD'),
+        start,
+        end,
+        status: String(child?.scheduleStatus || child?.status || 'scheduled').toLowerCase(),
+      };
+    })
+    .filter((session) => session.start instanceof Date && Number.isFinite(session.start.getTime()) && session.end instanceof Date && Number.isFinite(session.end.getTime()))
+    .sort((left, right) => left.start.getTime() - right.start.getTime());
 }
 
 export default function ScheduleCalendarScreen() {
   const { user } = useAuth();
   const { children = [], parents = [], therapists = [], setChildren, fetchAndSync } = useData();
   const { width } = useWindowDimensions();
+  const route = useRoute();
 
   useFocusEffect(
     React.useCallback(() => {
@@ -68,6 +85,10 @@ export default function ScheduleCalendarScreen() {
   const isParent = role === USER_ROLES.PARENT;
   const isOffice = isOfficeAdminRole(user?.role);
   const canManageSchedule = isBcba || isOffice;
+  const requestedChildId = route?.params?.childId ? String(route.params.childId) : '';
+  const requestedEditorMode = route?.params?.editorMode === 'assignment' || route?.params?.editorMode === 'session'
+    ? route.params.editorMode
+    : '';
   const [viewMode, setViewMode] = useState('day');
   const [focusMode, setFocusMode] = useState('staff');
   const [editorMode, setEditorMode] = useState('');
@@ -138,6 +159,17 @@ export default function ScheduleCalendarScreen() {
       setSelectedChildId(visibleChildren[0]?.id || '');
     }
   }, [selectedChildId, visibleChildren]);
+
+  useEffect(() => {
+    if (!requestedChildId) return;
+    if (!visibleChildren.some((child) => child?.id === requestedChildId)) return;
+    setSelectedChildId(requestedChildId);
+  }, [requestedChildId, visibleChildren]);
+
+  useEffect(() => {
+    if (!requestedEditorMode || !canManageSchedule || isParent || isTherapist) return;
+    setEditorMode(requestedEditorMode);
+  }, [canManageSchedule, isParent, isTherapist, requestedEditorMode]);
 
   useEffect(() => {
     if (!selectedChild) return;
@@ -304,28 +336,64 @@ export default function ScheduleCalendarScreen() {
     }
   }
 
+  function openSessionEditor(session) {
+    if (!session?.id) return;
+    setSelectedChildId(session.id);
+    if (session.start instanceof Date && Number.isFinite(session.start.getTime())) {
+      setSelectedDate(session.start);
+    }
+    setEditorMode('session');
+  }
+
   function action(title, message) {
     Alert.alert(title, message);
   }
 
-  return (
-    <ScreenWrapper style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.controlsCard}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRowSingleLine}>
-            {['day', 'week', 'month'].map((mode) => (
-              <TouchableOpacity key={mode} style={[styles.chip, viewMode === mode ? styles.chipActive : null]} onPress={() => setViewMode(mode)}>
-                <Text style={[styles.chipText, viewMode === mode ? styles.chipTextActive : null]}>{mode.toUpperCase()}</Text>
-              </TouchableOpacity>
-            ))}
-            {!isTherapist && !isParent ? ['staff', 'student', 'room'].map((mode) => (
-              <TouchableOpacity key={mode} style={[styles.chip, focusMode === mode ? styles.chipActive : null]} onPress={() => setFocusMode(mode)}>
-                <Text style={[styles.chipText, focusMode === mode ? styles.chipTextActive : null]}>{mode === 'room' ? 'Room view' : `${mode.charAt(0).toUpperCase()}${mode.slice(1)} view`}</Text>
-              </TouchableOpacity>
-            )) : null}
-          </ScrollView>
-        </View>
+  const focusModeOptions = useMemo(() => ([
+    { value: 'staff', label: 'Staff view' },
+    { value: 'student', label: 'Student view' },
+    { value: 'room', label: 'Room view' },
+  ]), []);
+  const activeFocusModeLabel = focusModeOptions.find((option) => option.value === focusMode)?.label || 'Staff view';
+  const headerFocusMode = !isTherapist && !isParent ? (
+    <AppDropdown
+      accessibilityLabel="Schedule focus mode"
+      minMenuWidth={136}
+      onSelect={setFocusMode}
+      options={focusModeOptions}
+      placeholder="View"
+      selectedValue={focusMode}
+      textStyle={styles.headerModeButtonText}
+      value={activeFocusModeLabel}
+      width={136}
+    />
+  ) : null;
+  const headerActions = !isTherapist && !isParent ? (
+    <View style={styles.headerActionRow}>
+      {canManageSchedule ? (
+        <TouchableOpacity
+          accessibilityLabel="Assign ABA Tech"
+          style={styles.headerAssignmentButton}
+          onPress={() => setEditorMode('assignment')}
+        >
+          <MaterialIcons name="add" size={18} color="#1d4ed8" />
+          <Text style={styles.headerAssignmentButtonText}>ABA</Text>
+        </TouchableOpacity>
+      ) : null}
+      <TouchableOpacity
+        accessibilityLabel="Add session"
+        style={styles.headerActionButton}
+        onPress={() => setEditorMode('session')}
+      >
+        <MaterialIcons name="add" size={22} color="#ffffff" />
+        <Text style={styles.headerActionButtonText}>Session</Text>
+      </TouchableOpacity>
+    </View>
+  ) : null;
 
+  return (
+    <ScreenWrapper style={styles.screen} bannerLeft={headerFocusMode} bannerRight={headerActions}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={[styles.scheduleWorkspace, isWideLayout ? styles.scheduleWorkspaceWide : null]}>
           <View style={[styles.calendarCard, isWideLayout ? styles.calendarCardWide : null]}>
             <View style={styles.calendarHeader}>
@@ -360,15 +428,6 @@ export default function ScheduleCalendarScreen() {
           </View>
 
           <View style={[styles.sessionsPane, isWideLayout ? styles.sessionsPaneWide : null]}>
-        {!isTherapist && !isParent ? <View style={[styles.actionRow, styles.actionRowCentered]}>
-          <TouchableOpacity style={styles.primaryButton} onPress={() => setEditorMode('session')}>
-            <Text style={styles.primaryButtonText}>Add Session</Text>
-          </TouchableOpacity>
-          {isOffice ? <TouchableOpacity style={styles.secondaryButton} onPress={() => setEditorMode('session')}><Text style={styles.secondaryButtonText}>Edit Session</Text></TouchableOpacity> : null}
-          {isOffice ? <TouchableOpacity style={[styles.secondaryButton, saving ? styles.buttonDisabled : null]} onPress={approveScheduleChanges} disabled={saving}><Text style={styles.secondaryButtonText}>{saving ? 'Saving...' : 'Approve Changes'}</Text></TouchableOpacity> : null}
-          {canManageSchedule ? <TouchableOpacity style={styles.secondaryButton} onPress={() => setEditorMode('assignment')}><Text style={styles.secondaryButtonText}>Assign ABA Tech</Text></TouchableOpacity> : null}
-        </View> : null}
-
         {!isTherapist && !isParent && selectedChildApproval ? (
           <View style={styles.approvalCard}>
             <Text style={styles.groupTitle}>Schedule Approval</Text>
@@ -380,7 +439,7 @@ export default function ScheduleCalendarScreen() {
 
         {editorMode ? (
           <View style={styles.editorCard}>
-            <Text style={styles.groupTitle}>{editorMode === 'session' ? 'Add or Update Session' : 'Assign ABA Tech'}</Text>
+            <Text style={styles.groupTitle}>{editorMode === 'session' ? 'Add Session' : 'Assign ABA Tech'}</Text>
             <Text style={styles.groupSubtitle}>{editorMode === 'session' ? 'Choose a learner, set the session window, and save it to the selected calendar date.' : 'Choose a learner and assign an ABA tech to the AM or PM session.'}</Text>
 
             <Text style={styles.fieldLabel}>Learner</Text>
@@ -452,8 +511,20 @@ export default function ScheduleCalendarScreen() {
                   <Text style={styles.sessionMeta}>Location: {session.location}</Text>
                   <Text style={styles.sessionMeta}>Time: {session.start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} - {session.end.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</Text>
                 </View>
-                <View style={[styles.statusPill, session.status === 'canceled' ? styles.statusCanceled : session.status === 'completed' ? styles.statusCompleted : styles.statusScheduled]}>
-                  <Text style={[styles.statusText, session.status === 'canceled' ? styles.statusTextCanceled : session.status === 'completed' ? styles.statusTextCompleted : styles.statusTextScheduled]}>{session.status.toUpperCase()}</Text>
+                <View style={styles.sessionCardActions}>
+                  {isOffice ? (
+                    <AppIconButton
+                      accessibilityLabel={`Edit session for ${session.student}`}
+                      name="edit"
+                      iconSize={18}
+                      size={36}
+                      style={styles.sessionIconButton}
+                      onPress={() => openSessionEditor(session)}
+                    />
+                  ) : null}
+                  <View style={[styles.statusPill, session.status === 'canceled' ? styles.statusCanceled : session.status === 'completed' ? styles.statusCompleted : styles.statusScheduled]}>
+                    <Text style={[styles.statusText, session.status === 'canceled' ? styles.statusTextCanceled : session.status === 'completed' ? styles.statusTextCompleted : styles.statusTextScheduled]}>{session.status.toUpperCase()}</Text>
+                  </View>
                 </View>
               </View>
             ))}
@@ -470,13 +541,17 @@ export default function ScheduleCalendarScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#f8fafc' },
   content: { padding: 16 },
-  controlsCard: { marginTop: 14, borderRadius: 18, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e5e7eb', padding: 16 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 },
-  chipRowSingleLine: { flexDirection: 'row', flexWrap: 'nowrap', paddingRight: 8 },
   chip: { borderRadius: 999, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#f1f5f9', marginRight: 8, marginBottom: 8 },
   chipActive: { backgroundColor: '#2563eb' },
   chipText: { color: '#0f172a', fontWeight: '700' },
   chipTextActive: { color: '#ffffff' },
+  headerModeButtonText: { flex: 1, marginRight: 6, color: '#0f172a', fontWeight: '700' },
+  headerActionRow: { flexDirection: 'row', alignItems: 'center' },
+  headerAssignmentButton: { height: 40, borderRadius: 20, backgroundColor: '#eff6ff', paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+  headerAssignmentButtonText: { color: '#1d4ed8', fontWeight: '800', marginLeft: 6 },
+  headerActionButton: { height: 40, borderRadius: 20, backgroundColor: '#2563eb', paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  headerActionButtonText: { color: '#ffffff', fontWeight: '800', marginLeft: 6 },
   scheduleWorkspace: { marginTop: 12 },
   scheduleWorkspaceWide: { flexDirection: 'row', alignItems: 'flex-start' },
   calendarCard: { borderRadius: 18, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e5e7eb', padding: 16, marginBottom: 12 },
@@ -519,6 +594,8 @@ const styles = StyleSheet.create({
   fieldHalf: { width: '48%' },
   input: { minHeight: 46, borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: '#fff', color: '#0f172a' },
   sessionCard: { marginTop: 12, borderRadius: 16, backgroundColor: '#f8fafc', padding: 14, flexDirection: 'row', alignItems: 'center' },
+  sessionCardActions: { marginLeft: 12, alignItems: 'flex-end' },
+  sessionIconButton: { marginBottom: 10 },
   sessionTitle: { fontWeight: '800', color: '#0f172a' },
   sessionMeta: { marginTop: 4, color: '#475569' },
   statusPill: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },

@@ -5,6 +5,7 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { useData } from '../DataContext';
 import { useAuth } from '../AuthContext';
 import { MaterialIcons } from '@expo/vector-icons';
+import AppIconButton from '../components/AppIconButton';
 // header provided by ScreenWrapper
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { avatarSourceFor, formatIdForDisplay } from '../utils/idVisibility';
@@ -277,21 +278,17 @@ export default function FacultyDetailScreen() {
         </View>
         <View style={styles.headerActionsRight}>
           {faculty.phone ? (
-            <TouchableOpacity activeOpacity={0.85} style={styles.profileIconBtn} onPress={() => openPhone(faculty.phone)}>
-              <MaterialIcons name="call" size={18} color="#2563eb" />
-            </TouchableOpacity>
+            <AppIconButton accessibilityLabel="Call staff" name="call" iconSize={18} size={36} style={styles.profileIconBtn} onPress={() => openPhone(faculty.phone)} />
           ) : null}
           {faculty.email ? (
-            <TouchableOpacity activeOpacity={0.85} style={styles.profileIconBtn} onPress={() => openEmail(faculty.email)}>
-              <MaterialIcons name="email" size={18} color="#2563eb" />
-            </TouchableOpacity>
+            <AppIconButton accessibilityLabel="Email staff" name="email" iconSize={18} size={36} style={styles.profileIconBtn} onPress={() => openEmail(faculty.email)} />
           ) : null}
         </View>
       </View>
 
       <View style={styles.iconActionsRowFaculty}>
         <View style={styles.iconColFaculty}>
-          <TouchableOpacity style={styles.iconButtonFaculty} onPress={async () => {
+          <AppIconButton accessibilityLabel="Chat with staff" name="chat" style={styles.iconButtonFaculty} onPress={async () => {
             try {
               const adminId = user?.id || (user?.name || 'admin');
               const threadMatch = (messages || []).find(m => {
@@ -309,30 +306,22 @@ export default function FacultyDetailScreen() {
                 navigation.navigate('ChatThread', { threadId: newThreadId });
               }
             } catch (e) { console.warn('open chat failed', e); }
-          }}>
-            <MaterialIcons name="chat" size={20} color={isWeb ? '#fff' : '#2563eb'} />
-          </TouchableOpacity>
+          }} />
           <Text style={styles.iconLabelFaculty}>Chat</Text>
         </View>
 
         <View style={styles.iconColFaculty}>
-          <TouchableOpacity style={styles.iconButtonFaculty} onPress={() => setShowMemoModal(true)}>
-            <MaterialIcons name="notification-important" size={20} color={isWeb ? '#fff' : '#2563eb'} />
-          </TouchableOpacity>
+          <AppIconButton accessibilityLabel="Open urgent memo" name="notification-important" style={styles.iconButtonFaculty} onPress={() => setShowMemoModal(true)} />
           <Text style={styles.iconLabelFaculty}>Urgent Memo</Text>
         </View>
 
         <View style={styles.iconColFaculty}>
-          <TouchableOpacity style={styles.iconButtonFaculty} onPress={() => navigation.navigate('UserMonitor', { initialUserId: faculty.id })}>
-            <MaterialIcons name="manage-account" size={20} color={isWeb ? '#fff' : '#2563eb'} />
-          </TouchableOpacity>
+          <AppIconButton accessibilityLabel="Manage staff" name="manage-account" style={styles.iconButtonFaculty} onPress={() => navigation.navigate('UserMonitor', { initialUserId: faculty.id })} />
           <Text style={styles.iconLabelFaculty}>Manage</Text>
         </View>
 
         <View style={styles.iconColFaculty}>
-          <TouchableOpacity style={styles.iconButtonFaculty} onPress={() => { try { navigation.push('Chats'); } catch (e) { navigation.navigate('Chats'); } }}>
-            <MaterialIcons name="event" size={20} color={isWeb ? '#fff' : '#2563eb'} />
-          </TouchableOpacity>
+          <AppIconButton accessibilityLabel="Open meeting" name="event" style={styles.iconButtonFaculty} onPress={() => { try { navigation.push('Chats'); } catch (e) { navigation.navigate('Chats'); } }} />
           <Text style={styles.iconLabelFaculty}>Meeting</Text>
         </View>
       </View>
@@ -475,28 +464,7 @@ const styles = StyleSheet.create({
   statusPill: { marginTop: 8, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, alignSelf: 'flex-start' },
   statusPillText: { fontWeight: '800', fontSize: 12 },
   headerActionsRight: { alignItems: 'center', justifyContent: 'center', marginLeft: 12 },
-  profileIconBtn: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: 6,
-    backgroundColor: 'transparent',
-    ...Platform.select({
-      web: {
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: '#e6e7ea',
-        backgroundColor: '#fff',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.08,
-        shadowRadius: 1.5,
-        elevation: 2,
-      },
-      default: null,
-    }),
-  },
+  profileIconBtn: { marginVertical: 6 },
   section: { marginTop: 12 },
   sectionCard: { marginTop: 14, borderRadius: 14, borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#fff', padding: 14 },
   sectionTitle: { fontWeight: '700', marginBottom: 6 },
@@ -526,16 +494,6 @@ const styles = StyleSheet.create({
   childTileName: { marginTop: 6, fontSize: 12, fontWeight: '700' },
   iconActionsRowFaculty: { flexDirection: 'row', marginTop: 12, justifyContent: 'space-between', alignItems: 'center' },
   iconColFaculty: { alignItems: 'center', flex: 1 },
-  iconButtonFaculty: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'transparent',
-    ...Platform.select({
-      web: { borderRadius: 22, backgroundColor: '#2563eb' },
-      default: null,
-    }),
-  },
+  iconButtonFaculty: { width: 44, height: 44 },
   iconLabelFaculty: { marginTop: 6, fontWeight: '700', fontSize: 12 },
 });
