@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { logger } from '../utils/logger';
+import { MobileAdminShellContext } from './TabletNavigationShell';
 
 export default function ScreenHeader({ title, showBack = true, left, right, titleLeft }) {
   const navigation = useNavigation();
+  const mobileAdminShell = useContext(MobileAdminShellContext);
   const logEvent = (ev) => {
     logger.debug('ui', `ScreenHeader:${ev}`, { title });
   };
@@ -25,6 +27,17 @@ export default function ScreenHeader({ title, showBack = true, left, right, titl
         >
           <View style={styles.backInner}>
             <MaterialIcons name="chevron-left" size={26} color="#111827" />
+          </View>
+        </TouchableOpacity>
+      ) : mobileAdminShell?.showMobileAdminShell ? (
+        <TouchableOpacity
+          onPress={() => mobileAdminShell.openMobileNav?.()}
+          style={styles.back}
+          accessibilityLabel="Open navigation menu"
+          hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
+        >
+          <View style={styles.backInner}>
+            <MaterialIcons name="menu" size={22} color="#1d4ed8" />
           </View>
         </TouchableOpacity>
       ) : left ? (

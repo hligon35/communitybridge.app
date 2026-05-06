@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Platform, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, Platform, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import ScreenHeader from './ScreenHeader';
 import WebNav from './WebNav';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -18,6 +18,8 @@ export function ScreenWrapper({
   bannerLeft,
   bannerRight,
   bannerTitleLeft,
+  mobileHeaderBelow,
+  mobileHeaderBelowScrollEnabled = true,
   bottomSpacerHeight,
   webBottomSpacerHeight,
 }) {
@@ -33,6 +35,8 @@ export function ScreenWrapper({
   const longEdge = Math.max(width, height);
   const isPhoneViewport = shortEdge < 600 && longEdge < 1100;
   const suppressLegacyWebNav = Boolean(isWeb && isAdminRole(user?.role) && isPhoneViewport);
+  const useAdminPhoneMainArea = Boolean(!isWeb && isAdminRole(user?.role) && isPhoneViewport && route?.name !== 'StudentDirectory' && route?.name !== 'FacultyDirectory');
+  const showMobileHeaderBelow = Boolean(useAdminPhoneMainArea && mobileHeaderBelow);
 
   const nameMap = {
     CommunityMain: 'Home',
@@ -67,13 +71,36 @@ export function ScreenWrapper({
       {/* web: show top WebNav; mobile: show ScreenHeader */}
       {isWeb && !isTabletLayout && !suppressLegacyWebNav
         ? <WebNav />
-        : (!hideBanner && <ScreenHeader title={title} showBack={showBack} left={bannerLeft} right={bannerRight} titleLeft={bannerTitleLeft} />)}
+        : (!hideBanner && <ScreenHeader title={title} showBack={showBack} left={bannerLeft} right={bannerRight} titleLeft={showMobileHeaderBelow ? null : bannerTitleLeft} />)}
+
+      {showMobileHeaderBelow ? (
+        <View style={styles.mobileHeaderBelowShell}>
+          <View style={styles.mobileHeaderBelowMain}>
+            <ScrollView
+              horizontal
+              scrollEnabled={mobileHeaderBelowScrollEnabled}
+              showsHorizontalScrollIndicator={false}
+              bounces={mobileHeaderBelowScrollEnabled}
+              contentContainerStyle={styles.mobileHeaderBelowContent}
+            >
+              {mobileHeaderBelow}
+            </ScrollView>
+          </View>
+        </View>
+      ) : null}
 
       {isWeb ? (
         <View style={{ flex: 1, width: '100%', alignItems: 'center', paddingHorizontal: 16, paddingTop: 20 }}>
           <View style={{ flex: 1, width: '100%', maxWidth: 1120 }}>
             {children}
             {resolvedWebBottomSpacerHeight > 0 ? <View style={{ height: resolvedWebBottomSpacerHeight }} accessibilityElementsHidden importantForAccessibility="no" /> : null}
+          </View>
+        </View>
+      ) : useAdminPhoneMainArea ? (
+        <View style={styles.mobileAdminShell}>
+          <View style={styles.mobileAdminMain}>
+            {children}
+            {resolvedBottomSpacerHeight > 0 ? <View style={{ height: resolvedBottomSpacerHeight }} accessibilityElementsHidden importantForAccessibility="no" /> : null}
           </View>
         </View>
       ) : (
@@ -157,6 +184,33 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     marginHorizontal: 18,
+  },
+  mobileAdminShell: {
+    flex: 1,
+    width: '100%',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingTop: 14,
+  },
+  mobileAdminMain: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 920,
+  },
+  mobileHeaderBelowShell: {
+    width: '100%',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+    backgroundColor: '#ffffff',
+  },
+  mobileHeaderBelowMain: {
+    width: '100%',
+    maxWidth: 920,
+  },
+  mobileHeaderBelowContent: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
 });
 

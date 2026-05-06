@@ -19,7 +19,7 @@ function Block({ title, children, style }) {
   );
 }
 
-function HeaderLearnerPicker({ children, selectedLearnerId, onSelect }) {
+function HeaderLearnerPicker({ children, selectedLearnerId, onSelect, onOpenChange }) {
   const items = Array.isArray(children) ? children.filter(Boolean) : [];
   const selectedLearner = items.find((child) => child?.id === selectedLearnerId) || items[0] || null;
   const buttonLabel = selectedLearner?.name || 'Select learner';
@@ -31,6 +31,7 @@ function HeaderLearnerPicker({ children, selectedLearnerId, onSelect }) {
       containerStyle={styles.headerPickerWrap}
       disabled={!items.length || disabled}
       minMenuWidth={188}
+      onOpenChange={onOpenChange}
       onSelect={onSelect}
       options={items.map((child) => ({ value: child?.id, label: child?.name || 'Learner' }))}
       placeholder="Learner"
@@ -63,6 +64,7 @@ export default function InsuranceBillingScreen() {
   const [busy, setBusy] = useState(false);
   const [selectedLearnerId, setSelectedLearnerId] = useState('');
   const [orgSettings, setOrgSettings] = useState({});
+  const [mobileFilterCarouselLocked, setMobileFilterCarouselLocked] = useState(false);
 
   const linkedParentId = useMemo(() => {
     if (!isParent) return null;
@@ -420,16 +422,20 @@ export default function InsuranceBillingScreen() {
   const learnerPicker = !isParent ? (
     <HeaderLearnerPicker
       children={children}
+      onOpenChange={setMobileFilterCarouselLocked}
       onSelect={setSelectedLearnerId}
       selectedLearnerId={selectedLearner?.id || selectedLearnerId}
     />
   ) : null;
+  const mobileHeaderFilters = !isParent && Platform.OS !== 'web' ? <View style={styles.mobileHeaderFilterRow}>{learnerPicker}</View> : null;
 
   return (
     <ScreenWrapper
       bannerLeft={null}
-      bannerRight={Platform.OS === 'web' ? null : learnerPicker}
-      bannerTitleLeft={Platform.OS === 'web' ? learnerPicker : null}
+      bannerRight={null}
+      bannerTitleLeft={learnerPicker}
+      mobileHeaderBelow={mobileHeaderFilters}
+      mobileHeaderBelowScrollEnabled={!mobileFilterCarouselLocked}
       style={styles.container}
     >
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -547,6 +553,7 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 16, fontWeight: '800', color: '#0f172a', marginBottom: 12 },
   headerPickerWrap: { minWidth: 156, maxWidth: 176 },
   headerPickerValue: { flex: 1, color: '#0f172a', fontWeight: '600', fontSize: 16 },
+  mobileHeaderFilterRow: { flexDirection: 'row', alignItems: 'center' },
   rowText: { color: '#475569', lineHeight: 20, marginBottom: 8 },
   digitalCard: { borderRadius: 18, backgroundColor: '#1e3a8a', padding: 18 },
   digitalCardName: { color: '#ffffff', fontSize: 22, fontWeight: '800' },

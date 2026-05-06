@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { createContext, useEffect, useMemo, useState } from 'react';
 import { Alert, Image, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as Updates from 'expo-updates';
@@ -14,6 +14,11 @@ import LogoTitle from './LogoTitle';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const checkUpdatesIcon = require('../../assets/icons/checkUpdates.png');
+
+export const MobileAdminShellContext = createContext({
+  showMobileAdminShell: false,
+  openMobileNav: () => {},
+});
 
 function openTarget(target) {
   if (!navigationRef?.isReady?.()) return;
@@ -65,6 +70,10 @@ export default function TabletNavigationShell({ currentRoute, children }) {
     ? shortEdge < 600 && longEdge < 1100
     : false;
   const showMobileAdminShell = Boolean(showAdminWorkspace && isPhoneViewport);
+  const mobileAdminShellValue = useMemo(() => ({
+    showMobileAdminShell,
+    openMobileNav: () => setMobileNavOpen(true),
+  }), [showMobileAdminShell]);
   const activeRouteParams = navigationRef?.getCurrentRoute?.()?.params || null;
   const activeRouteChildId = String(activeRouteParams?.childId || '').trim();
 
@@ -292,51 +301,43 @@ export default function TabletNavigationShell({ currentRoute, children }) {
 
   if (showMobileAdminShell) {
     return (
-      <View style={styles.mobileShellFrame}>
-        {Platform.OS !== 'web' && insets.top > 0 ? <View style={{ height: insets.top, backgroundColor: '#e2e8f0' }} /> : null}
-        <View style={[styles.contentWrap, styles.mobileContentWrap, { paddingTop: 12, paddingBottom: Math.max(insets.bottom, 12) }]}>
-          <View style={[styles.topBar, styles.mobileTopBar]}>
-            <View style={[styles.brandRow, styles.mobileBrandRow]}>
-              <LogoTitle width={128} height={40} />
-            </View>
-            <View style={[styles.headerActions, styles.mobileHeaderActions]}>
-              <TouchableOpacity style={styles.iconOnlyButton} onPress={() => setMobileNavOpen(true)} accessibilityLabel="Open navigation menu">
-                <MaterialIcons name="menu" size={22} color="#1d4ed8" />
-              </TouchableOpacity>
-            </View>
+      <MobileAdminShellContext.Provider value={mobileAdminShellValue}>
+        <View style={styles.mobileShellFrame}>
+          {Platform.OS !== 'web' && insets.top > 0 ? <View style={{ height: insets.top, backgroundColor: '#e2e8f0' }} /> : null}
+          <View style={[styles.contentWrap, styles.mobileContentWrap, { paddingTop: 12, paddingBottom: Math.max(insets.bottom, 12) }]}>
+            <View style={styles.mobileScreenWrap}>{children}</View>
           </View>
-          <View style={styles.mobileScreenWrap}>{children}</View>
+          <Modal visible={mobileNavOpen} animationType="slide" transparent={false} onRequestClose={() => setMobileNavOpen(false)}>
+            <View style={[styles.mobileNavOverlay, { paddingTop: Math.max(insets.top, 16), paddingBottom: Math.max(insets.bottom, 16) }]}>
+              <View style={styles.mobileNavHeader}>
+                <View>
+                  <Text style={styles.mobileNavTitle}>Navigation</Text>
+                </View>
+                <TouchableOpacity style={styles.mobileNavCloseButton} onPress={() => setMobileNavOpen(false)} accessibilityLabel="Close navigation menu">
+                  <MaterialIcons name="close" size={24} color="#0f172a" />
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={styles.mobileNavScroll} contentContainerStyle={styles.mobileNavScrollContent} showsVerticalScrollIndicator>
+                {renderNavItems(false, () => setMobileNavOpen(false))}
+                <View style={styles.mobileUtilitySection}>
+                  <TouchableOpacity style={styles.mobileUtilityButton} onPress={() => { setMobileNavOpen(false); openTarget({ root: 'Settings', screen: 'Help' }); }}>
+                    <MaterialIcons name="help-outline" size={20} color="#1d4ed8" />
+                    <Text style={styles.mobileUtilityText}>Help</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.mobileUtilityButton, updateBusy ? styles.mobileUtilityButtonDisabled : null]} onPress={checkForOtaUpdate} disabled={updateBusy}>
+                    <Image source={checkUpdatesIcon} style={[styles.mobileUtilityIcon, updateBusy ? styles.drawerUtilityIconDisabled : null]} resizeMode="contain" />
+                    <Text style={styles.mobileUtilityText}>{updateBusy ? 'Checking for updates...' : 'Check for updates'}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.mobileLogoutButton} onPress={() => { setMobileNavOpen(false); logout?.(); }}>
+                    <MaterialIcons name="logout" size={20} color="#b91c1c" />
+                    <Text style={styles.mobileLogoutText}>Logout</Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+            </View>
+          </Modal>
         </View>
-        <Modal visible={mobileNavOpen} animationType="slide" transparent={false} onRequestClose={() => setMobileNavOpen(false)}>
-          <View style={[styles.mobileNavOverlay, { paddingTop: Math.max(insets.top, 16), paddingBottom: Math.max(insets.bottom, 16) }]}>
-            <View style={styles.mobileNavHeader}>
-              <View>
-                <Text style={styles.mobileNavTitle}>Navigation</Text>
-              </View>
-              <TouchableOpacity style={styles.mobileNavCloseButton} onPress={() => setMobileNavOpen(false)} accessibilityLabel="Close navigation menu">
-                <MaterialIcons name="close" size={24} color="#0f172a" />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.mobileNavScroll} contentContainerStyle={styles.mobileNavScrollContent} showsVerticalScrollIndicator>
-              {renderNavItems(false, () => setMobileNavOpen(false))}
-              <View style={styles.mobileUtilitySection}>
-                <TouchableOpacity style={styles.mobileUtilityButton} onPress={() => { setMobileNavOpen(false); openTarget({ root: 'Settings', screen: 'Help' }); }}>
-                  <MaterialIcons name="help-outline" size={20} color="#1d4ed8" />
-                  <Text style={styles.mobileUtilityText}>Help</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.mobileUtilityButton, updateBusy ? styles.mobileUtilityButtonDisabled : null]} onPress={checkForOtaUpdate} disabled={updateBusy}>
-                  <Image source={checkUpdatesIcon} style={[styles.mobileUtilityIcon, updateBusy ? styles.drawerUtilityIconDisabled : null]} resizeMode="contain" />
-                  <Text style={styles.mobileUtilityText}>{updateBusy ? 'Checking for updates...' : 'Check for updates'}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.mobileLogoutButton} onPress={() => { setMobileNavOpen(false); logout?.(); }}>
-                  <MaterialIcons name="logout" size={20} color="#b91c1c" />
-                  <Text style={styles.mobileLogoutText}>Logout</Text>
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
-          </View>
-        </Modal>
-      </View>
+      </MobileAdminShellContext.Provider>
     );
   }
 

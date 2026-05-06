@@ -16,6 +16,7 @@ export default function AppDropdown({
   itemStyle,
   itemTextStyle,
   minMenuWidth,
+  onOpenChange,
   onSelect,
   options = [],
   placeholder = '',
@@ -33,6 +34,7 @@ export default function AppDropdown({
 
   function closeMenu() {
     setMenuOpen(false);
+    onOpenChange?.(false);
   }
 
   function openMenu() {
@@ -45,11 +47,13 @@ export default function AppDropdown({
       buttonRef.current.measureInWindow((x, y, measuredWidth, measuredHeight) => {
         setMenuAnchor({ x, y, width: measuredWidth, height: measuredHeight });
         setMenuOpen(true);
+        onOpenChange?.(true);
       });
       return;
     }
     setMenuAnchor(fallbackAnchor || { x: 12, y: 56, width: width || minMenuWidth || 136, height });
     setMenuOpen(true);
+    onOpenChange?.(true);
   }
 
   const displayedValue = value || placeholder;

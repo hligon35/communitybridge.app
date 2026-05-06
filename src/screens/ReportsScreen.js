@@ -80,11 +80,12 @@ function UtilizationMeters({ items = [] }) {
   );
 }
 
-function HeaderFilterDropdown({ label, value, options = [], selectedValue, onSelect, buttonWidth = 120 }) {
+function HeaderFilterDropdown({ label, value, options = [], selectedValue, onSelect, buttonWidth = 120, onOpenChange }) {
   return (
     <AppDropdown
       containerStyle={styles.headerDropdownWrap}
       minMenuWidth={buttonWidth}
+      onOpenChange={onOpenChange}
       onSelect={onSelect}
       options={options}
       placeholder={label}
@@ -102,6 +103,7 @@ function HeaderReportFilters({
   learners = [],
   selectedChildId,
   onSelectChild,
+  onDropdownOpenChange,
 }) {
   const hasRoomFilter = roomOptions.length > 1;
   const hasLearnerFilter = learners.length > 0;
@@ -122,6 +124,7 @@ function HeaderReportFilters({
         <HeaderFilterDropdown
           label="Room"
           value={roomLabel}
+          onOpenChange={onDropdownOpenChange}
           options={roomChoices}
           selectedValue={selectedRoom}
           onSelect={onSelectRoom}
@@ -132,6 +135,7 @@ function HeaderReportFilters({
         <HeaderFilterDropdown
           label="Learner"
           value={learnerLabel}
+          onOpenChange={onDropdownOpenChange}
           options={learnerChoices}
           selectedValue={selectedChildId}
           onSelect={onSelectChild}
@@ -153,6 +157,7 @@ export default function ReportsScreen() {
   const isWideLayout = width >= 900;
   const isThreeCardLayout = width >= 720;
   const showHeaderFilters = width >= 900;
+  const [mobileFilterCarouselLocked, setMobileFilterCarouselLocked] = useState(false);
   const reportChildren = useMemo(() => findReportChildren(user, children, parents), [user, children, parents]);
   const [selectedChildId, setSelectedChildId] = useState('all');
   const [selectedRoom, setSelectedRoom] = useState('all');
@@ -241,6 +246,18 @@ export default function ReportsScreen() {
       learners={filteredReportChildren}
       selectedChildId={selectedChildId}
       onSelectChild={setSelectedChildId}
+      onDropdownOpenChange={setMobileFilterCarouselLocked}
+    />
+  ) : null;
+  const mobileHeaderFilters = !showHeaderFilters ? (
+    <HeaderReportFilters
+      roomOptions={roomOptions}
+      selectedRoom={selectedRoom}
+      onSelectRoom={setSelectedRoom}
+      learners={filteredReportChildren}
+      selectedChildId={selectedChildId}
+      onSelectChild={setSelectedChildId}
+      onDropdownOpenChange={setMobileFilterCarouselLocked}
     />
   ) : null;
 
@@ -359,7 +376,12 @@ export default function ReportsScreen() {
   }
 
   return (
-    <ScreenWrapper style={styles.container} bannerTitleLeft={headerFilters}>
+    <ScreenWrapper
+      style={styles.container}
+      bannerTitleLeft={headerFilters}
+      mobileHeaderBelow={mobileHeaderFilters}
+      mobileHeaderBelowScrollEnabled={!mobileFilterCarouselLocked}
+    >
       <ScrollView contentContainerStyle={[styles.content, isWideLayout ? styles.contentWide : null]} showsVerticalScrollIndicator={false}>
         <View style={styles.tabRow}>
           {(isBcba ? ['clinical', 'export'] : ['operational', 'export']).map((key) => (
@@ -369,34 +391,7 @@ export default function ReportsScreen() {
           ))}
         </View>
 
-        {!showHeaderFilters && roomOptions.length > 1 ? (
-          <View style={styles.filterSection}>
-            <Text style={styles.filterLabel}>Filter by room</Text>
-            <View style={styles.filterRow}>
-              {roomOptions.map((room) => (
-                <TouchableOpacity key={room} style={[styles.filterChip, selectedRoom === room ? styles.filterChipActive : null]} onPress={() => setSelectedRoom(room)}>
-                  <Text style={[styles.filterChipText, selectedRoom === room ? styles.filterChipTextActive : null]}>{room === 'all' ? 'All Rooms' : room}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        ) : null}
-
-        {!showHeaderFilters && filteredReportChildren.length ? (
-          <View style={styles.filterSection}>
-            <Text style={styles.filterLabel}>Filter by learner</Text>
-            <View style={styles.filterRow}>
-              <TouchableOpacity style={[styles.filterChip, selectedChildId === 'all' ? styles.filterChipActive : null]} onPress={() => setSelectedChildId('all')}>
-                <Text style={[styles.filterChipText, selectedChildId === 'all' ? styles.filterChipTextActive : null]}>All Learners</Text>
-              </TouchableOpacity>
-              {filteredReportChildren.map((child) => (
-                <TouchableOpacity key={child.id} style={[styles.filterChip, selectedChild?.id === child.id ? styles.filterChipActive : null]} onPress={() => setSelectedChildId(child.id)}>
-                  <Text style={[styles.filterChipText, selectedChild?.id === child.id ? styles.filterChipTextActive : null]}>{child.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        ) : !showHeaderFilters && reportChildren.length ? (
+        {!showHeaderFilters && reportChildren.length && !filteredReportChildren.length ? (
           <View style={styles.emptyFilterState}>
             <Text style={styles.rowText}>No learners were found for the selected room.</Text>
           </View>

@@ -100,6 +100,7 @@ export default function ScheduleCalendarScreen() {
   const [draftAssignedStaffId, setDraftAssignedStaffId] = useState('');
   const [saving, setSaving] = useState(false);
   const [selectedDate, setSelectedDate] = useState(todayStamp(9, 0));
+  const [mobileFilterCarouselLocked, setMobileFilterCarouselLocked] = useState(false);
   const linkedParentId = isParent ? (findLinkedParentId(user, parents) || user?.id || null) : null;
   const isWideLayout = width >= 980;
 
@@ -359,6 +360,7 @@ export default function ScheduleCalendarScreen() {
     <AppDropdown
       accessibilityLabel="Schedule focus mode"
       minMenuWidth={136}
+      onOpenChange={setMobileFilterCarouselLocked}
       onSelect={setFocusMode}
       options={focusModeOptions}
       placeholder="View"
@@ -390,9 +392,17 @@ export default function ScheduleCalendarScreen() {
       </TouchableOpacity>
     </View>
   ) : null;
+  const useMobileHeaderFilters = !isTherapist && !isParent && width < 900;
+  const mobileHeaderFilters = useMobileHeaderFilters ? <View style={styles.mobileHeaderFilterRow}>{headerFocusMode}</View> : null;
 
   return (
-    <ScreenWrapper style={styles.screen} bannerLeft={headerFocusMode} bannerRight={headerActions}>
+    <ScreenWrapper
+      style={styles.screen}
+      bannerLeft={useMobileHeaderFilters ? null : headerFocusMode}
+      bannerRight={headerActions}
+      mobileHeaderBelow={mobileHeaderFilters}
+      mobileHeaderBelowScrollEnabled={!mobileFilterCarouselLocked}
+    >
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={[styles.scheduleWorkspace, isWideLayout ? styles.scheduleWorkspaceWide : null]}>
           <View style={[styles.calendarCard, isWideLayout ? styles.calendarCardWide : null]}>
@@ -547,6 +557,7 @@ const styles = StyleSheet.create({
   chipText: { color: '#0f172a', fontWeight: '700' },
   chipTextActive: { color: '#ffffff' },
   headerModeButtonText: { flex: 1, marginRight: 6, color: '#0f172a', fontWeight: '700' },
+  mobileHeaderFilterRow: { flexDirection: 'row', alignItems: 'center' },
   headerActionRow: { flexDirection: 'row', alignItems: 'center' },
   headerAssignmentButton: { height: 40, borderRadius: 20, backgroundColor: '#eff6ff', paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
   headerAssignmentButtonText: { color: '#1d4ed8', fontWeight: '800', marginLeft: 6 },
