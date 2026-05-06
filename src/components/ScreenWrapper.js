@@ -60,7 +60,8 @@ export function ScreenWrapper({
   const isPhoneViewport = shortEdge < 600 && longEdge < 1100;
   const suppressLegacyWebNav = Boolean(isWeb && isAdminRole(user?.role) && isPhoneViewport);
   const useAdminPhoneMainArea = Boolean(!isWeb && isAdminRole(user?.role) && isPhoneViewport && route?.name !== 'StudentDirectory' && route?.name !== 'FacultyDirectory');
-  const showMobileHeaderBelow = Boolean(useAdminPhoneMainArea && mobileHeaderBelow);
+  const useAdminPhoneHeaderBelow = Boolean(!isWeb && isAdminRole(user?.role) && isPhoneViewport);
+  const showMobileHeaderBelow = Boolean(useAdminPhoneHeaderBelow && mobileHeaderBelow);
   const showNativeStackHeader = !isWeb && !isTabletLayout;
 
   const nameMap = {

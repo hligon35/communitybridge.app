@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { Alert, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { ScreenWrapper } from '../components/ScreenWrapper';
@@ -34,6 +34,14 @@ function guardianRelationshipLabel(value) {
   return GUARDIAN_RELATIONSHIP_OPTIONS.find((item) => item.value === value)?.label || 'Guardian';
 }
 
+function splitStudentName(name) {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  return {
+    firstName: parts[0] || 'Student',
+    lastName: parts.slice(1).join(' '),
+  };
+}
+
 function TabButton({ label, active, onPress }) {
   return (
     <TouchableOpacity style={[styles.tabButton, active ? styles.tabButtonActive : null]} onPress={onPress}>
@@ -42,11 +50,13 @@ function TabButton({ label, active, onPress }) {
   );
 }
 
-function InlineFilterDropdown({ label, value, options = [], selectedValue, onSelect, width = 126 }) {
+function InlineFilterDropdown({ label, value, options = [], selectedValue, onSelect, width = 104 }) {
   return (
     <AppDropdown
       buttonStyle={styles.inlineFilterButton}
       containerStyle={[styles.inlineFilterWrap, { width }]}
+      height={40}
+      iconSize={16}
       minMenuWidth={width}
       onSelect={onSelect}
       options={options}
@@ -82,6 +92,7 @@ function normalizeInlineParents(selectedChild, parents) {
 
 export default function StudentDirectoryScreen() {
   const navigation = useNavigation();
+  const { width } = useWindowDimensions();
   const { user } = useAuth();
   const { children = [], parents = [], therapists = [], fetchAndSync } = useData();
   const { currentOrganization, currentProgram, currentCampus } = useTenant() || {};
@@ -131,6 +142,8 @@ export default function StudentDirectoryScreen() {
   ]), []);
   const roomDropdownValue = roomFilter === 'all' ? '' : (roomChoices.find((option) => option.value === roomFilter)?.label || '');
   const sortDropdownValue = sortKey === 'name' ? '' : (sortChoices.find((option) => option.value === sortKey)?.label || '');
+  const useMobileHeaderFilters = width < 900;
+  const useRosterCarousel = width < 900;
 
   const filteredChildren = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -173,6 +186,25 @@ export default function StudentDirectoryScreen() {
     const ids = [selectedChild?.amTherapist, selectedChild?.pmTherapist, selectedChild?.bcaTherapist].map((entry) => typeof entry === 'string' ? entry : entry?.id).filter(Boolean);
     return (therapists || []).filter((staff) => ids.includes(staff?.id));
   }, [selectedChild, therapists]);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerLeft: isOffice
+        ? () => (
+            <AppIconButton
+              accessibilityLabel="Enroll learner"
+              name="add"
+              iconSize={20}
+              size={35}
+              style={styles.headerAddButton}
+              onPress={() => setEnrollOpen(true)}
+            />
+          )
+        : () => null,
+      headerBackVisible: false,
+      headerBackTitleVisible: false,
+    });
+  }, [isOffice, navigation]);
 
   function openAction(title, message) {
     Alert.alert(title, message);
@@ -324,49 +356,99 @@ export default function StudentDirectoryScreen() {
     );
   }
 
+  const mobileHeaderFilters = useMobileHeaderFilters ? (
+    <View style={styles.mobileHeaderFilterRow}>
+      <InlineFilterDropdown
+        label="Room"
+        value={roomDropdownValue}
+        options={roomChoices}
+        selectedValue={roomFilter}
+        onSelect={setRoomFilter}
+        width={92}
+      />
+      <InlineFilterDropdown
+        label="Sort"
+        value={sortDropdownValue}
+        options={sortChoices}
+        selectedValue={sortKey}
+        onSelect={setSortKey}
+        width={80}
+      />
+      <TextInput value={query} onChangeText={setQuery} placeholder="Search students" style={[styles.input, styles.mobileHeaderSearchInput]} />
+    </View>
+  ) : null;
+
   return (
-    <ScreenWrapper style={styles.screen}>
+    <ScreenWrapper style={styles.screen} mobileHeaderBelow={mobileHeaderFilters}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.filtersCard}>
-          <View style={styles.filtersRow}>
-            <InlineFilterDropdown
-              label="Room"
-              value={roomDropdownValue}
-              options={roomChoices}
-              selectedValue={roomFilter}
-              onSelect={setRoomFilter}
-              width={132}
-            />
-            <InlineFilterDropdown
-              label="Sort"
-              value={sortDropdownValue}
-              options={sortChoices}
-              selectedValue={sortKey}
-              onSelect={setSortKey}
-              width={112}
-            />
-            <TextInput value={query} onChangeText={setQuery} placeholder="Search students" style={[styles.input, styles.filtersSearchInput]} />
-            {isOffice ? (
-              <AppIconButton accessibilityLabel="Enroll learner" name="add" iconSize={22} size={46} style={styles.filtersIconButton} onPress={() => setEnrollOpen(true)} />
-            ) : null}
+        {!useMobileHeaderFilters ? (
+          <View style={styles.filtersCard}>
+            <View style={styles.filtersRow}>
+              <InlineFilterDropdown
+                label="Room"
+                value={roomDropdownValue}
+                options={roomChoices}
+                selectedValue={roomFilter}
+                onSelect={setRoomFilter}
+                width={92}
+              />
+              <InlineFilterDropdown
+                label="Sort"
+                value={sortDropdownValue}
+                options={sortChoices}
+                selectedValue={sortKey}
+                onSelect={setSortKey}
+                width={80}
+              />
+              <TextInput value={query} onChangeText={setQuery} placeholder="Search students" style={[styles.input, styles.filtersSearchInput]} />
+            </View>
           </View>
-        </View>
+        ) : null}
 
-        <View style={styles.layoutRow}>
-          <View style={styles.rosterPanel}>
-            <Text style={styles.panelTitle}>Student roster</Text>
+        {useRosterCarousel ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.rosterCarouselContent}
+            style={styles.rosterCarousel}
+          >
             {filteredChildren.map((child) => (
-              <TouchableOpacity key={child.id} style={[styles.rosterRow, child.id === selectedChildId ? styles.rosterRowActive : null]} onPress={() => setSelectedChildId(child.id)}>
-                <Image source={avatarSourceFor(child)} style={styles.avatar} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.rosterName}>{child.name}</Text>
-                  <Text style={styles.rosterMeta}>Room {child.room || 'Unassigned'} • Age {child.age || 'N/A'}</Text>
-                </View>
-              </TouchableOpacity>
+              (() => {
+                const { firstName, lastName } = splitStudentName(child.name);
+                return (
+                  <TouchableOpacity
+                    key={child.id}
+                    style={[styles.rosterCarouselCard, child.id === selectedChildId ? styles.rosterRowActive : null]}
+                    onPress={() => setSelectedChildId(child.id)}
+                  >
+                    <Image source={avatarSourceFor(child)} style={styles.rosterCarouselAvatar} />
+                    <View style={styles.rosterCarouselTextWrap}>
+                      <Text style={styles.rosterCarouselFirstName} numberOfLines={1}>{firstName}</Text>
+                      <Text style={styles.rosterCarouselLastName} numberOfLines={1}>{lastName}</Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })()
             ))}
-          </View>
+          </ScrollView>
+        ) : null}
 
-          <View style={styles.detailPanel}>
+        <View style={[styles.layoutRow, useRosterCarousel ? styles.layoutRowCompact : null]}>
+          {!useRosterCarousel ? (
+            <View style={styles.rosterPanel}>
+              {filteredChildren.map((child) => (
+                <TouchableOpacity key={child.id} style={[styles.rosterRow, child.id === selectedChildId ? styles.rosterRowActive : null]} onPress={() => setSelectedChildId(child.id)}>
+                  <Image source={avatarSourceFor(child)} style={styles.avatar} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.rosterName}>{child.name}</Text>
+                    <Text style={styles.rosterMeta}>Room {child.room || 'Unassigned'} • Age {child.age || 'N/A'}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : null}
+
+          <View style={[styles.detailPanel, useRosterCarousel ? styles.detailPanelFullWidth : null]}>
             {selectedChild ? (
               <>
                 <View style={styles.profileHeader}>
@@ -484,7 +566,7 @@ export default function StudentDirectoryScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#f8fafc' },
-  content: { padding: 16 },
+  content: { padding: 8 },
   filtersCard: { marginTop: 14, borderRadius: 18, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e5e7eb', padding: 16 },
   filtersHeader: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 12 },
   filtersActionButton: { borderRadius: 12, backgroundColor: '#2563eb', paddingVertical: 10, paddingHorizontal: 14 },
@@ -492,8 +574,10 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#fff' },
   inputLocked: { backgroundColor: '#f1f5f9', color: '#475569' },
   filtersRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 10 },
+  mobileHeaderFilterRow: { flexDirection: 'row', alignItems: 'center', gap: 8, width: '100%', flex: 1 },
   filtersSearchInput: { flex: 1, minWidth: 220 },
-  filtersIconButton: { borderRadius: 23 },
+  mobileHeaderSearchInput: { flex: 1, minWidth: 0, alignSelf: 'stretch', height: 40, paddingVertical: 8, paddingHorizontal: 12 },
+  headerAddButton: { marginLeft: 6 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 12 },
   chipRowSingleLine: { flexDirection: 'row', flexWrap: 'nowrap', marginTop: 12, paddingRight: 8 },
   tabButton: { borderRadius: 999, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#f1f5f9', marginRight: 8, marginBottom: 8 },
@@ -501,18 +585,39 @@ const styles = StyleSheet.create({
   tabButtonText: { color: '#0f172a', fontWeight: '700' },
   tabButtonTextActive: { color: '#ffffff' },
   inlineFilterWrap: { zIndex: 20 },
-  inlineFilterButton: {},
-  inlineFilterValue: { flex: 1, color: '#0f172a', fontWeight: '600', marginRight: 8 },
+  inlineFilterButton: { borderRadius: 10, paddingHorizontal: 10 },
+  inlineFilterValue: { flex: 0, color: '#0f172a', fontWeight: '600', fontSize: 14, marginRight: 4 },
   inlineFilterPlaceholder: { color: '#64748b', fontWeight: '500' },
   layoutRow: { marginTop: 14, flexDirection: 'row' },
+  layoutRowCompact: { marginTop: 6 },
+  rosterCarousel: { marginTop: 1 },
+  rosterCarouselContent: { paddingRight: 4 },
+  rosterCarouselCard: {
+    width: 96,
+    minHeight: 118,
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 16,
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+    marginRight: 8,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  rosterCarouselAvatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#e2e8f0', marginBottom: 10 },
+  rosterCarouselTextWrap: { width: '100%', alignItems: 'center', justifyContent: 'center' },
   rosterPanel: { width: '34%', borderRadius: 18, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e5e7eb', padding: 14, marginRight: 12 },
   detailPanel: { flex: 1, borderRadius: 18, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e5e7eb', padding: 16 },
-  panelTitle: { fontSize: 16, fontWeight: '800', color: '#0f172a', marginBottom: 12 },
+  detailPanelFullWidth: { width: '100%' },
   rosterRow: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, padding: 10, marginBottom: 8, backgroundColor: '#f8fafc' },
   rosterRowActive: { backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#93c5fd' },
   avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#e2e8f0', marginRight: 10 },
   rosterName: { fontWeight: '800', color: '#0f172a' },
   rosterMeta: { marginTop: 4, color: '#64748b', fontSize: 12 },
+  rosterCarouselFirstName: { fontWeight: '800', color: '#0f172a', textAlign: 'center' },
+  rosterCarouselLastName: { marginTop: 2, color: '#64748b', fontSize: 12, fontWeight: '700', textAlign: 'center', minHeight: 16 },
   profileHeader: { flexDirection: 'row', alignItems: 'center' },
   profileAvatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#e2e8f0' },
   profileHeaderActions: { flexDirection: 'row', alignItems: 'center', marginLeft: 12 },
