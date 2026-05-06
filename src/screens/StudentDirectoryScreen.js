@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { useAuth } from '../AuthContext';
 import { useData } from '../DataContext';
@@ -36,6 +37,76 @@ function TabButton({ label, active, onPress }) {
     <TouchableOpacity style={[styles.tabButton, active ? styles.tabButtonActive : null]} onPress={onPress}>
       <Text style={[styles.tabButtonText, active ? styles.tabButtonTextActive : null]}>{label}</Text>
     </TouchableOpacity>
+  );
+}
+
+function InlineFilterDropdown({ label, value, options = [], selectedValue, onSelect, width = 126 }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuAnchor, setMenuAnchor] = useState(null);
+  const buttonRef = useRef(null);
+
+  function handleOpen() {
+    if (menuOpen) {
+      setMenuOpen(false);
+      return;
+    }
+    if (buttonRef.current?.measureInWindow) {
+      buttonRef.current.measureInWindow((x, y, measuredWidth, height) => {
+        setMenuAnchor({ x, y, width: measuredWidth, height });
+        setMenuOpen(true);
+      });
+      return;
+    }
+    setMenuAnchor({ x: 12, y: 56, width, height: 46 });
+    setMenuOpen(true);
+  }
+
+  if (!options.length) return null;
+
+  return (
+    <View style={[styles.inlineFilterWrap, { width }]}>
+      <TouchableOpacity ref={buttonRef} style={styles.inlineFilterButton} onPress={handleOpen} activeOpacity={0.9}>
+        <Text numberOfLines={1} style={[styles.inlineFilterValue, !value ? styles.inlineFilterPlaceholder : null]}>
+          {value || label}
+        </Text>
+        <MaterialIcons name={menuOpen ? 'arrow-drop-up' : 'arrow-drop-down'} size={18} color="#475569" />
+      </TouchableOpacity>
+
+      {menuOpen ? (
+        <Modal animationType="none" transparent visible onRequestClose={() => setMenuOpen(false)}>
+          <Pressable style={styles.inlineFilterBackdrop} onPress={() => setMenuOpen(false)}>
+            <View
+              style={[
+                styles.inlineFilterMenu,
+                {
+                  left: menuAnchor?.x ?? 12,
+                  top: (menuAnchor?.y ?? 56) + (menuAnchor?.height ?? 46) + 6,
+                  width: Math.max(menuAnchor?.width ?? width, width),
+                },
+              ]}
+            >
+              {options.map((option) => {
+                const active = option.value === selectedValue;
+                return (
+                  <TouchableOpacity
+                    key={`${label}-${option.value}`}
+                    style={[styles.inlineFilterItem, active ? styles.inlineFilterItemActive : null]}
+                    onPress={() => {
+                      onSelect(option.value);
+                      setMenuOpen(false);
+                    }}
+                  >
+                    <Text style={[styles.inlineFilterItemText, active ? styles.inlineFilterItemTextActive : null]} numberOfLines={1}>
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </Pressable>
+        </Modal>
+      ) : null}
+    </View>
   );
 }
 
@@ -103,6 +174,14 @@ export default function StudentDirectoryScreen() {
   }, [isBcba]);
 
   const roomOptions = useMemo(() => ['all', ...Array.from(new Set((children || []).map((child) => child?.room).filter(Boolean)))], [children]);
+  const roomChoices = useMemo(() => roomOptions.map((room) => ({ value: room, label: room === 'all' ? 'All Rooms' : room })), [roomOptions]);
+  const sortChoices = useMemo(() => ([
+    { value: 'name', label: 'Name' },
+    { value: 'room', label: 'Room' },
+    { value: 'age', label: 'Age' },
+  ]), []);
+  const roomDropdownValue = roomFilter === 'all' ? '' : (roomChoices.find((option) => option.value === roomFilter)?.label || '');
+  const sortDropdownValue = sortKey === 'name' ? '' : (sortChoices.find((option) => option.value === sortKey)?.label || '');
 
   const filteredChildren = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -302,22 +381,30 @@ export default function StudentDirectoryScreen() {
     <ScreenWrapper style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.filtersCard}>
-          {isOffice ? (
-            <View style={styles.filtersHeader}>
-              <TouchableOpacity style={styles.filtersActionButton} onPress={() => setEnrollOpen(true)}>
-                <Text style={styles.filtersActionButtonText}>Enroll Learner</Text>
+          <View style={styles.filtersRow}>
+            <InlineFilterDropdown
+              label="Room"
+              value={roomDropdownValue}
+              options={roomChoices}
+              selectedValue={roomFilter}
+              onSelect={setRoomFilter}
+              width={132}
+            />
+            <InlineFilterDropdown
+              label="Sort"
+              value={sortDropdownValue}
+              options={sortChoices}
+              selectedValue={sortKey}
+              onSelect={setSortKey}
+              width={112}
+            />
+            <TextInput value={query} onChangeText={setQuery} placeholder="Search students" style={[styles.input, styles.filtersSearchInput]} />
+            {isOffice ? (
+              <TouchableOpacity accessibilityLabel="Enroll learner" style={styles.filtersIconButton} onPress={() => setEnrollOpen(true)}>
+                <MaterialIcons name="add" size={22} color="#ffffff" />
               </TouchableOpacity>
-            </View>
-          ) : null}
-          <TextInput value={query} onChangeText={setQuery} placeholder="Search students" style={styles.input} />
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRowSingleLine}>
-            {roomOptions.map((room) => <TabButton key={room} label={room === 'all' ? 'All Rooms' : room} active={roomFilter === room} onPress={() => setRoomFilter(room)} />)}
-            {[
-              { key: 'name', label: 'Sort: Name' },
-              { key: 'room', label: 'Sort: Room' },
-              { key: 'age', label: 'Sort: Age' },
-            ].map((item) => <TabButton key={item.key} label={item.label} active={sortKey === item.key} onPress={() => setSortKey(item.key)} />)}
-          </ScrollView>
+            ) : null}
+          </View>
         </View>
 
         <View style={styles.layoutRow}>
@@ -466,12 +553,25 @@ const styles = StyleSheet.create({
   filtersActionButtonText: { color: '#fff', fontWeight: '800' },
   input: { borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#fff' },
   inputLocked: { backgroundColor: '#f1f5f9', color: '#475569' },
+  filtersRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 10 },
+  filtersSearchInput: { flex: 1, minWidth: 220 },
+  filtersIconButton: { width: 46, height: 46, borderRadius: 12, backgroundColor: '#2563eb', alignItems: 'center', justifyContent: 'center' },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 12 },
   chipRowSingleLine: { flexDirection: 'row', flexWrap: 'nowrap', marginTop: 12, paddingRight: 8 },
   tabButton: { borderRadius: 999, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#f1f5f9', marginRight: 8, marginBottom: 8 },
   tabButtonActive: { backgroundColor: '#2563eb' },
   tabButtonText: { color: '#0f172a', fontWeight: '700' },
   tabButtonTextActive: { color: '#ffffff' },
+  inlineFilterWrap: { position: 'relative', zIndex: 20 },
+  inlineFilterButton: { height: 46, borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 12, paddingHorizontal: 14, backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  inlineFilterValue: { flex: 1, color: '#0f172a', fontWeight: '600', marginRight: 8 },
+  inlineFilterPlaceholder: { color: '#64748b', fontWeight: '500' },
+  inlineFilterBackdrop: { flex: 1, zIndex: 999 },
+  inlineFilterMenu: { position: 'absolute', zIndex: 1000, borderRadius: 12, borderWidth: 1, borderColor: '#dbe4f0', backgroundColor: '#fff', paddingVertical: 4, shadowColor: '#0f172a', shadowOpacity: 0.12, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 16 },
+  inlineFilterItem: { paddingHorizontal: 14, paddingVertical: 10 },
+  inlineFilterItemActive: { backgroundColor: '#eff6ff' },
+  inlineFilterItemText: { color: '#0f172a', fontWeight: '600' },
+  inlineFilterItemTextActive: { color: '#1d4ed8' },
   layoutRow: { marginTop: 14, flexDirection: 'row' },
   rosterPanel: { width: '34%', borderRadius: 18, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e5e7eb', padding: 14, marginRight: 12 },
   detailPanel: { flex: 1, borderRadius: 18, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e5e7eb', padding: 16 },

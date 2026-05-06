@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 const { spawn, spawnSync } = require('child_process');
 const fs = require('fs');
+const http = require('http');
 const net = require('net');
 const path = require('path');
 
@@ -145,6 +146,163 @@ function writeFileSafe(filePath, content) {
   fs.writeFileSync(filePath, content, 'utf8');
 }
 
+function getMarketingIndexHtml(publicRoot) {
+  const devMarker = '<!-- expo-dev-index -->';
+  const indexHtml = readFileIfExists(path.join(publicRoot, 'index.html')) || '';
+  const backupHtml = readFileIfExists(path.join(publicRoot, '.index.marketing.backup.html')) || '';
+
+  if (indexHtml && !indexHtml.includes(devMarker)) return indexHtml;
+  if (backupHtml) return backupHtml;
+  return indexHtml || '<!doctype html><html><body></body></html>';
+}
+
+function getContentType(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  if (ext === '.html') return 'text/html; charset=utf-8';
+  if (ext === '.css') return 'text/css; charset=utf-8';
+  if (ext === '.js' || ext === '.mjs') return 'application/javascript; charset=utf-8';
+  if (ext === '.json') return 'application/json; charset=utf-8';
+  if (ext === '.svg') return 'image/svg+xml';
+  if (ext === '.png') return 'image/png';
+  if (ext === '.jpg' || ext === '.jpeg') return 'image/jpeg';
+  if (ext === '.webp') return 'image/webp';
+  if (ext === '.ico') return 'image/x-icon';
+  if (ext === '.txt') return 'text/plain; charset=utf-8';
+  if (ext === '.xml') return 'application/xml; charset=utf-8';
+  return 'application/octet-stream';
+}
+
+function safeDecodePathname(pathname) {
+  try {
+    return decodeURIComponent(pathname);
+  } catch (_) {
+    return pathname;
+  }
+}
+
+function resolvePublicStaticFile(publicRoot, requestPath) {
+  const publicRootPrefix = `${path.resolve(publicRoot)}${path.sep}`;
+  const pathname = safeDecodePathname(String(requestPath || '/').split('?')[0].split('#')[0]);
+  if (pathname === '/' || pathname === '/index.html') return null;
+
+  const cleanPath = pathname.replace(/^\/+/, '');
+  if (!cleanPath) return null;
+
+  const directCandidate = path.resolve(publicRoot, cleanPath);
+  if ((directCandidate === path.resolve(publicRoot) || directCandidate.startsWith(publicRootPrefix)) && fs.existsSync(directCandidate)) {
+    const stat = fs.statSync(directCandidate);
+    if (stat.isFile()) return directCandidate;
+  }
+
+  if (!path.extname(cleanPath)) {
+    const indexCandidate = path.resolve(publicRoot, cleanPath, 'index.html');
+    if ((indexCandidate === path.resolve(publicRoot) || indexCandidate.startsWith(publicRootPrefix)) && fs.existsSync(indexCandidate)) {
+      const stat = fs.statSync(indexCandidate);
+      if (stat.isFile()) return indexCandidate;
+    }
+  }
+
+  return null;
+}
+
+function shouldProxyToExpo(pathname) {
+  return pathname === '/login'
+    || pathname === '/login.html'
+    || pathname.startsWith('/login/')
+    || pathname === '/app-login'
+    || pathname === '/app-login.html'
+    || pathname.startsWith('/app-login/')
+    || pathname === '/dashboard'
+    || pathname === '/dashboard.html'
+    || pathname.startsWith('/dashboard/')
+    || pathname === '/home'
+    || pathname === '/home.html'
+    || pathname.startsWith('/home/')
+    || pathname.startsWith('/node_modules/')
+    || pathname.startsWith('/_expo/')
+    || pathname.startsWith('/assets/');
+}
+
+function serveString(res, statusCode, content, contentType) {
+  res.writeHead(statusCode, {
+    'Content-Type': contentType,
+    'Cache-Control': 'no-cache',
+  });
+  res.end(content);
+}
+
+function serveFile(res, filePath) {
+  try {
+    const body = fs.readFileSync(filePath);
+    res.writeHead(200, {
+      'Content-Type': getContentType(filePath),
+      'Cache-Control': path.extname(filePath).toLowerCase() === '.html' ? 'no-cache' : 'public, max-age=300',
+    });
+    res.end(body);
+  } catch (error) {
+    serveString(res, 500, 'Could not read requested file.', 'text/plain; charset=utf-8');
+  }
+}
+
+function proxyToExpo(req, res, expoPort) {
+  const upstream = http.request({
+    hostname: '127.0.0.1',
+    port: expoPort,
+    path: req.url,
+    method: req.method,
+    headers: {
+      ...req.headers,
+      host: `127.0.0.1:${expoPort}`,
+    },
+  }, (upstreamRes) => {
+    res.writeHead(upstreamRes.statusCode || 502, upstreamRes.headers);
+    upstreamRes.pipe(res);
+  });
+
+  upstream.on('error', () => {
+    serveString(
+      res,
+      502,
+      'Expo web dev server is not reachable yet. Wait for the bundle to finish loading and try again.',
+      'text/plain; charset=utf-8'
+    );
+  });
+
+  req.pipe(upstream);
+}
+
+async function startMarketingBridgeServer({ publicRoot, marketingIndexHtml, expoPort, preferredPort }) {
+  const bridgePort = await findAvailablePort(preferredPort, 20);
+  const server = http.createServer((req, res) => {
+    const pathname = safeDecodePathname(String(req.url || '/').split('?')[0].split('#')[0]);
+
+    if (shouldProxyToExpo(pathname)) {
+      proxyToExpo(req, res, expoPort);
+      return;
+    }
+
+    if (pathname === '/' || pathname === '/index.html') {
+      serveString(res, 200, marketingIndexHtml, 'text/html; charset=utf-8');
+      return;
+    }
+
+    const staticFile = resolvePublicStaticFile(publicRoot, pathname);
+    if (staticFile) {
+      serveFile(res, staticFile);
+      return;
+    }
+
+    serveString(res, 404, 'Not found.', 'text/plain; charset=utf-8');
+  });
+
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(bridgePort, '127.0.0.1', () => resolve());
+  });
+
+  return { server, bridgePort };
+}
+
 function ensureExpoDevIndex(publicRoot) {
   const devMarker = '<!-- expo-dev-index -->';
   const indexPath = path.join(publicRoot, 'index.html');
@@ -156,6 +314,16 @@ function ensureExpoDevIndex(publicRoot) {
   const backupIndex = readFileIfExists(backupPath);
   if (backupIndex && currentIndex && currentIndex.includes(devMarker)) {
     writeFileSafe(indexPath, backupIndex);
+    try {
+      fs.unlinkSync(backupPath);
+    } catch (_) {
+      // ignore
+    }
+  }
+
+  // If the current index is already a real marketing page, any leftover backup
+  // is stale and should not be allowed to overwrite newer edits on cleanup.
+  if (backupIndex && currentIndex && !currentIndex.includes(devMarker)) {
     try {
       fs.unlinkSync(backupPath);
     } catch (_) {
@@ -184,8 +352,11 @@ function ensureExpoDevIndex(publicRoot) {
   const cleanup = () => {
     const backup = readFileIfExists(backupPath);
     if (!backup) return;
+    const latestIndex = readFileIfExists(indexPath) || '';
     try {
-      writeFileSafe(indexPath, backup);
+      if (latestIndex.includes(devMarker)) {
+        writeFileSafe(indexPath, backup);
+      }
       fs.unlinkSync(backupPath);
     } catch (_) {
       // ignore
@@ -204,6 +375,8 @@ async function main() {
   // If we leave exported build artifacts under public/, they can conflict with
   // dev routing and cause "Asset not found" errors for hashed export assets.
   const publicRoot = path.join(__dirname, '..', 'public');
+  const marketingIndex = getMarketingIndexHtml(publicRoot);
+  const expoPort = await findAvailablePort(8081);
 
   // Expo's web dev server uses public/index.html as its HTML shell.
   // This repo uses public/index.html for the marketing site, which doesn't
@@ -215,12 +388,24 @@ async function main() {
   removeDirIfExists(path.join(publicRoot, 'dashboard'));
   removeDirIfExists(path.join(publicRoot, 'home'));
 
+  const { server: bridgeServer, bridgePort } = await startMarketingBridgeServer({
+    publicRoot,
+    marketingIndexHtml: marketingIndex,
+    expoPort,
+    preferredPort: 8080,
+  });
+
   const isWindows = process.platform === 'win32';
 
   let cleanedUp = false;
   const cleanupOnce = () => {
     if (cleanedUp) return;
     cleanedUp = true;
+    try {
+      bridgeServer.close();
+    } catch (_) {
+      // ignore
+    }
     cleanupIndex();
   };
 
@@ -234,8 +419,10 @@ async function main() {
     process.exit(143);
   });
 
-  const port = await findAvailablePort(8081);
-  const expoCommand = `npx expo start --web --port ${port} --offline`;
+  console.log(`Marketing dev bridge: http://127.0.0.1:${bridgePort}`);
+  console.log(`Expo web dev server: http://127.0.0.1:${expoPort}`);
+
+  const expoCommand = `npx expo start --web --port ${expoPort} --offline`;
 
   const expoEnv = { ...process.env, EXPO_OFFLINE: '1' };
 

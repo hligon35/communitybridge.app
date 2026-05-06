@@ -55,7 +55,9 @@ export default function LoginScreen({ navigation, suppressAutoRedirect = false }
   const isExplicitWebLoginRoute = useMemo(() => {
     if (Platform.OS !== 'web') return false;
     try {
-      return String(globalThis?.location?.pathname || '').trim().toLowerCase() === '/login';
+      const rawPath = String(globalThis?.location?.pathname || '').trim().toLowerCase();
+      const normalizedPath = rawPath.length > 1 ? rawPath.replace(/\/+$/, '') : rawPath;
+      return normalizedPath === '/login';
     } catch (_) {
       return false;
     }

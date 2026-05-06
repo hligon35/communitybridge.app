@@ -46,7 +46,7 @@ function AssignedChildrenList({ facultyId }) {
 export default function FacultyDetailScreen() {
   const route = useRoute();
   const navigation = useNavigation();
-  const { facultyId } = route.params || {};
+  const { facultyId, initialTab } = route.params || {};
   const { therapists = [], children = [], sendAdminMemo, sendMessage, messages = [] } = useData();
   const { user } = useAuth();
 
@@ -140,6 +140,15 @@ export default function FacultyDetailScreen() {
       disposed = true;
     };
   }, [faculty.id]);
+
+  useEffect(() => {
+    const nextTab = String(initialTab || '').trim().toLowerCase();
+    if (!nextTab) return;
+    const allowedTabs = ['overview', 'credentials', 'caseload', 'availability', 'documents'];
+    if (allowedTabs.includes(nextTab)) {
+      setSelectedTab(nextTab);
+    }
+  }, [initialTab]);
 
   const openPhone = (p) => {
     if (!p) return;
