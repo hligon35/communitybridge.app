@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { View, Platform, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import ScreenHeader from './ScreenHeader';
 import WebNav from './WebNav';
@@ -8,6 +8,7 @@ import { useAuth } from '../AuthContext';
 import { isAdminRole } from '../core/tenant/models';
 import { humanizeScreenLabel } from '../utils/screenLabels';
 import useIsTabletLayout from '../hooks/useIsTabletLayout';
+import { MobileAdminShellContext } from './TabletNavigationShell';
 
 export function ScreenWrapper({
   children,
@@ -30,6 +31,7 @@ export function ScreenWrapper({
   const { width, height } = useWindowDimensions();
   const isTabletLayout = useIsTabletLayout();
   const labels = tenant?.labels || {};
+  const shellContext = useContext(MobileAdminShellContext);
   const isWeb = Platform.OS === 'web';
   const shortEdge = Math.min(width, height);
   const longEdge = Math.max(width, height);
@@ -73,7 +75,7 @@ export function ScreenWrapper({
       {/* web: show top WebNav; mobile: show ScreenHeader */}
       {isWeb && !isTabletLayout && !suppressLegacyWebNav
         ? <WebNav />
-        : (!hideBanner && <ScreenHeader title={title} showBack={showBack} left={bannerLeft} right={bannerRight} titleLeft={showMobileHeaderBelow ? null : bannerTitleLeft} />)}
+        : (!hideBanner && !shellContext?.suppressScreenHeader && <ScreenHeader title={title} showBack={showBack} left={bannerLeft} right={bannerRight} titleLeft={showMobileHeaderBelow ? null : bannerTitleLeft} />)}
 
       {showMobileHeaderBelow ? (
         <View style={styles.mobileHeaderBelowShell}>
@@ -191,8 +193,8 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     alignItems: 'center',
-    paddingHorizontal: 7,
-    paddingTop: 7,
+    paddingHorizontal: 4,
+    paddingTop: 4,
   },
   mobileAdminMain: {
     flex: 1,
@@ -211,7 +213,7 @@ const styles = StyleSheet.create({
     maxWidth: 920,
   },
   mobileHeaderBelowContent: {
-    paddingHorizontal: 7,
+    paddingHorizontal: 4,
     paddingVertical: 10,
   },
 });

@@ -10,7 +10,7 @@ import { isChildLinkedToTherapist } from '../features/sessionTracking/utils/dash
 import useIsTabletLayout from '../hooks/useIsTabletLayout';
 import { navigationRef } from '../navigationRef';
 import { THERAPY_ROLE_LABELS, getDisplayRoleLabel, getWorkspaceLabel } from '../utils/roleTerminology';
-import LogoTitle from './LogoTitle';
+import { humanizeScreenLabel } from '../utils/screenLabels';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const checkUpdatesIcon = require('../../assets/icons/checkUpdates.png');
@@ -18,6 +18,8 @@ const checkUpdatesIcon = require('../../assets/icons/checkUpdates.png');
 export const MobileAdminShellContext = createContext({
   showMobileAdminShell: false,
   openMobileNav: () => {},
+  suppressScreenHeader: false,
+  topInset: 0,
 });
 
 function openTarget(target) {
@@ -55,6 +57,28 @@ export default function TabletNavigationShell({ currentRoute, children }) {
   const showAdminWorkspace = canAccessAdminWorkspace(user?.role);
   const isParentWorkspace = !showAdminWorkspace && !isStaff;
   const workspaceLabel = getWorkspaceLabel(user?.role);
+  const screenTitleMap = {
+    CommunityMain: 'Home',
+    ChatsList: 'Chats',
+    ChatThread: 'New Message',
+    MyChildMain: labels.myChild || 'My Child',
+    SettingsMain: 'Profile Settings',
+    MyClassMain: labels.myClass || 'My Class',
+    ControlsMain: labels.dashboard || 'Dashboard',
+    StudentDirectory: 'Student Directory',
+    ParentDirectory: 'Parent Directory',
+    FacultyDirectory: labels.facultyDirectory || 'Faculty Directory',
+    ChildDetail: 'Student',
+    FacultyDetail: labels.facultyDetail || 'Faculty',
+    TapTracker: 'Tap Tracker',
+    SummaryReview: 'Session Report',
+    ScheduleCalendar: 'Schedule',
+    ManagePermissions: 'Manage Permissions',
+    PrivacyDefaults: 'Profile Settings',
+    ModeratePosts: 'Moderate Posts',
+    ExportData: 'Export Data',
+  };
+  const currentScreenTitle = screenTitleMap[currentRoute] || humanizeScreenLabel(currentRoute) || workspaceLabel;
   const preferredUserName = String(user?.firstName || '').trim()
     || String(user?.name || '').trim().split(/\s+/).filter(Boolean)[0]
     || String(user?.email || '').trim()
@@ -73,7 +97,15 @@ export default function TabletNavigationShell({ currentRoute, children }) {
   const mobileAdminShellValue = useMemo(() => ({
     showMobileAdminShell,
     openMobileNav: () => setMobileNavOpen(true),
-  }), [showMobileAdminShell]);
+    suppressScreenHeader: false,
+    topInset: Math.max(insets.top, 0),
+  }), [insets.top, showMobileAdminShell]);
+  const tabletShellValue = useMemo(() => ({
+    showMobileAdminShell: false,
+    openMobileNav: () => {},
+    suppressScreenHeader: true,
+    topInset: 0,
+  }), []);
   const activeRouteParams = navigationRef?.getCurrentRoute?.()?.params || null;
   const activeRouteChildId = String(activeRouteParams?.childId || '').trim();
 
@@ -303,9 +335,17 @@ export default function TabletNavigationShell({ currentRoute, children }) {
     return (
       <MobileAdminShellContext.Provider value={mobileAdminShellValue}>
         <View style={styles.mobileShellFrame}>
-          {Platform.OS !== 'web' && insets.top > 0 ? <View style={{ height: insets.top, backgroundColor: '#e2e8f0' }} /> : null}
           <View style={[styles.contentWrap, styles.mobileContentWrap, { paddingTop: 0, paddingBottom: Math.max(insets.bottom, 12) }]}>
             <View style={styles.mobileScreenWrap}>{children}</View>
+          </View>
+          <View style={[styles.mobileBottomMenuShell, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+            <TouchableOpacity
+              style={styles.mobileBottomMenuButton}
+              onPress={() => setMobileNavOpen(true)}
+              accessibilityLabel="Open navigation menu"
+            >
+              <MaterialIcons name="menu" size={22} color="#1d4ed8" />
+            </TouchableOpacity>
           </View>
           <Modal visible={mobileNavOpen} animationType="slide" transparent={false} onRequestClose={() => setMobileNavOpen(false)}>
             <View style={[styles.mobileNavOverlay, { paddingTop: Math.max(insets.top, 16), paddingBottom: Math.max(insets.bottom, 16) }]}>
@@ -342,12 +382,13 @@ export default function TabletNavigationShell({ currentRoute, children }) {
   }
 
   return (
-    <View style={styles.shellFrame}>
-      {Platform.OS !== 'web' && insets.top > 0 ? <View style={{ height: insets.top, backgroundColor: '#e2e8f0' }} /> : null}
-      <View style={styles.shell}>
-        <View style={[styles.drawer, { paddingTop: 20, paddingBottom: 20 + Math.max(insets.bottom, 0) }, collapsed ? styles.drawerCollapsed : null]}>
+    <MobileAdminShellContext.Provider value={tabletShellValue}>
+      <View style={styles.shellFrame}>
+        {Platform.OS !== 'web' && insets.top > 0 ? <View style={{ height: insets.top, backgroundColor: '#e2e8f0' }} /> : null}
+        <View style={styles.shell}>
+          <View style={[styles.drawer, { paddingTop: 20, paddingBottom: 20 + Math.max(insets.bottom, 0) }, collapsed ? styles.drawerCollapsed : null]}>
           <View style={[styles.drawerBrandWrap, collapsed ? styles.drawerBrandWrapCollapsed : null]}>
-            <LogoTitle width={collapsed ? 90 : 180} height={collapsed ? 90 : 90} />
+            {!collapsed ? <Text style={styles.drawerScreenTitle} numberOfLines={2}>{currentScreenTitle}</Text> : null}
           </View>
           {!collapsed ? (
             <View style={styles.drawerIdentityWrap}>
@@ -363,10 +404,6 @@ export default function TabletNavigationShell({ currentRoute, children }) {
 
           {renderNavItems(collapsed)}
           <View style={styles.drawerUtilitySection}>
-            <TouchableOpacity style={styles.drawerUtilityButton} onPress={() => openTarget({ root: 'Settings', screen: 'Help' })}>
-              <MaterialIcons name="help-outline" size={20} color="#bfdbfe" />
-              {!collapsed ? <Text style={styles.drawerUtilityText}>Help</Text> : null}
-            </TouchableOpacity>
             <TouchableOpacity style={[styles.drawerUtilityButton, updateBusy ? styles.drawerUtilityButtonDisabled : null]} onPress={checkForOtaUpdate} disabled={updateBusy}>
               <Image source={checkUpdatesIcon} style={[styles.drawerUtilityIcon, updateBusy ? styles.drawerUtilityIconDisabled : null]} resizeMode="contain" />
               {!collapsed ? <Text style={styles.drawerUtilityText}>{updateBusy ? 'Checking…' : 'Check for updates'}</Text> : null}
@@ -378,12 +415,12 @@ export default function TabletNavigationShell({ currentRoute, children }) {
           </View>
         </View>
 
-        <View style={[styles.contentWrap, { paddingTop: 12, paddingBottom: Math.max(insets.bottom, 12) }]}>
-          {showHeaderQuickMenu && quickMenuOpen ? <TouchableOpacity style={styles.quickMenuDismissLayer} activeOpacity={1} onPress={() => setQuickMenuOpen(false)} /> : null}
-          {showHeaderQuickMenu ? (
+          <View style={[styles.contentWrap, { paddingTop: 12, paddingBottom: Math.max(insets.bottom, 12) }]}>
+            {showHeaderQuickMenu && quickMenuOpen ? <TouchableOpacity style={styles.quickMenuDismissLayer} activeOpacity={1} onPress={() => setQuickMenuOpen(false)} /> : null}
             <View style={styles.topBar}>
               <View style={styles.brandRow} />
               <View style={styles.headerActions}>
+                {showHeaderQuickMenu ? (
                 <View style={styles.quickAddAnchor}>
                   <TouchableOpacity style={[styles.iconOnlyButton, styles.quickAddButton, quickMenuOpen ? styles.iconOnlyButtonActive : null]} onPress={() => setQuickMenuOpen((value) => !value)} accessibilityLabel={showBcbaQuickActions ? 'Quick actions' : 'Quick add'}>
                     <MaterialIcons name="add" size={20} color="#1d4ed8" />
@@ -411,37 +448,41 @@ export default function TabletNavigationShell({ currentRoute, children }) {
                     </View>
                   ) : null}
                 </View>
+                ) : null}
+                <TouchableOpacity style={styles.iconOnlyButton} onPress={() => openTarget({ root: 'Settings', screen: 'Help' })} accessibilityLabel="Help">
+                  <MaterialIcons name="help-outline" size={20} color="#1d4ed8" />
+                </TouchableOpacity>
               </View>
             </View>
-          ) : null}
-          <Modal visible={!!quickLogDraft} transparent animationType="fade" onRequestClose={() => !quickLogSaving && setQuickLogDraft(null)}>
-            <View style={styles.modalOverlay}>
-              <View style={styles.modalCard}>
-                <Text style={styles.modalTitle}>{quickLogDraft?.modalTitle || 'Quick Log'}</Text>
-                <Text style={styles.modalSubtitle}>Save this note to {activeQuickChild?.name || 'the selected learner'} and notify office or BCBA reviewers.</Text>
-                <TextInput
-                  value={quickLogBody}
-                  onChangeText={setQuickLogBody}
-                  placeholder={quickLogDraft?.placeholder || 'Add details'}
-                  multiline
-                  editable={!quickLogSaving}
-                  style={styles.modalInput}
-                />
-                <View style={styles.modalActions}>
-                  <TouchableOpacity style={styles.modalSecondaryBtn} onPress={() => setQuickLogDraft(null)} disabled={quickLogSaving}>
-                    <Text style={styles.modalSecondaryBtnText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.modalPrimaryBtn} onPress={submitQuickLog} disabled={quickLogSaving}>
-                    <Text style={styles.modalPrimaryBtnText}>{quickLogSaving ? 'Saving...' : 'Save Log'}</Text>
-                  </TouchableOpacity>
+            <Modal visible={!!quickLogDraft} transparent animationType="fade" onRequestClose={() => !quickLogSaving && setQuickLogDraft(null)}>
+              <View style={styles.modalOverlay}>
+                <View style={styles.modalCard}>
+                  <Text style={styles.modalTitle}>{quickLogDraft?.modalTitle || 'Quick Log'}</Text>
+                  <Text style={styles.modalSubtitle}>Save this note to {activeQuickChild?.name || 'the selected learner'} and notify office or BCBA reviewers.</Text>
+                  <TextInput
+                    value={quickLogBody}
+                    onChangeText={setQuickLogBody}
+                    placeholder={quickLogDraft?.placeholder || 'Add details'}
+                    multiline
+                    editable={!quickLogSaving}
+                    style={styles.modalInput}
+                  />
+                  <View style={styles.modalActions}>
+                    <TouchableOpacity style={styles.modalSecondaryBtn} onPress={() => setQuickLogDraft(null)} disabled={quickLogSaving}>
+                      <Text style={styles.modalSecondaryBtnText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.modalPrimaryBtn} onPress={submitQuickLog} disabled={quickLogSaving}>
+                      <Text style={styles.modalPrimaryBtnText}>{quickLogSaving ? 'Saving...' : 'Save Log'}</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
-            </View>
-          </Modal>
-          <View style={styles.screenWrap}>{children}</View>
+            </Modal>
+            <View style={styles.screenWrap}>{children}</View>
+          </View>
         </View>
       </View>
-    </View>
+    </MobileAdminShellContext.Provider>
   );
 }
 
@@ -451,8 +492,9 @@ const styles = StyleSheet.create({
   shell: { flex: 1, flexDirection: 'row', backgroundColor: '#e2e8f0' },
   drawer: { width: 280, backgroundColor: '#0f172a', paddingHorizontal: 16 },
   drawerCollapsed: { width: 92, paddingHorizontal: 10 },
-  drawerBrandWrap: { alignItems: 'flex-start', justifyContent: 'center', marginBottom: 14 },
+  drawerBrandWrap: { alignItems: 'flex-start', justifyContent: 'center', marginBottom: 14, minHeight: 48 },
   drawerBrandWrapCollapsed: { alignItems: 'center' },
+  drawerScreenTitle: { color: '#f8fafc', fontWeight: '800', fontSize: 28, lineHeight: 32 },
   drawerIdentityWrap: { marginBottom: 16, paddingHorizontal: 6 },
   drawerIdentityText: { color: '#e2e8f0', fontWeight: '800', fontSize: 16, lineHeight: 22 },
   drawerToggle: { flexDirection: 'row', alignItems: 'center', marginBottom: 18 },
@@ -476,7 +518,7 @@ const styles = StyleSheet.create({
   quickMenuDismissLayer: { ...StyleSheet.absoluteFillObject, zIndex: 20 },
   topBar: { minHeight: 70, borderRadius: 18, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e2e8f0', paddingHorizontal: 18, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, zIndex: 30 },
   mobileTopBar: { paddingHorizontal: 14, alignItems: 'flex-start' },
-  brandRow: { flexDirection: 'row', alignItems: 'center' },
+  brandRow: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center' },
   mobileBrandRow: { flex: 1, minWidth: 0 },
   greetingWrap: { marginLeft: 14 },
   mobileGreetingWrap: { flex: 1, minWidth: 0, marginLeft: 12 },
@@ -499,6 +541,22 @@ const styles = StyleSheet.create({
   mobileNavCloseButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: '#e2e8f0' },
   mobileNavScroll: { flex: 1 },
   mobileNavScrollContent: { paddingBottom: 20 },
+  mobileBottomMenuShell: {
+    backgroundColor: '#ffffff',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#e2e8f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 36,
+    paddingTop: 4,
+  },
+  mobileBottomMenuButton: {
+    width: '100%',
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+  },
   mobileUtilitySection: { marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#dbe2ea' },
   mobileUtilityButton: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 12, backgroundColor: '#eff6ff', marginBottom: 10 },
   mobileUtilityButtonDisabled: { opacity: 0.72 },

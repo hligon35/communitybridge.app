@@ -8,28 +8,15 @@ import { MobileAdminShellContext } from './TabletNavigationShell';
 export default function ScreenHeader({ title, showBack = true, left, right, titleLeft }) {
   const navigation = useNavigation();
   const mobileAdminShell = useContext(MobileAdminShellContext);
-  const showMobileAdminMenu = !showBack && mobileAdminShell?.showMobileAdminShell;
-  const rightContent = showMobileAdminMenu ? (
-    <View style={styles.rightRow}>
-      {right || null}
-      <TouchableOpacity
-        onPress={() => mobileAdminShell.openMobileNav?.()}
-        style={styles.menuButton}
-        accessibilityLabel="Open navigation menu"
-        hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
-      >
-        <View style={styles.backInner}>
-          <MaterialIcons name="menu" size={22} color="#1d4ed8" />
-        </View>
-      </TouchableOpacity>
-    </View>
-  ) : (right || null);
+  const mobileTopInset = mobileAdminShell?.showMobileAdminShell ? Math.max(mobileAdminShell.topInset || 0, 0) : 0;
+  const headerStyle = mobileTopInset ? [styles.header, { height: 56 + mobileTopInset, paddingTop: mobileTopInset }] : styles.header;
+  const leftTop = 10 + mobileTopInset;
   const logEvent = (ev) => {
     logger.debug('ui', `ScreenHeader:${ev}`, { title });
   };
 
   return (
-    <View style={styles.header}>
+    <View style={headerStyle}>
       {showBack ? (
         <TouchableOpacity
           onPress={() => { logEvent('onPress'); navigation.goBack(); }}
@@ -37,7 +24,7 @@ export default function ScreenHeader({ title, showBack = true, left, right, titl
           onPressOut={() => logEvent('onPressOut')}
           onLongPress={() => logEvent('onLongPress')}
           delayLongPress={600}
-          style={styles.back}
+          style={[styles.back, { top: leftTop }]}
           accessibilityLabel="Go back"
           hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
         >
@@ -46,16 +33,16 @@ export default function ScreenHeader({ title, showBack = true, left, right, titl
           </View>
         </TouchableOpacity>
       ) : left ? (
-        <View style={styles.left}>{left}</View>
+        <View style={[styles.left, { top: leftTop }]}>{left}</View>
       ) : (
-        <View style={styles.backPlaceholder} />
+        <View style={[styles.backPlaceholder, { top: leftTop }]} />
       )}
 
       {titleLeft ? <View style={styles.titleLeft}>{titleLeft}</View> : null}
 
       {title ? <Text style={styles.title} numberOfLines={1} pointerEvents="none">{title}</Text> : <View style={styles.titlePlaceholder} />}
 
-      <View style={styles.right}>{rightContent}</View>
+      <View style={[styles.right, { top: leftTop }]}>{right || null}</View>
     </View>
   );
 }
@@ -94,6 +81,4 @@ const styles = StyleSheet.create({
   title: { fontSize: 18, fontWeight: '700', textAlign: 'center', marginHorizontal: 64 },
   titlePlaceholder: { height: 0 },
   right: { position: 'absolute', right: 6, top: 10, minWidth: 34, alignItems: 'flex-end' },
-  rightRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8 },
-  menuButton: { width: 44, height: 40, alignItems: 'center', justifyContent: 'center' },
 });

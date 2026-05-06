@@ -403,7 +403,7 @@ export default function ScheduleCalendarScreen() {
       mobileHeaderBelow={mobileHeaderFilters}
       mobileHeaderBelowScrollEnabled={!mobileFilterCarouselLocked}
     >
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.content, useMobileHeaderFilters ? styles.contentCompact : null]} showsVerticalScrollIndicator={false}>
         <View style={[styles.scheduleWorkspace, isWideLayout ? styles.scheduleWorkspaceWide : null]}>
           <View style={[styles.calendarCard, isWideLayout ? styles.calendarCardWide : null]}>
             <View style={styles.calendarHeader}>
@@ -551,6 +551,7 @@ export default function ScheduleCalendarScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#f8fafc' },
   content: { padding: 16 },
+  contentCompact: { padding: 8 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 },
   chip: { borderRadius: 999, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#f1f5f9', marginRight: 8, marginBottom: 8 },
   chipActive: { backgroundColor: '#2563eb' },

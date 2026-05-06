@@ -382,7 +382,7 @@ export default function ReportsScreen() {
       mobileHeaderBelow={mobileHeaderFilters}
       mobileHeaderBelowScrollEnabled={!mobileFilterCarouselLocked}
     >
-      <ScrollView contentContainerStyle={[styles.content, isWideLayout ? styles.contentWide : null]} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.content, !isWideLayout ? styles.contentCompact : null, isWideLayout ? styles.contentWide : null]} showsVerticalScrollIndicator={false}>
         <View style={styles.tabRow}>
           {(isBcba ? ['clinical', 'export'] : ['operational', 'export']).map((key) => (
             <TouchableOpacity key={key} style={[styles.tabButton, tab === key ? styles.tabButtonActive : null]} onPress={() => setTab(key)}>
@@ -482,6 +482,7 @@ export default function ReportsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
   content: { padding: 16 },
+  contentCompact: { padding: 8 },
   contentWide: { width: '100%', maxWidth: 1180, alignSelf: 'center', paddingHorizontal: 24, paddingBottom: 28 },
   parentBlockedCard: { borderRadius: 22, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#bfdbfe', padding: 18, margin: 16 },
   parentBlockedEyebrow: { color: '#1d4ed8', fontWeight: '800', fontSize: 12, textTransform: 'uppercase' },

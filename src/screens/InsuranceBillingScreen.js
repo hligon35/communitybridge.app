@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import AppDropdown from '../components/AppDropdown';
@@ -45,6 +45,7 @@ function HeaderLearnerPicker({ children, selectedLearnerId, onSelect, onOpenChan
 
 export default function InsuranceBillingScreen() {
   const navigation = useNavigation();
+  const { width } = useWindowDimensions();
   const { user } = useAuth();
   const {
     children = [],
@@ -428,6 +429,7 @@ export default function InsuranceBillingScreen() {
     />
   ) : null;
   const mobileHeaderFilters = !isParent && Platform.OS !== 'web' ? <View style={styles.mobileHeaderFilterRow}>{learnerPicker}</View> : null;
+  const useCompactContent = !isParent && Platform.OS !== 'web' && width < 900;
 
   return (
     <ScreenWrapper
@@ -438,7 +440,7 @@ export default function InsuranceBillingScreen() {
       mobileHeaderBelowScrollEnabled={!mobileFilterCarouselLocked}
       style={styles.container}
     >
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.content, useCompactContent ? styles.contentCompact : null]} showsVerticalScrollIndicator={false}>
         {loadError ? <Text style={styles.errorText}>{loadError}</Text> : null}
 
         {isParent ? (
@@ -546,6 +548,7 @@ export default function InsuranceBillingScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
   content: { padding: 16 },
+  contentCompact: { padding: 8 },
   errorText: { color: '#b91c1c', marginTop: 12 },
   splitRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 },
   card: { marginTop: 12, borderRadius: 18, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e5e7eb', padding: 16 },
