@@ -75,6 +75,14 @@ import useIsTabletLayout from './src/hooks/useIsTabletLayout';
 import { consumeApprovalAccessIntent, getApprovalAccessNavigationParams } from './src/utils/approvalAccessIntent';
 import { shouldShowSubscreenBack } from './src/utils/backNavigation';
 
+const shouldSilenceNativeReleaseConsole = Platform.OS !== 'web' && !(typeof __DEV__ !== 'undefined' && __DEV__);
+if (shouldSilenceNativeReleaseConsole && typeof console !== 'undefined') {
+  console.log = () => {};
+  console.info = () => {};
+  console.debug = () => {};
+  console.warn = () => {};
+}
+
 initSentry();
 
 const RootStack = createNativeStackNavigator();

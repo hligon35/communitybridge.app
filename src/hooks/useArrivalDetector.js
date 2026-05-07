@@ -50,6 +50,7 @@ export default function useArrivalDetector() {
   const { children, fetchAndSync } = useData();
   const { user } = useAuth();
   const intervalRef = useRef(null);
+  const locationPermissionRef = useRef(null);
   const bgRef = useRef({ active: false, userId: null });
   const appState = useRef(AppState.currentState);
   const [enabled, setEnabled] = useState(false);
@@ -185,6 +186,7 @@ export default function useArrivalDetector() {
     appState.current = next;
     // If app becomes active, evaluate windows immediately
     if (next === 'active') {
+      locationPermissionRef.current = null;
       try { if (typeof refreshFromStorage === 'function') refreshFromStorage(); } catch (e) {}
       _evaluateAndSchedule();
     }
@@ -198,8 +200,22 @@ export default function useArrivalDetector() {
     try {
       // dynamic import to avoid crashing when expo-location not installed
       const Location = require('expo-location');
-      const perm = await Location.requestForegroundPermissionsAsync();
-      if (!perm.granted) return null;
+      let granted = locationPermissionRef.current === true;
+      if (!granted) {
+        const existing = await Location.getForegroundPermissionsAsync();
+        if (existing?.granted) {
+          granted = true;
+          locationPermissionRef.current = true;
+        } else if (existing?.canAskAgain === false) {
+          locationPermissionRef.current = false;
+          return null;
+        } else {
+          const requested = await Location.requestForegroundPermissionsAsync();
+          granted = !!requested?.granted;
+          locationPermissionRef.current = granted ? true : false;
+        }
+      }
+      if (!granted) return null;
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Highest });
       return { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy };
     } catch (e) {
