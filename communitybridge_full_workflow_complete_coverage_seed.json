@@ -224,10 +224,10 @@
   "users": [
     {
       "id": "user-parent-review",
-      "name": "Alicia Cook",
-      "email": "review-parent@communitybridge.app",
+      "name": "Cheyanne Cook",
+      "email": "cheyanne2448@gmail.com",
       "role": "parent",
-      "passwordHint": "Use your review password"
+      "passwordHint": "It's your usual password."
     },
     {
       "id": "user-parent-dev-switch",
@@ -330,9 +330,9 @@
   "parents": [
     {
       "id": "par-001",
-      "name": "Alicia Cook",
+      "name": "Cheyanne Cook",
       "phone": "317-555-5101",
-      "email": "review-parent@communitybridge.app",
+      "email": "cheyanne2448@gmail.com",
       "avatar": "",
       "childIds": [
         "child-001",
@@ -349,7 +349,7 @@
       },
       "authorizedPickup": [
         {
-          "name": "Alicia Cook",
+          "name": "Cheyanne Cook",
           "phone": "317-555-5101",
           "relationship": "Parent/Guardian",
           "photoIdVerified": true
@@ -610,8 +610,8 @@
       "parents": [
         {
           "id": "par-001",
-          "name": "Alicia Cook",
-          "email": "review-parent@communitybridge.app",
+          "name": "Cheyanne Cook",
+          "email": "cheyanne2448@gmail.com",
           "phone": "317-555-5101"
         },
         {
@@ -671,8 +671,8 @@
       "parents": [
         {
           "id": "par-001",
-          "name": "Alicia Cook",
-          "email": "review-parent@communitybridge.app",
+          "name": "Cheyanne Cook",
+          "email": "cheyanne2448@gmail.com",
           "phone": "317-555-5101"
         },
         {
@@ -5142,7 +5142,7 @@
           "body": "Thank you for the update!",
           "author": {
             "id": "par-001",
-            "name": "Alicia Cook"
+            "name": "Cheyanne Cook"
           },
           "reactions": {
             "heart": 1
@@ -5192,7 +5192,7 @@
           "body": "Thank you for the update!",
           "author": {
             "id": "par-001",
-            "name": "Alicia Cook"
+            "name": "Cheyanne Cook"
           },
           "reactions": {
             "heart": 1
@@ -5242,7 +5242,7 @@
           "body": "Thank you for the update!",
           "author": {
             "id": "par-001",
-            "name": "Alicia Cook"
+            "name": "Cheyanne Cook"
           },
           "reactions": {
             "heart": 1
@@ -5292,7 +5292,7 @@
           "body": "Thank you for the update!",
           "author": {
             "id": "par-001",
-            "name": "Alicia Cook"
+            "name": "Cheyanne Cook"
           },
           "reactions": {
             "heart": 1
@@ -8050,7 +8050,7 @@
       "id": "pickup-001",
       "childId": "child-001",
       "parentId": "par-001",
-      "pickupPerson": "Alicia Cook",
+      "pickupPerson": "Cheyanne Cook",
       "status": "nearby",
       "arrivalPingId": "arrival-001",
       "queuedAt": "2026-04-27T12:20:00",
