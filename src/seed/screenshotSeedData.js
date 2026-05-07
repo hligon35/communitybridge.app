@@ -1,5 +1,5 @@
 const { DEFAULT_RESOURCE_URL, SUPPORT_URL, DOWNLOAD_URL } = require('../config/brand');
-const raw = require('../../communitybridge_full_workflow_5_day_seed.json');
+const raw = require('../../communitybridge_full_workflow_5_day_seed_balanced_aba.json');
 
 function splitName(name) {
   const parts = String(name || '').trim().split(/\s+/).filter(Boolean);

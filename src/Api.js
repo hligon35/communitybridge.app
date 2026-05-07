@@ -106,6 +106,13 @@ function requireUser() {
   return u;
 }
 
+async function getUserIdToken(user, options = {}) {
+  const u = user || requireUser();
+  const forceRefresh = Boolean(options && options.forceRefresh);
+  if (typeof u?.getIdToken === 'function') return u.getIdToken(forceRefresh);
+  return getIdToken(u, forceRefresh);
+}
+
 function requireAuth() {
   const a = getAuthInstance();
   if (a) return a;
@@ -1222,7 +1229,7 @@ function requireBoardApiBase() {
 export async function getPosts() {
   const u = requireUser();
   const apiBase = requireBoardApiBase();
-  const idToken = await u.getIdToken(true);
+  const idToken = await getUserIdToken(u);
   const resp = await fetchWithTimeout(`${apiBase}/api/board`, {
     method: 'GET',
     headers: {
@@ -1479,7 +1486,7 @@ export async function getUrgentMemos() {
 
   if (apiBase) {
     try {
-      const idToken = await u.getIdToken(true);
+      const idToken = await getUserIdToken(u);
       const resp = await fetchWithTimeout(`${apiBase}/api/urgent-memos`, {
         method: 'GET',
         headers: {
@@ -1695,7 +1702,7 @@ export async function getMessages() {
 
   if (apiBase) {
     try {
-      const idToken = await u.getIdToken(true);
+      const idToken = await getUserIdToken(u);
       const resp = await fetchWithTimeout(`${apiBase}/api/messages`, {
         method: 'GET',
         headers: {
@@ -1917,7 +1924,7 @@ export async function getTimeChangeProposals() {
 
   if (apiBase) {
     try {
-      const idToken = await u.getIdToken(true);
+      const idToken = await getUserIdToken(u);
       const resp = await fetchWithTimeout(`${apiBase}/api/children/time-change-proposals`, {
         method: 'GET',
         headers: {
@@ -1981,7 +1988,7 @@ export async function getDirectory() {
   const apiBase = String(BASE_URL || '').replace(/\/$/, '');
   if (apiBase) {
     try {
-      const idToken = await u.getIdToken(true);
+      const idToken = await getUserIdToken(u);
       const resp = await fetchWithTimeout(`${apiBase}/api/directory`, {
         method: 'GET',
         headers: {
@@ -2018,7 +2025,7 @@ export async function getDirectoryMe() {
   const apiBase = String(BASE_URL || '').replace(/\/$/, '');
   if (apiBase) {
     try {
-      const idToken = await u.getIdToken(true);
+      const idToken = await getUserIdToken(u);
       const resp = await fetchWithTimeout(`${apiBase}/api/directory/me`, {
         method: 'GET',
         headers: {

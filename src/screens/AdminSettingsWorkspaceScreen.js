@@ -6,6 +6,7 @@ import AddressAutocompleteField from '../components/AddressAutocompleteField';
 import { useAuth } from '../AuthContext';
 import * as Api from '../Api';
 import { ADMIN_SECTION_KEYS, canAccessAdminSection, hasFullAdminSectionAccess } from '../core/tenant/models';
+import { shouldShowSubscreenBack } from '../utils/backNavigation';
 
 const { SUPPORT_EMAIL, SUPPORT_URL } = require('../config/brand');
 
@@ -262,7 +263,7 @@ export default function AdminSettingsWorkspaceScreen() {
   };
 
   return (
-    <ScreenWrapper style={styles.container} bannerShowBack={navigation.canGoBack()} bannerTitle={sectionConfig.bannerTitle}>
+    <ScreenWrapper style={styles.container} bannerShowBack={shouldShowSubscreenBack(navigation, route?.name)} bannerTitle={sectionConfig.bannerTitle}>
       <ScrollView contentContainerStyle={styles.content}>
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
         {renderSection()}

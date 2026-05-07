@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform, Linking } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
 import { useData } from '../DataContext';
 // header provided by ScreenWrapper
@@ -27,6 +28,12 @@ export default function ExportDataScreen(){
   const [jobs, setJobs] = useState([]);
   const [jobsError, setJobsError] = useState('');
   const [busy, setBusy] = useState(false);
+  const formatCards = useMemo(() => ([
+    { key: 'pdf', label: 'PDF', icon: 'picture-as-pdf', type: 'format' },
+    { key: 'csv', label: 'CSV', icon: 'table-chart', type: 'format' },
+    { key: 'excel', label: 'Excel', icon: 'grid-on', type: 'format' },
+    { key: 'import', label: 'Import', icon: 'file-upload', type: 'navigate' },
+  ]), []);
 
   const recordCount = useMemo(() => selectedCategory === 'billing' ? children.length : messages.length + children.length, [children.length, messages.length, selectedCategory]);
 
@@ -206,12 +213,19 @@ export default function ExportDataScreen(){
             </TouchableOpacity>
           ))}
         </View>
-        <View style={styles.selectorRow}>
-          {['csv', 'pdf', 'excel'].map((item) => (
-            <TouchableOpacity key={item} style={[styles.selectorChip, selectedFormat === item ? styles.selectorChipActive : null]} onPress={() => setSelectedFormat(item)}>
-              <Text style={[styles.selectorChipText, selectedFormat === item ? styles.selectorChipTextActive : null]}>{item.toUpperCase()}</Text>
-            </TouchableOpacity>
-          ))}
+        <View style={styles.quickActionGrid}>
+          {formatCards.map((item) => {
+            const isSelected = item.type === 'format' && selectedFormat === item.key;
+            const onPress = item.type === 'navigate'
+              ? () => navigation.navigate('ImportCenter')
+              : () => setSelectedFormat(item.key);
+            return (
+              <TouchableOpacity key={item.key} style={[styles.quickActionCard, isSelected ? styles.quickActionCardActive : null]} onPress={onPress}>
+                <MaterialIcons name={item.icon} size={22} color={isSelected ? '#ffffff' : '#2563eb'} />
+                <Text style={[styles.quickActionLabel, isSelected ? styles.quickActionLabelActive : null]}>{item.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         <TouchableOpacity style={[styles.exportBtn, busy ? styles.exportBtnDisabled : null]} onPress={doExport} disabled={busy}><Text style={styles.exportText}>{busy ? 'Queueing...' : 'Queue Export Job'}</Text></TouchableOpacity>
@@ -272,6 +286,11 @@ const styles = StyleSheet.create({
   selectorChipActive: { backgroundColor: '#2563eb' },
   selectorChipText: { color: '#0f172a', fontWeight: '700' },
   selectorChipTextActive: { color: '#fff' },
+  quickActionGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginTop: 12 },
+  quickActionCard: { width: '48%', minHeight: 110, borderRadius: 14, borderWidth: 1, borderColor: '#dbeafe', backgroundColor: '#ffffff', paddingVertical: 16, paddingHorizontal: 14, marginBottom: 10, justifyContent: 'center' },
+  quickActionCardActive: { backgroundColor: '#2563eb', borderColor: '#2563eb' },
+  quickActionLabel: { marginTop: 10, color: '#0f172a', fontWeight: '800', fontSize: 15 },
+  quickActionLabelActive: { color: '#ffffff' },
   exportBtn: { marginTop: 16, backgroundColor: '#0066FF', padding: 12, borderRadius: 8, alignItems: 'center' },
   exportBtnDisabled: { opacity: 0.55 },
   exportText: { color: '#fff', fontWeight: '700' },

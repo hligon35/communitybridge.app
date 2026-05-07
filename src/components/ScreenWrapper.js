@@ -9,28 +9,7 @@ import { isAdminRole } from '../core/tenant/models';
 import { humanizeScreenLabel } from '../utils/screenLabels';
 import useIsTabletLayout from '../hooks/useIsTabletLayout';
 import { MobileAdminShellContext } from './TabletNavigationShell';
-
-const MAIN_NAV_ROUTES = new Set([
-  'CommunityMain',
-  'ChatsList',
-  'MyChildMain',
-  'SettingsMain',
-  'MyClassMain',
-  'ControlsMain',
-  'StudentDirectory',
-  'ParentDirectory',
-  'FacultyDirectory',
-  'ScheduleCalendar',
-  'ProgramDirectory',
-  'Reports',
-  'InsuranceBilling',
-  'AdminAlerts',
-  'AdminChatMonitor',
-  'AdminSettings',
-  'TapTracker',
-  'TapLogs',
-  'SummaryReview',
-]);
+import { shouldShowSubscreenBack } from '../utils/backNavigation';
 
 export function ScreenWrapper({
   children,
@@ -87,13 +66,13 @@ export function ScreenWrapper({
   };
 
   const title = bannerTitle || nameMap[route?.name] || humanizeScreenLabel(route?.name) || '';
-  const isMainNavRoute = MAIN_NAV_ROUTES.has(route?.name);
-  const computedShowBack = !isWeb && !isMainNavRoute && navigation && navigation.canGoBack && navigation.canGoBack() && title !== 'Home';
+  const computedShowBack = !isWeb && title !== 'Home' && shouldShowSubscreenBack(navigation, route?.name);
   const showBack = (typeof bannerShowBack === 'boolean') ? bannerShowBack : computedShowBack;
   const resolvedWebBottomSpacerHeight = typeof webBottomSpacerHeight === 'number' ? webBottomSpacerHeight : 24;
+  const usesMobileAdminShell = Boolean(shellContext?.showMobileAdminShell);
   const resolvedBottomSpacerHeight = typeof bottomSpacerHeight === 'number'
     ? bottomSpacerHeight
-    : (useAdminPhoneMainArea ? 0 : 72);
+    : (usesMobileAdminShell || useAdminPhoneMainArea ? 0 : 72);
 
   return (
     <View style={[{ flex: 1, width: '100%', backgroundColor: isWeb ? '#f0f2f5' : '#fff' }, style]}>

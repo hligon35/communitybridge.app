@@ -7,6 +7,20 @@ import { useData } from '../DataContext';
 import { isBcbaRole } from '../core/tenant/models';
 import useIsTabletLayout from '../hooks/useIsTabletLayout';
 
+function formatStaffUtilizationLabel(staff) {
+  const fullName = String(staff?.name || '').trim();
+  if (!fullName) return 'Staff';
+  const nameParts = fullName.split(/\s+/).filter(Boolean);
+  const isDoctor = /^dr\.?$/i.test(nameParts[0] || '') || /^dr\./i.test(fullName) || String(staff?.role || '').toLowerCase() === 'bcba';
+  const filteredParts = isDoctor && /^dr\.?$/i.test(nameParts[0] || '') ? nameParts.slice(1) : nameParts;
+  const firstName = filteredParts[0] || '';
+  const lastName = filteredParts[filteredParts.length - 1] || firstName || 'Staff';
+  const lastShort = lastName.slice(0, 5);
+  if (isDoctor) return `DR. ${lastShort}`;
+  const firstInitial = firstName.slice(0, 1).toUpperCase();
+  return `${firstInitial}. ${lastShort}`;
+}
+
 function Tile({ label, value, hint, accent = '#2563eb', compact = false }) {
   return (
     <View style={[styles.tile, compact ? styles.tileCompact : null]}>
@@ -111,7 +125,7 @@ export default function AdminControlsScreen() {
         if (typeof entry === 'string') return entry === staff?.id;
         return entry?.id === staff?.id;
       })).length;
-      return { label: (staff?.name || 'Staff').split(' ')[0], value: count };
+      return { label: formatStaffUtilizationLabel(staff), value: count };
     });
     return { sessionsToday, cancellations, incidents, overdueNotes, attendanceTrend, behaviorTrend, staffUtilization };
   }, [children, therapists, urgentMemos]);

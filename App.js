@@ -73,6 +73,7 @@ import { humanizeScreenLabel } from './src/utils/screenLabels';
 import TabletNavigationShell from './src/components/TabletNavigationShell';
 import useIsTabletLayout from './src/hooks/useIsTabletLayout';
 import { consumeApprovalAccessIntent, getApprovalAccessNavigationParams } from './src/utils/approvalAccessIntent';
+import { shouldShowSubscreenBack } from './src/utils/backNavigation';
 
 initSentry();
 
@@ -81,27 +82,6 @@ const AppStack = createNativeStackNavigator();
 
 const HEADER_HEIGHT = 96;
 const SHOW_STACK_HEADERS = Platform.OS !== 'web';
-const MAIN_NAV_ROUTES = new Set([
-  'CommunityMain',
-  'ChatsList',
-  'MyChildMain',
-  'SettingsMain',
-  'MyClassMain',
-  'ControlsMain',
-  'StudentDirectory',
-  'ParentDirectory',
-  'FacultyDirectory',
-  'ScheduleCalendar',
-  'ProgramDirectory',
-  'Reports',
-  'InsuranceBilling',
-  'AdminAlerts',
-  'AdminChatMonitor',
-  'AdminSettings',
-  'TapTracker',
-  'TapLogs',
-  'SummaryReview',
-]);
 
 function StackHeaderTitle({ children }) {
   return (
@@ -131,17 +111,20 @@ function MyClassStack() {
   const isTabletLayout = useIsTabletLayout();
   return (
     <MyClassStackNav.Navigator
-      screenOptions={({ navigation, route, back }) => ({
-        headerShown: SHOW_STACK_HEADERS && !isTabletLayout,
-        title: humanizeScreenLabel(route?.name),
-        headerTitleAlign: 'center',
-        headerTitle: ({ children }) => <StackHeaderTitle>{children}</StackHeaderTitle>,
-        headerStyle: { height: HEADER_HEIGHT },
-        headerBackVisible: !MAIN_NAV_ROUTES.has(route?.name),
-        headerBackTitleVisible: false,
-        headerLeft: () => (back && !MAIN_NAV_ROUTES.has(route?.name) ? <BackButton onPress={() => navigation.goBack()} /> : null),
-        headerRight: () => <HelpButton />,
-      })}
+      screenOptions={({ navigation, route, back }) => {
+        const showBack = Boolean(back) && shouldShowSubscreenBack(navigation, route?.name);
+        return {
+          headerShown: SHOW_STACK_HEADERS && !isTabletLayout,
+          title: humanizeScreenLabel(route?.name),
+          headerTitleAlign: 'center',
+          headerTitle: ({ children }) => <StackHeaderTitle>{children}</StackHeaderTitle>,
+          headerStyle: { height: HEADER_HEIGHT },
+          headerBackVisible: showBack,
+          headerBackTitleVisible: false,
+          headerLeft: () => (showBack ? <BackButton onPress={() => navigation.goBack()} /> : null),
+          headerRight: () => <HelpButton />,
+        };
+      }}
     >
       <MyClassStackNav.Screen name="MyClassMain" component={MyClassScreen} options={{ title: 'My Class' }} />
     </MyClassStackNav.Navigator>
@@ -153,17 +136,20 @@ function ControlsStack() {
   const isTabletLayout = useIsTabletLayout();
   return (
     <ControlsStackNav.Navigator
-      screenOptions={({ navigation, route, back }) => ({
-        headerShown: SHOW_STACK_HEADERS && !isTabletLayout,
-        title: humanizeScreenLabel(route?.name),
-        headerTitleAlign: 'center',
-        headerTitle: ({ children }) => <StackHeaderTitle>{children}</StackHeaderTitle>,
-        headerStyle: { height: HEADER_HEIGHT },
-        headerBackVisible: !MAIN_NAV_ROUTES.has(route?.name),
-        headerBackTitleVisible: false,
-        headerLeft: () => (back && !MAIN_NAV_ROUTES.has(route?.name) ? <BackButton onPress={() => navigation.goBack()} /> : null),
-        headerRight: () => <HelpButton />,
-      })}
+      screenOptions={({ navigation, route, back }) => {
+        const showBack = Boolean(back) && shouldShowSubscreenBack(navigation, route?.name);
+        return {
+          headerShown: SHOW_STACK_HEADERS && !isTabletLayout,
+          title: humanizeScreenLabel(route?.name),
+          headerTitleAlign: 'center',
+          headerTitle: ({ children }) => <StackHeaderTitle>{children}</StackHeaderTitle>,
+          headerStyle: { height: HEADER_HEIGHT },
+          headerBackVisible: showBack,
+          headerBackTitleVisible: false,
+          headerLeft: () => (showBack ? <BackButton onPress={() => navigation.goBack()} /> : null),
+          headerRight: () => <HelpButton />,
+        };
+      }}
     >
       <ControlsStackNav.Screen name="ControlsMain" component={AdminControlsScreen} options={{ title: 'Dashboard' }} />
       <ControlsStackNav.Screen name="StudentDirectory" component={StudentDirectoryScreen} options={{ title: 'Students' }} />
@@ -208,17 +194,20 @@ function CommunityStack() {
   const isTabletLayout = useIsTabletLayout();
   return (
     <CommunityStackNav.Navigator
-      screenOptions={({ navigation, route, back }) => ({
-        headerShown: SHOW_STACK_HEADERS && !isTabletLayout,
-        title: humanizeScreenLabel(route?.name),
-        headerTitleAlign: 'center',
-        headerTitle: ({ children }) => <StackHeaderTitle>{children}</StackHeaderTitle>,
-        headerStyle: { height: HEADER_HEIGHT },
-        headerBackVisible: !MAIN_NAV_ROUTES.has(route?.name),
-        headerBackTitleVisible: false,
-        headerLeft: () => (back && !MAIN_NAV_ROUTES.has(route?.name) ? <BackButton onPress={() => navigation.goBack()} /> : null),
-        headerRight: () => <HelpButton />,
-      })}
+      screenOptions={({ navigation, route, back }) => {
+        const showBack = Boolean(back) && shouldShowSubscreenBack(navigation, route?.name);
+        return {
+          headerShown: SHOW_STACK_HEADERS && !isTabletLayout,
+          title: humanizeScreenLabel(route?.name),
+          headerTitleAlign: 'center',
+          headerTitle: ({ children }) => <StackHeaderTitle>{children}</StackHeaderTitle>,
+          headerStyle: { height: HEADER_HEIGHT },
+          headerBackVisible: showBack,
+          headerBackTitleVisible: false,
+          headerLeft: () => (showBack ? <BackButton onPress={() => navigation.goBack()} /> : null),
+          headerRight: () => <HelpButton />,
+        };
+      }}
     >
       <CommunityStackNav.Screen name="CommunityMain" component={RoleDashboardScreen} options={{ title: 'Dashboard' }} />
       <CommunityStackNav.Screen name="InsuranceBilling" component={InsuranceBillingScreen} options={{ title: 'Billing & Insurance' }} />
@@ -243,17 +232,20 @@ function MyChildStack() {
   const isTabletLayout = useIsTabletLayout();
   return (
     <MyChildStackNav.Navigator
-      screenOptions={({ navigation, route, back }) => ({
-        headerShown: SHOW_STACK_HEADERS && !isTabletLayout,
-        title: humanizeScreenLabel(route?.name),
-        headerTitleAlign: 'center',
-        headerTitle: ({ children }) => <StackHeaderTitle>{children}</StackHeaderTitle>,
-        headerStyle: { height: HEADER_HEIGHT },
-        headerBackVisible: !MAIN_NAV_ROUTES.has(route?.name),
-        headerBackTitleVisible: false,
-        headerLeft: () => (back && !MAIN_NAV_ROUTES.has(route?.name) ? <BackButton onPress={() => navigation.goBack()} /> : null),
-        headerRight: () => <HelpButton />,
-      })}
+      screenOptions={({ navigation, route, back }) => {
+        const showBack = Boolean(back) && shouldShowSubscreenBack(navigation, route?.name);
+        return {
+          headerShown: SHOW_STACK_HEADERS && !isTabletLayout,
+          title: humanizeScreenLabel(route?.name),
+          headerTitleAlign: 'center',
+          headerTitle: ({ children }) => <StackHeaderTitle>{children}</StackHeaderTitle>,
+          headerStyle: { height: HEADER_HEIGHT },
+          headerBackVisible: showBack,
+          headerBackTitleVisible: false,
+          headerLeft: () => (showBack ? <BackButton onPress={() => navigation.goBack()} /> : null),
+          headerRight: () => <HelpButton />,
+        };
+      }}
     >
       <MyChildStackNav.Screen name="MyChildMain" component={MyChildScreen} options={{ title: 'My Child' }} />
       <MyChildStackNav.Screen name="ChildProgressInsights" component={ChildProgressInsightsScreen} options={{ title: 'Progress Insights' }} />
@@ -266,17 +258,20 @@ function ChatsStack() {
   const isTabletLayout = useIsTabletLayout();
   return (
     <ChatsStackNav.Navigator
-      screenOptions={({ navigation, route, back }) => ({
-        headerShown: SHOW_STACK_HEADERS && !isTabletLayout,
-        title: humanizeScreenLabel(route?.name),
-        headerTitleAlign: 'center',
-        headerTitle: ({ children }) => <StackHeaderTitle>{children}</StackHeaderTitle>,
-        headerStyle: { height: HEADER_HEIGHT },
-        headerBackVisible: !MAIN_NAV_ROUTES.has(route?.name),
-        headerBackTitleVisible: false,
-        headerLeft: () => (back && !MAIN_NAV_ROUTES.has(route?.name) ? <BackButton onPress={() => navigation.goBack()} label={route?.name === 'ChatThread' ? 'Chats' : ''} /> : null),
-        headerRight: () => <HelpButton />,
-      })}
+      screenOptions={({ navigation, route, back }) => {
+        const showBack = Boolean(back) && shouldShowSubscreenBack(navigation, route?.name);
+        return {
+          headerShown: SHOW_STACK_HEADERS && !isTabletLayout,
+          title: humanizeScreenLabel(route?.name),
+          headerTitleAlign: 'center',
+          headerTitle: ({ children }) => <StackHeaderTitle>{children}</StackHeaderTitle>,
+          headerStyle: { height: HEADER_HEIGHT },
+          headerBackVisible: showBack,
+          headerBackTitleVisible: false,
+          headerLeft: () => (showBack ? <BackButton onPress={() => navigation.goBack()} label={route?.name === 'ChatThread' ? 'Chats' : ''} /> : null),
+          headerRight: () => <HelpButton />,
+        };
+      }}
     >
       <ChatsStackNav.Screen name="ChatsList" component={ChatsScreen} options={{ title: 'Chats' }} />
       <ChatsStackNav.Screen name="NewThread" component={NewThreadScreen} options={{ title: 'New Message' }} />
@@ -290,17 +285,20 @@ function SettingsStack() {
   const isTabletLayout = useIsTabletLayout();
   return (
     <SettingsStackNav.Navigator
-      screenOptions={({ navigation, route, back }) => ({
-        headerShown: SHOW_STACK_HEADERS && !isTabletLayout,
-        title: humanizeScreenLabel(route?.name),
-        headerTitleAlign: 'center',
-        headerTitle: ({ children }) => <StackHeaderTitle>{children}</StackHeaderTitle>,
-        headerStyle: { height: HEADER_HEIGHT },
-        headerBackVisible: !MAIN_NAV_ROUTES.has(route?.name),
-        headerBackTitleVisible: false,
-        headerLeft: () => (back && !MAIN_NAV_ROUTES.has(route?.name) ? <BackButton onPress={() => navigation.goBack()} /> : null),
-        headerRight: () => <HelpButton />,
-      })}
+      screenOptions={({ navigation, route, back }) => {
+        const showBack = Boolean(back) && shouldShowSubscreenBack(navigation, route?.name);
+        return {
+          headerShown: SHOW_STACK_HEADERS && !isTabletLayout,
+          title: humanizeScreenLabel(route?.name),
+          headerTitleAlign: 'center',
+          headerTitle: ({ children }) => <StackHeaderTitle>{children}</StackHeaderTitle>,
+          headerStyle: { height: HEADER_HEIGHT },
+          headerBackVisible: showBack,
+          headerBackTitleVisible: false,
+          headerLeft: () => (showBack ? <BackButton onPress={() => navigation.goBack()} /> : null),
+          headerRight: () => <HelpButton />,
+        };
+      }}
     >
       <SettingsStackNav.Screen name="SettingsMain" component={SettingsScreen} options={{ title: 'Profile Settings' }} />
       <SettingsStackNav.Screen name="EditProfile" component={EditProfileScreen} options={{ title: 'Edit Profile' }} />

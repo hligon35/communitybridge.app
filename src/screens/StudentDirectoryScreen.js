@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
-import { Alert, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { Alert, Image, KeyboardAvoidingView, Linking, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { ScreenWrapper } from '../components/ScreenWrapper';
@@ -8,9 +8,10 @@ import AppIconButton from '../components/AppIconButton';
 import { useAuth } from '../AuthContext';
 import { useData } from '../DataContext';
 import { useTenant } from '../core/tenant/TenantContext';
-import { isBcbaRole, isOfficeAdminRole, normalizeUserRole, USER_ROLES } from '../core/tenant/models';
+import { isAdminRole, isBcbaRole, isOfficeAdminRole, normalizeUserRole, USER_ROLES } from '../core/tenant/models';
 import { avatarSourceFor } from '../utils/idVisibility';
-import { THERAPY_ROLE_LABELS } from '../utils/roleTerminology';
+import { THERAPY_ROLE_LABELS, getDisplayRoleLabel } from '../utils/roleTerminology';
+import { maskPhoneDisplay } from '../utils/inputFormat';
 import * as Api from '../Api';
 
 const GUARDIAN_RELATIONSHIP_OPTIONS = [
@@ -42,10 +43,141 @@ function splitStudentName(name) {
   };
 }
 
+function formatSummaryTimestamp(value) {
+  const parsed = Date.parse(String(value || ''));
+  if (!Number.isFinite(parsed)) return 'No recent update';
+  return new Date(parsed).toLocaleString();
+}
+
+function titleCaseWords(value) {
+  return String(value || '')
+    .trim()
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ');
+}
+
+function resolveLatestMoodEntry(child) {
+  const latestEntry = child?.latestMoodEntry;
+  if (Array.isArray(latestEntry) && latestEntry.length && latestEntry[0] && typeof latestEntry[0] === 'object') return latestEntry[0];
+  if (latestEntry && typeof latestEntry === 'object') return latestEntry;
+  const fallbackScore = Number(child?.moodScore ?? child?.mood);
+  if (!Number.isFinite(fallbackScore)) return null;
+  return { score: fallbackScore, recordedAt: null };
+}
+
+function resolveMoodSummary(child) {
+  const latest = resolveLatestMoodEntry(child);
+  const score = Number(latest?.score);
+  if (!Number.isFinite(score)) {
+    return {
+      value: 'No score',
+      detail: 'No mood check-ins logged yet.',
+      icon: 'sentiment-neutral',
+      iconColor: '#94a3b8',
+    };
+  }
+  if (score <= 3) {
+    return {
+      value: `${score} / 15`,
+      detail: latest?.recordedAt ? formatSummaryTimestamp(latest.recordedAt) : 'Most recent mood check-in',
+      icon: 'sentiment-very-dissatisfied',
+      iconColor: '#dc2626',
+    };
+  }
+  if (score <= 7) {
+    return {
+      value: `${score} / 15`,
+      detail: latest?.recordedAt ? formatSummaryTimestamp(latest.recordedAt) : 'Most recent mood check-in',
+      icon: 'sentiment-dissatisfied',
+      iconColor: '#f97316',
+    };
+  }
+  if (score <= 10) {
+    return {
+      value: `${score} / 15`,
+      detail: latest?.recordedAt ? formatSummaryTimestamp(latest.recordedAt) : 'Most recent mood check-in',
+      icon: 'sentiment-neutral',
+      iconColor: '#eab308',
+    };
+  }
+  return {
+    value: `${score} / 15`,
+    detail: latest?.recordedAt ? formatSummaryTimestamp(latest.recordedAt) : 'Most recent mood check-in',
+    icon: 'sentiment-very-satisfied',
+    iconColor: '#16a34a',
+  };
+}
+
+function resolveAttendanceSummary(child) {
+  const rawStatus = String(child?.attendanceStatus || child?.scheduleStatus || child?.status || '').trim().toLowerCase();
+  const status = rawStatus || (child?.dropoffTimeISO || child?.pickupTimeISO || child?.session ? 'scheduled' : 'not scheduled');
+  const sessionLabel = String(child?.session || '').trim();
+  const dropoffLabel = child?.dropoffTimeISO ? new Date(child.dropoffTimeISO).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
+  const pickupLabel = child?.pickupTimeISO ? new Date(child.pickupTimeISO).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
+  const timeLabel = dropoffLabel && pickupLabel ? `${dropoffLabel} - ${pickupLabel}` : '';
+  const detail = timeLabel || sessionLabel || (status === 'not scheduled' ? 'No session assigned' : 'Current session status');
+  return {
+    value: titleCaseWords(status),
+    detail,
+  };
+}
+
+function normalizeAttendanceStatus(status) {
+  const key = String(status || '').trim().toLowerCase();
+  if (key === 'present') return { key: 'present', label: 'Present', value: 3, color: '#16a34a' };
+  if (key === 'tardy' || key === 'late') return { key: 'tardy', label: 'Tardy', value: 2, color: '#f59e0b' };
+  if (key === 'absent') return { key: 'absent', label: 'Absent', value: 1, color: '#dc2626' };
+  return { key: 'unknown', label: 'Unknown', value: 1, color: '#94a3b8' };
+}
+
+function buildAttendanceTrendItems(items = [], limit = 5) {
+  const seenDates = new Set();
+  const latestByDay = [];
+  const sorted = [...(Array.isArray(items) ? items : [])]
+    .map((item) => {
+      const rawDate = item?.dateKey || item?.date || item?.recordedAt || item?.createdAt || item?.updatedAt || null;
+      const parsed = Date.parse(String(rawDate || ''));
+      if (!Number.isFinite(parsed)) return null;
+      return { item, parsed };
+    })
+    .filter(Boolean)
+    .sort((left, right) => right.parsed - left.parsed);
+
+  sorted.forEach(({ item, parsed }) => {
+    if (latestByDay.length >= limit) return;
+    const date = new Date(parsed);
+    const dateKey = date.toISOString().slice(0, 10);
+    if (seenDates.has(dateKey)) return;
+    seenDates.add(dateKey);
+    const status = normalizeAttendanceStatus(item?.status);
+    latestByDay.push({
+      key: dateKey,
+      dayLabel: date.toLocaleDateString([], { weekday: 'short' }),
+      dateLabel: date.toLocaleDateString([], { month: 'numeric', day: 'numeric' }),
+      statusLabel: status.label,
+      value: status.value,
+      color: status.color,
+    });
+  });
+
+  return latestByDay.reverse();
+}
+
 function TabButton({ label, active, onPress }) {
   return (
     <TouchableOpacity style={[styles.tabButton, active ? styles.tabButtonActive : null]} onPress={onPress}>
       <Text style={[styles.tabButtonText, active ? styles.tabButtonTextActive : null]}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
+function ActionChip({ label, icon, onPress }) {
+  return (
+    <TouchableOpacity style={styles.actionChipButton} onPress={onPress}>
+      <MaterialIcons name={icon} size={16} color="#1d4ed8" />
+      <Text style={styles.actionChipButtonText}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -98,6 +230,7 @@ export default function StudentDirectoryScreen() {
   const { currentOrganization, currentProgram, currentCampus } = useTenant() || {};
   const isBcba = isBcbaRole(user?.role);
   const isOffice = isOfficeAdminRole(user?.role);
+  const canOpenRelatedChats = isAdminRole(user?.role) || isOffice || isBcba;
   const normalizedRole = normalizeUserRole(user?.role);
   const isScopedAdmin = isOffice && normalizedRole !== USER_ROLES.ORG_ADMIN && normalizedRole !== USER_ROLES.SUPER_ADMIN;
   const scopedEnrollmentCode = String(currentCampus?.enrollmentCode || '').trim().toUpperCase();
@@ -109,6 +242,9 @@ export default function StudentDirectoryScreen() {
   const [activeTab, setActiveTab] = useState('overview');
   const [enrollOpen, setEnrollOpen] = useState(false);
   const [enrollSaving, setEnrollSaving] = useState(false);
+  const [attendanceHistory, setAttendanceHistory] = useState([]);
+  const [attendanceHistoryLoading, setAttendanceHistoryLoading] = useState(false);
+  const [attendanceHistoryError, setAttendanceHistoryError] = useState('');
   const [enrollDraft, setEnrollDraft] = useState({
     name: '',
     enrollmentCode: '',
@@ -160,7 +296,6 @@ export default function StudentDirectoryScreen() {
         return String(left?.name || '').localeCompare(String(right?.name || ''));
       });
   }, [children, query, roomFilter, sortKey]);
-
   useEffect(() => {
     if (!filteredChildren.length) {
       setSelectedChildId(null);
@@ -181,11 +316,51 @@ export default function StudentDirectoryScreen() {
 
   const selectedChild = useMemo(() => filteredChildren.find((child) => child?.id === selectedChildId) || null, [filteredChildren, selectedChildId]);
   const linkedParents = useMemo(() => normalizeInlineParents(selectedChild, parents), [parents, selectedChild]);
-  const assignedStaff = useMemo(() => {
-    if (!selectedChild) return [];
-    const ids = [selectedChild?.amTherapist, selectedChild?.pmTherapist, selectedChild?.bcaTherapist].map((entry) => typeof entry === 'string' ? entry : entry?.id).filter(Boolean);
-    return (therapists || []).filter((staff) => ids.includes(staff?.id));
+  const careTeam = useMemo(() => {
+    if (!selectedChild) return { bcba: null, amTherapist: null, pmTherapist: null };
+    const therapistById = new Map((therapists || []).map((staff) => [staff?.id, staff]));
+    const resolveStaff = (entry) => {
+      if (!entry) return null;
+      if (typeof entry === 'object' && entry.id && therapistById.has(entry.id)) return therapistById.get(entry.id);
+      if (typeof entry === 'object' && (entry.name || entry.role)) return entry;
+      const entryId = typeof entry === 'string' ? entry : entry?.id;
+      return therapistById.get(entryId) || null;
+    };
+    return {
+      bcba: resolveStaff(selectedChild?.bcaTherapist),
+      amTherapist: resolveStaff(selectedChild?.amTherapist),
+      pmTherapist: resolveStaff(selectedChild?.pmTherapist),
+    };
   }, [selectedChild, therapists]);
+  const attendanceTrendItems = useMemo(() => buildAttendanceTrendItems(attendanceHistory, 5), [attendanceHistory]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (activeTab !== 'attendance' || !selectedChild?.id) return () => {
+      cancelled = true;
+    };
+
+    setAttendanceHistoryLoading(true);
+    setAttendanceHistoryError('');
+    Api.getAttendanceHistory(selectedChild.id, 10)
+      .then((result) => {
+        if (cancelled) return;
+        setAttendanceHistory(Array.isArray(result?.items) ? result.items : []);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setAttendanceHistory([]);
+        setAttendanceHistoryError(String(error?.message || 'Could not load attendance history.'));
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setAttendanceHistoryLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, selectedChild?.id]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -208,6 +383,28 @@ export default function StudentDirectoryScreen() {
 
   function openAction(title, message) {
     Alert.alert(title, message);
+  }
+
+  function openPhone(phone) {
+    if (!phone) return;
+    Linking.openURL(`tel:${phone}`).catch(() => {
+      Alert.alert('Unable to place call', 'Your device could not open the phone app.');
+    });
+  }
+
+  function openEmail(email) {
+    if (!email) return;
+    Linking.openURL(`mailto:${email}`).catch(() => {
+      Alert.alert('Unable to open email', 'Your device could not open the email app.');
+    });
+  }
+
+  function openRelatedChats() {
+    const firstParent = (selectedChild?.parents || [])[0];
+    const firstTherapist = selectedChild?.amTherapist || selectedChild?.pmTherapist || selectedChild?.bcaTherapist;
+    const targetId = firstParent?.id || firstTherapist?.id || null;
+    if (!targetId) return;
+    navigation.navigate('AdminChatMonitor', { initialUserId: targetId });
   }
 
   function updateEnrollDraft(key, value) {
@@ -290,13 +487,83 @@ export default function StudentDirectoryScreen() {
   function renderTabContent() {
     if (!selectedChild) return <Text style={styles.empty}>Select a student to view details.</Text>;
     if (activeTab === 'overview') {
+      const moodSummary = resolveMoodSummary(selectedChild);
+      const attendanceSummary = resolveAttendanceSummary(selectedChild);
+      const nextSession = Array.isArray(selectedChild.upcoming) && selectedChild.upcoming.length ? selectedChild.upcoming[0] : null;
+      const hasCareTeam = Boolean(careTeam.bcba || careTeam.amTherapist || careTeam.pmTherapist);
       return (
         <>
-          <Text style={styles.sectionTitle}>Student profile</Text>
-          <Text style={styles.detailText}>Room {selectedChild.room || 'Unassigned'} • Age {selectedChild.age || 'N/A'} • Session {selectedChild.session || 'Unscheduled'}</Text>
+          <View style={styles.summaryCardsRow}>
+            <View style={[styles.summaryCard, styles.summaryCardLeft]}>
+              <Text style={styles.summaryCardLabel}>Current attendance</Text>
+              <Text style={styles.summaryCardValue}>{attendanceSummary.value}</Text>
+              <Text style={styles.summaryCardDetail}>{attendanceSummary.detail}</Text>
+            </View>
+            <View style={[styles.summaryCard, styles.summaryCardRight]}>
+              <View style={styles.summaryCardHeaderRow}>
+                <View style={styles.summaryCardTextWrap}>
+                  <Text style={styles.summaryCardLabel}>Most recent mood</Text>
+                  <Text style={styles.summaryCardValue}>{moodSummary.value}</Text>
+                </View>
+                <MaterialIcons name={moodSummary.icon} size={34} color={moodSummary.iconColor} />
+              </View>
+            </View>
+          </View>
+
+          {nextSession ? (
+            <View style={styles.upcomingRow}>
+              <Text style={styles.upcomingTitle}>{nextSession.title}</Text>
+              <Text style={styles.upcomingMeta}>{nextSession.when}</Text>
+            </View>
+          ) : (
+            <Text style={styles.detailText}>No upcoming session scheduled.</Text>
+          )}
+
+          <Text style={styles.sectionTitle}>Care plan</Text>
           <Text style={styles.detailText}>{selectedChild.carePlan || 'No overview summary saved yet.'}</Text>
-          <Text style={styles.sectionTitle}>Assigned staff</Text>
-          {(assignedStaff || []).length ? assignedStaff.map((staff) => <Text key={staff.id} style={styles.detailText}>{staff.name} • {staff.role || 'Staff'}</Text>) : <Text style={styles.detailText}>No BCBA or therapist assigned.</Text>}
+
+          <Text style={styles.sectionTitle}>Care Team</Text>
+          {hasCareTeam ? (
+            <>
+              <View style={styles.careTeamPyramid}>
+                {careTeam.bcba ? (
+                  <TouchableOpacity style={[styles.careTeamCard, styles.careTeamCardTop]} onPress={() => navigation.navigate('FacultyDetail', { facultyId: careTeam.bcba.id })}>
+                    <Image source={avatarSourceFor(careTeam.bcba)} style={[styles.smallAvatar, styles.careTeamAvatar]} />
+                    <View style={styles.careTeamTextWrap}>
+                      <Text style={styles.personName}>{careTeam.bcba.name || 'BCBA'}</Text>
+                      <Text style={styles.personMeta}>BCBA</Text>
+                    </View>
+                  </TouchableOpacity>
+                ) : null}
+                <View style={styles.careTeamBottomRow}>
+                  {careTeam.amTherapist ? (
+                    <TouchableOpacity style={[styles.careTeamCard, styles.careTeamCardBottom]} onPress={() => navigation.navigate('FacultyDetail', { facultyId: careTeam.amTherapist.id })}>
+                      <Image source={avatarSourceFor(careTeam.amTherapist)} style={[styles.smallAvatar, styles.careTeamAvatar]} />
+                      <View style={styles.careTeamTextWrap}>
+                        <Text style={styles.personName}>{careTeam.amTherapist.name || 'AM Therapist'}</Text>
+                        <Text style={styles.personMeta}>AM {THERAPY_ROLE_LABELS.therapist}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ) : <View style={styles.careTeamPlaceholder} />}
+                  {careTeam.pmTherapist ? (
+                    <TouchableOpacity style={[styles.careTeamCard, styles.careTeamCardBottom]} onPress={() => navigation.navigate('FacultyDetail', { facultyId: careTeam.pmTherapist.id })}>
+                      <Image source={avatarSourceFor(careTeam.pmTherapist)} style={[styles.smallAvatar, styles.careTeamAvatar]} />
+                      <View style={styles.careTeamTextWrap}>
+                        <Text style={styles.personName}>{careTeam.pmTherapist.name || 'PM Therapist'}</Text>
+                        <Text style={styles.personMeta}>PM {THERAPY_ROLE_LABELS.therapist}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ) : <View style={styles.careTeamPlaceholder} />}
+                </View>
+              </View>
+            </>
+          ) : <Text style={styles.detailText}>No BCBA or therapist assigned.</Text>}
+          {selectedChild.notes ? (
+            <>
+              <Text style={styles.sectionTitle}>Notes</Text>
+              <Text style={styles.detailText}>{selectedChild.notes}</Text>
+            </>
+          ) : null}
         </>
       );
     }
@@ -305,7 +572,17 @@ export default function StudentDirectoryScreen() {
         <>
           <Text style={styles.sectionTitle}>Parent contacts</Text>
           {linkedParents.length ? linkedParents.map((parent) => (
-            <Text key={parent.id} style={styles.detailText}>{parent.name || `${parent.firstName || ''} ${parent.lastName || ''}`.trim()} • {parent.phone || parent.email || 'No contact info'}</Text>
+            <TouchableOpacity key={parent.id} style={[styles.personRow, styles.parentRow]} onPress={() => parent.id ? navigation.navigate('ParentDetail', { parentId: parent.id }) : null}>
+              <Image source={avatarSourceFor(parent)} style={styles.smallAvatar} />
+              <View style={styles.personTextWrap}>
+                <Text style={styles.personName}>{parent.name || `${parent.firstName || ''} ${parent.lastName || ''}`.trim() || 'Parent/Guardian'}</Text>
+                <Text style={styles.personMeta}>{maskPhoneDisplay(parent.phone) || parent.email || 'No contact info'}</Text>
+              </View>
+              <View style={styles.personActions}>
+                {parent.phone ? <AppIconButton accessibilityLabel="Call parent" name="call" iconSize={16} size={34} style={styles.personActionButton} onPress={() => openPhone(parent.phone)} /> : null}
+                {parent.email ? <AppIconButton accessibilityLabel="Email parent" name="email" iconSize={16} size={34} style={styles.personActionButton} onPress={() => openEmail(parent.email)} /> : null}
+              </View>
+            </TouchableOpacity>
           )) : <Text style={styles.detailText}>No linked parent contacts found.</Text>}
         </>
       );
@@ -338,7 +615,43 @@ export default function StudentDirectoryScreen() {
       return (
         <>
           <Text style={styles.sectionTitle}>Attendance</Text>
-          <Text style={styles.detailText}>Recent attendance tracking lives in the scheduling and attendance modules for this student.</Text>
+          <Text style={styles.detailText}>Last 5 recorded attendance days for this student.</Text>
+          <View style={styles.attendanceChartCard}>
+            {attendanceHistoryLoading ? (
+              <Text style={styles.detailText}>Loading attendance trend...</Text>
+            ) : attendanceTrendItems.length ? (
+              <>
+                <View style={styles.attendanceChartRow}>
+                  {attendanceTrendItems.map((item) => (
+                    <View key={item.key} style={styles.attendanceChartItem}>
+                      <View style={styles.attendanceChartTrack}>
+                        <View style={[styles.attendanceChartBar, { height: `${Math.max(22, (item.value / 3) * 100)}%`, backgroundColor: item.color }]} />
+                      </View>
+                      <Text style={styles.attendanceChartDay}>{item.dayLabel}</Text>
+                      <Text style={styles.attendanceChartDate}>{item.dateLabel}</Text>
+                      <Text style={styles.attendanceChartStatus}>{item.statusLabel}</Text>
+                    </View>
+                  ))}
+                </View>
+                <View style={styles.attendanceLegendRow}>
+                  <View style={styles.attendanceLegendItem}>
+                    <View style={[styles.attendanceLegendDot, { backgroundColor: '#16a34a' }]} />
+                    <Text style={styles.attendanceLegendText}>Present</Text>
+                  </View>
+                  <View style={styles.attendanceLegendItem}>
+                    <View style={[styles.attendanceLegendDot, { backgroundColor: '#f59e0b' }]} />
+                    <Text style={styles.attendanceLegendText}>Tardy</Text>
+                  </View>
+                  <View style={styles.attendanceLegendItem}>
+                    <View style={[styles.attendanceLegendDot, { backgroundColor: '#dc2626' }]} />
+                    <Text style={styles.attendanceLegendText}>Absent</Text>
+                  </View>
+                </View>
+              </>
+            ) : (
+              <Text style={styles.detailText}>{attendanceHistoryError || 'No recent attendance data recorded yet.'}</Text>
+            )}
+          </View>
           <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate('Attendance')}>
             <Text style={styles.secondaryButtonText}>Open Attendance</Text>
           </TouchableOpacity>
@@ -475,9 +788,17 @@ export default function StudentDirectoryScreen() {
                   ) : null}
                 </View>
 
-                <View style={styles.chipRow}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.chipCarouselContent}
+                  style={styles.chipCarousel}
+                >
                   {visibleTabs.map((tab) => <TabButton key={tab.key} label={tab.label} active={activeTab === tab.key} onPress={() => setActiveTab(tab.key)} />)}
-                </View>
+                  <ActionChip label="Reports" icon="query-stats" onPress={() => navigation.navigate('Reports', { childId: selectedChild.id })} />
+                  <ActionChip label="Insights" icon="insights" onPress={() => navigation.navigate('ChildProgressInsights', { childId: selectedChild.id })} />
+                  {canOpenRelatedChats ? <ActionChip label="Related Chats" icon="forum" onPress={openRelatedChats} /> : null}
+                </ScrollView>
 
                 <View style={styles.tabContent}>{renderTabContent()}</View>
 
@@ -578,12 +899,14 @@ const styles = StyleSheet.create({
   filtersSearchInput: { flex: 1, minWidth: 220 },
   mobileHeaderSearchInput: { flex: 1, minWidth: 0, alignSelf: 'stretch', height: 40, paddingVertical: 8, paddingHorizontal: 12 },
   headerAddButton: { marginLeft: 6 },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 12 },
-  chipRowSingleLine: { flexDirection: 'row', flexWrap: 'nowrap', marginTop: 12, paddingRight: 8 },
+  chipCarousel: { marginTop: 12 },
+  chipCarouselContent: { paddingRight: 8 },
   tabButton: { borderRadius: 999, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#f1f5f9', marginRight: 8, marginBottom: 8 },
   tabButtonActive: { backgroundColor: '#2563eb' },
   tabButtonText: { color: '#0f172a', fontWeight: '700' },
   tabButtonTextActive: { color: '#ffffff' },
+  actionChipButton: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#dbeafe', marginRight: 8, marginBottom: 8 },
+  actionChipButtonText: { color: '#1d4ed8', fontWeight: '800' },
   inlineFilterWrap: { zIndex: 20 },
   inlineFilterButton: { borderRadius: 10, paddingHorizontal: 10 },
   inlineFilterValue: { flex: 0, color: '#0f172a', fontWeight: '600', fontSize: 14, marginRight: 4 },
@@ -618,13 +941,53 @@ const styles = StyleSheet.create({
   rosterMeta: { marginTop: 4, color: '#64748b', fontSize: 12 },
   rosterCarouselFirstName: { fontWeight: '800', color: '#0f172a', textAlign: 'center' },
   rosterCarouselLastName: { marginTop: 2, color: '#64748b', fontSize: 12, fontWeight: '700', textAlign: 'center', minHeight: 16 },
+  personRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
+  parentRow: { justifyContent: 'space-between' },
+  smallAvatar: { width: 46, height: 46, borderRadius: 20, backgroundColor: '#e2e8f0' },
+  careTeamAvatar: { marginRight: 10 },
+  personTextWrap: { flex: 1, marginLeft: 10 },
+  careTeamTextWrap: { flex: 1, alignItems: 'flex-start', justifyContent: 'center' },
+  personName: { fontWeight: '800', color: '#0f172a' },
+  personMeta: { marginTop: 3, color: '#64748b', fontSize: 12 },
+  careTeamPyramid: { marginTop: 8, alignItems: 'center' },
+  careTeamBottomRow: { width: '100%', flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
+  careTeamCard: { borderRadius: 14, borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#f8fafc', paddingVertical: 8, paddingHorizontal: 4, flexDirection: 'row', alignItems: 'center' },
+  careTeamCardTop: { width: '46%', justifyContent: 'flex-start' },
+  careTeamCardBottom: { width: '48%', justifyContent: 'flex-start' },
+  careTeamPlaceholder: { width: '48%' },
+  personActions: { flexDirection: 'row', alignItems: 'center', marginLeft: 10 },
+  personActionButton: { marginLeft: 6 },
+  upcomingRow: { marginTop: 8 },
+  upcomingTitle: { fontWeight: '800', color: '#0f172a' },
+  upcomingMeta: { marginTop: 2, color: '#64748b' },
   profileHeader: { flexDirection: 'row', alignItems: 'center' },
   profileAvatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#e2e8f0' },
   profileHeaderActions: { flexDirection: 'row', alignItems: 'center', marginLeft: 12 },
   profileHeaderIconButton: { marginLeft: 8 },
   profileName: { fontSize: 22, fontWeight: '800', color: '#0f172a' },
   profileMeta: { marginTop: 6, color: '#64748b' },
-  tabContent: { marginTop: 8, borderRadius: 16, backgroundColor: '#f8fafc', padding: 16 },
+  tabContent: { marginTop: 8 },
+  summaryCardsRow: { flexDirection: 'row', alignItems: 'stretch', marginTop: 6, marginBottom: 2 },
+  summaryCard: { flex: 1, borderRadius: 14, borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#ffffff', paddingVertical: 10, paddingHorizontal: 12 },
+  summaryCardLeft: { marginRight: 6 },
+  summaryCardRight: { marginLeft: 6 },
+  summaryCardHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  summaryCardTextWrap: { flex: 1, paddingRight: 8 },
+  summaryCardLabel: { color: '#64748b', fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4 },
+  summaryCardValue: { marginTop: 4, color: '#0f172a', fontSize: 18, fontWeight: '800' },
+  summaryCardDetail: { marginTop: 4, color: '#475569', fontSize: 12, lineHeight: 16 },
+  attendanceChartCard: { marginBottom: 10, borderRadius: 16, borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#ffffff', padding: 14 },
+  attendanceChartRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
+  attendanceChartItem: { flex: 1, alignItems: 'center', marginHorizontal: 4 },
+  attendanceChartTrack: { width: 26, height: 116, borderRadius: 999, backgroundColor: '#e2e8f0', justifyContent: 'flex-end', overflow: 'hidden' },
+  attendanceChartBar: { width: '100%', borderRadius: 999 },
+  attendanceChartDay: { marginTop: 10, color: '#0f172a', fontSize: 12, fontWeight: '800' },
+  attendanceChartDate: { marginTop: 2, color: '#64748b', fontSize: 11 },
+  attendanceChartStatus: { marginTop: 4, color: '#475569', fontSize: 11, fontWeight: '700', textAlign: 'center' },
+  attendanceLegendRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', marginTop: 14 },
+  attendanceLegendItem: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 8, marginTop: 4 },
+  attendanceLegendDot: { width: 10, height: 10, borderRadius: 5, marginRight: 6 },
+  attendanceLegendText: { color: '#475569', fontSize: 12, fontWeight: '700' },
   sectionTitle: { fontSize: 15, fontWeight: '800', color: '#0f172a', marginBottom: 8, marginTop: 8 },
   detailText: { color: '#475569', lineHeight: 20, marginBottom: 6 },
   actionStrip: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 14 },

@@ -30,6 +30,15 @@ function attachTherapistsToChildren(childrenArr, therapistsArr, abaRel) {
 
   return (childrenArr || []).map((c) => {
     const childId = c && c.id != null ? String(c.id) : '';
+    const explicitAmId = c && c.amTherapist != null
+      ? String(typeof c.amTherapist === 'object' ? c.amTherapist.id || '' : c.amTherapist).trim()
+      : '';
+    const explicitPmId = c && c.pmTherapist != null
+      ? String(typeof c.pmTherapist === 'object' ? c.pmTherapist.id || '' : c.pmTherapist).trim()
+      : '';
+    const explicitBcbaId = c && c.bcaTherapist != null
+      ? String(typeof c.bcaTherapist === 'object' ? c.bcaTherapist.id || '' : c.bcaTherapist).trim()
+      : '';
 
     const amAbaId = childId ? assignmentByChildSession[`${childId}|AM`] : null;
     const pmAbaId = childId ? assignmentByChildSession[`${childId}|PM`] : null;
@@ -38,6 +47,13 @@ function attachTherapistsToChildren(childrenArr, therapistsArr, abaRel) {
       const pmTherapist = pmAbaId ? (byId[pmAbaId] || null) : null;
       const bcbaId = (amAbaId && supervisionByAbaId[amAbaId]) || (pmAbaId && supervisionByAbaId[pmAbaId]) || null;
       const bcaTherapist = bcbaId ? (byId[bcbaId] || null) : null;
+      return { ...c, bcaTherapist, amTherapist, pmTherapist };
+    }
+
+    if (explicitAmId || explicitPmId || explicitBcbaId) {
+      const amTherapist = explicitAmId ? (byId[explicitAmId] || c.amTherapist || null) : null;
+      const pmTherapist = explicitPmId ? (byId[explicitPmId] || c.pmTherapist || null) : null;
+      const bcaTherapist = explicitBcbaId ? (byId[explicitBcbaId] || c.bcaTherapist || null) : null;
       return { ...c, bcaTherapist, amTherapist, pmTherapist };
     }
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useLayoutEffect } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRoute } from '@react-navigation/native';
 import { ScreenWrapper } from '../../../components/ScreenWrapper';
@@ -17,8 +17,15 @@ export default function ChildProgressInsightsScreen({ navigation }) {
   const child = (children || []).find((item) => item?.id === childId) || null;
   const { loading, error, data } = useChildProgressInsights(childId, { limit: 20 });
 
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerBackVisible: false,
+      headerLeft: () => null,
+    });
+  }, [navigation]);
+
   return (
-    <ScreenWrapper style={styles.container}>
+    <ScreenWrapper style={styles.container} bannerShowBack={false}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.hero}>
           <Text style={styles.eyebrow}>Progress Insights</Text>
@@ -58,9 +65,6 @@ export default function ChildProgressInsightsScreen({ navigation }) {
           </>
         ) : null}
 
-        <TouchableOpacity style={styles.backAction} onPress={() => navigation.goBack()}>
-          <Text style={styles.backActionText}>Back</Text>
-        </TouchableOpacity>
       </ScrollView>
     </ScreenWrapper>
   );
@@ -75,6 +79,4 @@ const styles = StyleSheet.create({
   subtitle: { marginTop: 8, color: '#475569', lineHeight: 20 },
   loader: { marginTop: 24 },
   statsRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginTop: 12 },
-  backAction: { marginTop: 16, alignSelf: 'flex-start', borderRadius: 12, backgroundColor: '#2563eb', paddingVertical: 12, paddingHorizontal: 16 },
-  backActionText: { color: '#ffffff', fontWeight: '800' },
 });

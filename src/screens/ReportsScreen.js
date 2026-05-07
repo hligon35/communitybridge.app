@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import AppDropdown from '../components/AppDropdown';
 import * as DocumentPicker from 'expo-document-picker';
@@ -146,7 +146,7 @@ function HeaderReportFilters({
   );
 }
 
-export default function ReportsScreen() {
+export default function ReportsScreen({ route }) {
   const { user } = useAuth();
   const workspaceLabel = getWorkspaceLabel(user?.role);
   const { children = [], parents = [], urgentMemos = [], messages = [] } = useData();
@@ -159,12 +159,16 @@ export default function ReportsScreen() {
   const showHeaderFilters = width >= 900;
   const [mobileFilterCarouselLocked, setMobileFilterCarouselLocked] = useState(false);
   const reportChildren = useMemo(() => findReportChildren(user, children, parents), [user, children, parents]);
-  const [selectedChildId, setSelectedChildId] = useState('all');
+  const requestedChildId = String(route?.params?.childId || '').trim();
+  const [selectedChildId, setSelectedChildId] = useState(requestedChildId || 'all');
   const [selectedRoom, setSelectedRoom] = useState('all');
   const [tab, setTab] = useState(isBcba ? 'clinical' : 'operational');
   const [jobs, setJobs] = useState([]);
   const [jobsError, setJobsError] = useState('');
   const [transferBusy, setTransferBusy] = useState(false);
+  const [pendingRecentTransfersScroll, setPendingRecentTransfersScroll] = useState(false);
+  const scrollViewRef = useRef(null);
+  const recentTransfersSectionY = useRef(0);
   const roomOptions = useMemo(() => ['all', ...Array.from(new Set(reportChildren.map((child) => String(child?.room || '').trim()).filter(Boolean)))], [reportChildren]);
   const filteredReportChildren = useMemo(() => {
     if (selectedRoom === 'all') return reportChildren;
@@ -189,6 +193,25 @@ export default function ReportsScreen() {
     if (selectedChildId === 'all') return;
     if (!filteredReportChildren.some((child) => child?.id === selectedChildId)) setSelectedChildId('all');
   }, [filteredReportChildren, selectedChildId]);
+
+  useEffect(() => {
+    if (!requestedChildId) return;
+    if (!filteredReportChildren.some((child) => child?.id === requestedChildId)) return;
+    if (selectedChildId === requestedChildId) return;
+    setSelectedChildId(requestedChildId);
+  }, [filteredReportChildren, requestedChildId, selectedChildId]);
+
+  useEffect(() => {
+    if (!pendingRecentTransfersScroll || tab !== 'export') return;
+    const handle = requestAnimationFrame(() => {
+      scrollViewRef.current?.scrollTo?.({
+        y: Math.max(0, recentTransfersSectionY.current - 16),
+        animated: true,
+      });
+      setPendingRecentTransfersScroll(false);
+    });
+    return () => cancelAnimationFrame(handle);
+  }, [pendingRecentTransfersScroll, tab]);
 
   useEffect(() => {
     let mounted = true;
@@ -375,6 +398,18 @@ export default function ReportsScreen() {
     }
   }
 
+  function jumpToRecentTransfers() {
+    if (tab !== 'export') {
+      setTab('export');
+      setPendingRecentTransfersScroll(true);
+      return;
+    }
+    scrollViewRef.current?.scrollTo?.({
+      y: Math.max(0, recentTransfersSectionY.current - 16),
+      animated: true,
+    });
+  }
+
   return (
     <ScreenWrapper
       style={styles.container}
@@ -382,14 +417,23 @@ export default function ReportsScreen() {
       mobileHeaderBelow={mobileHeaderFilters}
       mobileHeaderBelowScrollEnabled={!mobileFilterCarouselLocked}
     >
-      <ScrollView contentContainerStyle={[styles.content, !isWideLayout ? styles.contentCompact : null, isWideLayout ? styles.contentWide : null]} showsVerticalScrollIndicator={false}>
-        <View style={styles.tabRow}>
-          {(isBcba ? ['clinical', 'export'] : ['operational', 'export']).map((key) => (
-            <TouchableOpacity key={key} style={[styles.tabButton, tab === key ? styles.tabButtonActive : null]} onPress={() => setTab(key)}>
-              <Text style={[styles.tabButtonText, tab === key ? styles.tabButtonTextActive : null]}>{key === 'clinical' ? 'Clinical Reports' : key === 'operational' ? 'Operational Reports' : 'Transfer Center'}</Text>
+      <ScrollView ref={scrollViewRef} contentContainerStyle={[styles.content, !isWideLayout ? styles.contentCompact : null, isWideLayout ? styles.contentWide : null]} showsVerticalScrollIndicator={false}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipCarouselContent} style={styles.chipCarousel}>
+          <View style={styles.tabRow}>
+            {(isBcba ? ['clinical', 'export'] : ['operational', 'export']).map((key) => (
+              <TouchableOpacity key={key} style={[styles.tabButton, tab === key ? styles.tabButtonActive : null]} onPress={() => setTab(key)}>
+                <Text style={[styles.tabButtonText, tab === key ? styles.tabButtonTextActive : null]}>{key === 'clinical' ? 'Clinical Reports' : key === 'operational' ? 'Operational Reports' : 'Transfer Center'}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipCarouselContent} style={styles.chipCarousel}>
+          <View style={styles.filterRow}>
+            <TouchableOpacity style={[styles.filterChip, tab === 'export' ? styles.filterChipActive : null]} onPress={jumpToRecentTransfers}>
+              <Text style={[styles.filterChipText, tab === 'export' ? styles.filterChipTextActive : null]}>Recent Transfers</Text>
             </TouchableOpacity>
-          ))}
-        </View>
+          </View>
+        </ScrollView>
 
         {!showHeaderFilters && reportChildren.length && !filteredReportChildren.length ? (
           <View style={styles.emptyFilterState}>
@@ -458,10 +502,13 @@ export default function ReportsScreen() {
                   { label: 'CSV', detail: 'Structured export ready.' },
                   { label: 'Excel', detail: 'Workbook handoff ready.' },
                   { label: 'Import', detail: 'Upload and reconcile incoming files.' },
-                ].map((format) => <View key={format.label} style={[styles.exportCard, isWideLayout ? styles.exportCardWide : null]}><Text style={styles.exportTitle}>{format.label}</Text><Text style={styles.exportText}>{format.detail}</Text><TouchableOpacity style={[styles.transferButton, transferBusy ? styles.transferButtonDisabled : null]} disabled={transferBusy} onPress={() => handleTransferAction(format.label)}><Text style={styles.transferButtonText}>{format.label === 'Import' ? 'Import' : 'Transfer'}</Text></TouchableOpacity></View>)}
+                ].map((format) => <View key={format.label} style={styles.exportCard}><Text style={styles.exportTitle}>{format.label}</Text><Text style={styles.exportText}>{format.detail}</Text><TouchableOpacity style={[styles.transferButton, transferBusy ? styles.transferButtonDisabled : null]} disabled={transferBusy} onPress={() => handleTransferAction(format.label)}><Text style={styles.transferButtonText}>{format.label === 'Import' ? 'Import' : 'Transfer'}</Text></TouchableOpacity></View>)}
               </View>
             </SectionCard>
-            <SectionCard title="Recent transfer jobs">
+            <View onLayout={(event) => {
+              recentTransfersSectionY.current = event?.nativeEvent?.layout?.y || 0;
+            }}>
+              <SectionCard title="Recent transfer jobs">
               {jobsError ? (
                 <View style={styles.errorCard}>
                   <Text style={styles.errorText}>{jobsError}</Text>
@@ -471,7 +518,8 @@ export default function ReportsScreen() {
                 </View>
               ) : null}
               {jobs.length ? jobs.map((job) => <View key={job.id} style={styles.jobRow}><View style={styles.jobTextWrap}><Text style={styles.jobTitle}>{job.title || 'Transfer'}</Text><Text style={styles.rowText}>{String(job.format || 'csv').toUpperCase()} • {String(job.status || 'ready').toUpperCase()}</Text></View><Text style={styles.jobMeta}>{job.createdAt ? new Date(job.createdAt).toLocaleString() : 'Recently'}</Text></View>) : <Text style={styles.rowText}>No transfer jobs have been created yet.</Text>}
-            </SectionCard>
+              </SectionCard>
+            </View>
           </>
         ) : null}
       </ScrollView>
@@ -490,14 +538,16 @@ const styles = StyleSheet.create({
   parentBlockedText: { marginTop: 8, color: '#475569', lineHeight: 20 },
   headerFiltersWrap: { minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 6 },
   headerDropdownWrap: { minWidth: 0 },
-  tabRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 14 },
+  chipCarousel: { marginTop: 14 },
+  chipCarouselContent: { paddingRight: 12 },
+  tabRow: { flexDirection: 'row' },
   tabButton: { borderRadius: 999, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#f1f5f9', marginRight: 8, marginBottom: 8 },
   tabButtonActive: { backgroundColor: '#2563eb' },
   tabButtonText: { color: '#0f172a', fontWeight: '700' },
   tabButtonTextActive: { color: '#ffffff' },
   filterSection: { marginTop: 10 },
   filterLabel: { marginBottom: 6, color: '#475569', fontWeight: '700' },
-  filterRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 10 },
+  filterRow: { flexDirection: 'row' },
   filterChip: { borderRadius: 999, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#e2e8f0', marginRight: 8, marginBottom: 8 },
   filterChipActive: { backgroundColor: '#0f172a' },
   filterChipText: { color: '#0f172a', fontWeight: '700' },
@@ -530,11 +580,10 @@ const styles = StyleSheet.create({
   transferIntroRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
   transferIntroRowWide: { minHeight: 32 },
   transferIntroText: { flex: 1, color: '#475569', lineHeight: 20, paddingRight: 12 },
-  exportCard: { width: '100%', borderRadius: 16, backgroundColor: '#f8fafc', padding: 14, marginBottom: 10, borderWidth: 1, borderColor: '#e2e8f0' },
-  exportCardWide: { width: '48.75%', minHeight: 144 },
+  exportCard: { width: '48.75%', minHeight: 144, borderRadius: 16, backgroundColor: '#f8fafc', padding: 14, marginBottom: 10, borderWidth: 1, borderColor: '#e2e8f0', justifyContent: 'space-between' },
   exportTitle: { fontSize: 16, fontWeight: '800', color: '#0f172a' },
   exportText: { marginTop: 6, color: '#64748b' },
-  transferButton: { marginTop: 10, alignSelf: 'flex-start', borderRadius: 10, backgroundColor: '#2563eb', paddingVertical: 8, paddingHorizontal: 12 },
+  transferButton: { marginTop: 10, alignSelf: 'center', borderRadius: 10, backgroundColor: '#2563eb', paddingVertical: 8, paddingHorizontal: 12 },
   transferButtonDisabled: { opacity: 0.6 },
   transferButtonText: { color: '#ffffff', fontWeight: '800' },
   errorCard: { borderRadius: 12, borderWidth: 1, borderColor: '#fecaca', backgroundColor: '#fef2f2', padding: 12, marginBottom: 12 },

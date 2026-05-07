@@ -111,9 +111,9 @@ export default function DevRoleSwitcher() {
     try {
       logPress('DevTools:SeedScreenshotMode');
       resetScreenshotSeed();
-      Alert.alert('Screenshot seed loaded', 'Loaded the screenshot-ready local data set for directory, chats, memos, proposals, and progress snapshots.');
+      Alert.alert('Demo View loaded', 'Loaded the Demo View local data set for directory, chats, memos, proposals, and progress snapshots.');
     } catch (e) {
-      Alert.alert('Error', 'Could not load screenshot seed');
+      Alert.alert('Error', 'Could not load Demo View data');
     }
   }
 
@@ -173,7 +173,7 @@ export default function DevRoleSwitcher() {
           ) : null}
           <Text style={styles.sectionLabel}>Review Data</Text>
           <TouchableOpacity onPress={seedScreenshotMode} style={styles.menuBtn}>
-            <Text>Screenshot seed</Text>
+            <Text>Demo View</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={clearDemoData} style={styles.menuBtn}>
             <Text>Clear seeded data</Text>

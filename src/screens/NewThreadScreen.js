@@ -225,7 +225,7 @@ export default function NewThreadScreen({ navigation }) {
   };
 
   return (
-    <ScreenWrapper bannerTitle="New Message" bannerShowBack>
+    <ScreenWrapper bannerTitle="New Message">
       <ScrollView
         style={{ flex: 1, width: '100%' }}
         contentContainerStyle={{ flexGrow: 1, paddingBottom: 32 }}
