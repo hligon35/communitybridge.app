@@ -58,6 +58,7 @@ function buildSessionCards(children) {
         id: child.id,
         student: child?.name || 'Learner',
         staff: staffLabel,
+        session: sessionLabel,
         location: String(child?.room || 'Room TBD'),
         start,
         end,
@@ -85,6 +86,7 @@ export default function ScheduleCalendarScreen() {
   const isParent = role === USER_ROLES.PARENT;
   const isOffice = isOfficeAdminRole(user?.role);
   const canManageSchedule = isBcba || isOffice;
+  const useCompactSessionLayout = width < 900;
   const requestedChildId = route?.params?.childId ? String(route.params.childId) : '';
   const requestedEditorMode = route?.params?.editorMode === 'assignment' || route?.params?.editorMode === 'session'
     ? route.params.editorMode
@@ -511,31 +513,61 @@ export default function ScheduleCalendarScreen() {
 
         {grouped.map((group) => (
           <View key={group.key} style={styles.groupCard}>
-            <Text style={styles.groupTitle}>{isTherapist ? 'Assigned sessions' : group.key}</Text>
-            <Text style={styles.groupSubtitle}>{viewMode.toUpperCase()} view • {group.value.length} session{group.value.length === 1 ? '' : 's'}</Text>
+            <Text style={styles.groupTitle}>
+              {useCompactSessionLayout && !isTherapist && !isParent && focusMode === 'staff'
+                ? `${group.key} · ${group.value.length} session${group.value.length === 1 ? '' : 's'}`
+                : (isTherapist ? 'Assigned sessions' : group.key)}
+            </Text>
+            {!(useCompactSessionLayout && !isTherapist && !isParent && focusMode === 'staff') ? (
+              <Text style={styles.groupSubtitle}>{group.value.length} session{group.value.length === 1 ? '' : 's'}</Text>
+            ) : null}
             {group.value.map((session) => (
-              <View key={session.id} style={styles.sessionCard}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.sessionTitle}>{session.student}</Text>
-                  <Text style={styles.sessionMeta}>{isParent ? `${THERAPY_ROLE_LABELS.therapist}: ${session.staff}` : `Staff: ${session.staff}`}</Text>
+              <View key={session.id} style={[styles.sessionCard, useCompactSessionLayout ? styles.sessionCardCompact : null]}>
+                <View style={styles.sessionMain}>
+                  <View style={styles.sessionHeaderRow}>
+                    <Text style={styles.sessionTitle}>{session.student}</Text>
+                    <View style={[styles.statusPill, session.status === 'canceled' ? styles.statusCanceled : session.status === 'completed' ? styles.statusCompleted : styles.statusScheduled]}>
+                      <Text style={[styles.statusText, session.status === 'canceled' ? styles.statusTextCanceled : session.status === 'completed' ? styles.statusTextCompleted : styles.statusTextScheduled]}>{session.status.toUpperCase()}</Text>
+                    </View>
+                  </View>
+                  {!useCompactSessionLayout ? (
+                    <View style={styles.sessionMetaRow}>
+                      <View style={styles.sessionMetaInlineWrap}>
+                        <Text style={styles.sessionMeta}>{session.session}</Text>
+                      </View>
+                    </View>
+                  ) : null}
                   <Text style={styles.sessionMeta}>Location: {session.location}</Text>
                   <Text style={styles.sessionMeta}>Time: {session.start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} - {session.end.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</Text>
                 </View>
-                <View style={styles.sessionCardActions}>
-                  {isOffice ? (
+                {useCompactSessionLayout ? (isOffice ? (
+                  <View style={styles.sessionCardActionsCompact}>
                     <AppIconButton
                       accessibilityLabel={`Edit session for ${session.student}`}
                       name="edit"
                       iconSize={18}
                       size={36}
-                      style={styles.sessionIconButton}
+                      style={styles.sessionIconButtonCompact}
                       onPress={() => openSessionEditor(session)}
                     />
-                  ) : null}
-                  <View style={[styles.statusPill, session.status === 'canceled' ? styles.statusCanceled : session.status === 'completed' ? styles.statusCompleted : styles.statusScheduled]}>
-                    <Text style={[styles.statusText, session.status === 'canceled' ? styles.statusTextCanceled : session.status === 'completed' ? styles.statusTextCompleted : styles.statusTextScheduled]}>{session.status.toUpperCase()}</Text>
                   </View>
-                </View>
+                ) : null) : (
+                  <View style={styles.sessionCardActions}>
+                    {isOffice ? (
+                      <AppIconButton
+                        accessibilityLabel={`Edit session for ${session.student}`}
+                        name="edit"
+                        iconSize={18}
+                        size={36}
+                        style={styles.sessionIconButton}
+                        onPress={() => openSessionEditor(session)}
+                      />
+                    ) : null}
+                    <View style={[styles.statusPill, session.status === 'canceled' ? styles.statusCanceled : session.status === 'completed' ? styles.statusCompleted : styles.statusScheduled]}>
+                      <Text style={[styles.statusText, session.status === 'canceled' ? styles.statusTextCanceled : session.status === 'completed' ? styles.statusTextCompleted : styles.statusTextScheduled]}>{session.status.toUpperCase()}</Text>
+                    </View>
+                  </View>
+                )}
               </View>
             ))}
           </View>
@@ -606,8 +638,15 @@ const styles = StyleSheet.create({
   fieldHalf: { width: '48%' },
   input: { minHeight: 46, borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: '#fff', color: '#0f172a' },
   sessionCard: { marginTop: 12, borderRadius: 16, backgroundColor: '#f8fafc', padding: 14, flexDirection: 'row', alignItems: 'center' },
+  sessionCardCompact: { alignItems: 'flex-start' },
+  sessionMain: { flex: 1 },
+  sessionHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  sessionMetaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  sessionMetaInlineWrap: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', columnGap: 10 },
   sessionCardActions: { marginLeft: 12, alignItems: 'flex-end' },
+  sessionCardActionsCompact: { marginLeft: 12, paddingTop: 0, top: -6, alignItems: 'center' },
   sessionIconButton: { marginBottom: 10 },
+  sessionIconButtonCompact: null,
   sessionTitle: { fontWeight: '800', color: '#0f172a' },
   sessionMeta: { marginTop: 4, color: '#475569' },
   statusPill: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },

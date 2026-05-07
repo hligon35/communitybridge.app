@@ -479,7 +479,7 @@ export default function InsuranceBillingScreen() {
               <View style={styles.parentContactList}>
                 {visibleContactOptions.map((option) => (
                   <Text key={`${option.type}-${option.label}`} style={styles.parentContactText}>
-                    {option.type === 'phone' ? 'Phone' : 'Email'}: {option.label}
+                    {option.type === 'phone' ? 'Phone' : 'Email'}: <Text style={styles.rowValue}>{option.label}</Text>
                   </Text>
                 ))}
               </View>
@@ -489,19 +489,19 @@ export default function InsuranceBillingScreen() {
           <>
             <View style={styles.splitRow}>
               <Block title="Authorizations" style={styles.splitCard}>
-                <Text style={styles.rowText}>Hours approved: {insurance.approvedHours || 'N/A'}</Text>
-                <Text style={styles.rowText}>Hours remaining: {insurance.remainingHours || 'N/A'}</Text>
-                <Text style={styles.rowText}>Expiration date: {insurance.expirationDate || 'N/A'}</Text>
+                <Text style={styles.rowText}>Hours approved: <Text style={styles.rowValue}>{insurance.approvedHours || 'N/A'}</Text></Text>
+                <Text style={styles.rowText}>Hours remaining: <Text style={styles.rowValue}>{insurance.remainingHours || 'N/A'}</Text></Text>
+                <Text style={styles.rowText}>Expiration date: <Text style={styles.rowValue}>{insurance.expirationDate || 'N/A'}</Text></Text>
                 <Text style={styles.rowText}>{isBcba ? `Reviewing persisted authorization status for ${childName}.` : `Update the selected learner authorization record for ${childName}.`}</Text>
-                {!isBcba ? <TouchableOpacity style={[styles.secondaryButton, busy ? styles.secondaryButtonDisabled : null]} disabled={busy || !selectedLearner?.id} onPress={approveAuthorization}><Text style={[styles.secondaryButtonText, busy ? styles.secondaryButtonTextDisabled : null]}>Approve Authorization</Text></TouchableOpacity> : null}
+                {!isBcba ? <TouchableOpacity style={[styles.secondaryButton, styles.splitCardBottomButton, busy ? styles.secondaryButtonDisabled : null]} disabled={busy || !selectedLearner?.id} onPress={approveAuthorization}><Text style={[styles.secondaryButtonText, busy ? styles.secondaryButtonTextDisabled : null]}>Approve Authorization</Text></TouchableOpacity> : null}
               </Block>
 
               <Block title="Session verification" style={styles.splitCard}>
-                <Text style={styles.rowText}>Timesheets: {insurance.timesheetStatus || 'Pending verification'}</Text>
-                <Text style={styles.rowText}>Parent signatures: {insurance.parentSignatureStatus || 'No signature on file'}</Text>
-                <Text style={styles.rowText}>Session status: {insurance.sessionStatus || 'Pending verification'}</Text>
+                <Text style={styles.rowText}>Timesheets: <Text style={styles.rowValue}>{insurance.timesheetStatus || 'Pending verification'}</Text></Text>
+                <Text style={styles.rowText}>Parent signatures: <Text style={styles.rowValue}>{insurance.parentSignatureStatus || 'No signature on file'}</Text></Text>
+                <Text style={styles.rowText}>Session status: <Text style={styles.rowValue}>{insurance.sessionStatus || 'Pending verification'}</Text></Text>
                 <Text style={styles.rowText}>{isBcba ? `Reviewing persisted verification status for ${childName}.` : `Approve timesheet, signature, and session verification for ${childName}.`}</Text>
-                {!isBcba ? <TouchableOpacity style={[styles.primaryButton, busy ? styles.primaryButtonDisabled : null]} disabled={busy || !selectedLearner?.id} onPress={approveVerification}><Text style={styles.primaryButtonText}>{busy ? 'Saving...' : 'Approve Verification'}</Text></TouchableOpacity> : null}
+                {!isBcba ? <TouchableOpacity style={[styles.primaryButton, styles.splitCardBottomButton, busy ? styles.primaryButtonDisabled : null]} disabled={busy || !selectedLearner?.id} onPress={approveVerification}><Text style={styles.primaryButtonText}>{busy ? 'Saving...' : 'Approve Verification'}</Text></TouchableOpacity> : null}
               </Block>
             </View>
 
@@ -550,14 +550,16 @@ const styles = StyleSheet.create({
   content: { padding: 16 },
   contentCompact: { padding: 8 },
   errorText: { color: '#b91c1c', marginTop: 12 },
-  splitRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 },
-  card: { marginTop: 12, borderRadius: 18, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e5e7eb', padding: 16 },
+  splitRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'stretch', marginTop: 12 },
+  card: { marginTop: 12, borderRadius: 18, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e5e7eb', padding: 12 },
   splitCard: { width: '48%', marginTop: 0 },
+  splitCardBottomButton: { marginTop: 'auto' },
   cardTitle: { fontSize: 16, fontWeight: '800', color: '#0f172a', marginBottom: 12 },
   headerPickerWrap: { minWidth: 156, maxWidth: 176 },
   headerPickerValue: { flex: 1, color: '#0f172a', fontWeight: '600', fontSize: 16 },
   mobileHeaderFilterRow: { flexDirection: 'row', alignItems: 'center' },
   rowText: { color: '#475569', lineHeight: 20, marginBottom: 8 },
+  rowValue: { fontWeight: '800' },
   digitalCard: { borderRadius: 18, backgroundColor: '#1e3a8a', padding: 18 },
   digitalCardName: { color: '#ffffff', fontSize: 22, fontWeight: '800' },
   digitalCardPlan: { marginTop: 6, color: '#dbeafe', fontSize: 15, fontWeight: '700' },

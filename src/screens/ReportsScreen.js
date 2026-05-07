@@ -419,16 +419,12 @@ export default function ReportsScreen({ route }) {
     >
       <ScrollView ref={scrollViewRef} contentContainerStyle={[styles.content, !isWideLayout ? styles.contentCompact : null, isWideLayout ? styles.contentWide : null]} showsVerticalScrollIndicator={false}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipCarouselContent} style={styles.chipCarousel}>
-          <View style={styles.tabRow}>
+          <View style={styles.chipRow}>
             {(isBcba ? ['clinical', 'export'] : ['operational', 'export']).map((key) => (
               <TouchableOpacity key={key} style={[styles.tabButton, tab === key ? styles.tabButtonActive : null]} onPress={() => setTab(key)}>
                 <Text style={[styles.tabButtonText, tab === key ? styles.tabButtonTextActive : null]}>{key === 'clinical' ? 'Clinical Reports' : key === 'operational' ? 'Operational Reports' : 'Transfer Center'}</Text>
               </TouchableOpacity>
             ))}
-          </View>
-        </ScrollView>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipCarouselContent} style={styles.chipCarousel}>
-          <View style={styles.filterRow}>
             <TouchableOpacity style={[styles.filterChip, tab === 'export' ? styles.filterChipActive : null]} onPress={jumpToRecentTransfers}>
               <Text style={[styles.filterChipText, tab === 'export' ? styles.filterChipTextActive : null]}>Recent Transfers</Text>
             </TouchableOpacity>
@@ -540,14 +536,13 @@ const styles = StyleSheet.create({
   headerDropdownWrap: { minWidth: 0 },
   chipCarousel: { marginTop: 14 },
   chipCarouselContent: { paddingRight: 12 },
-  tabRow: { flexDirection: 'row' },
+  chipRow: { flexDirection: 'row', alignItems: 'center' },
   tabButton: { borderRadius: 999, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#f1f5f9', marginRight: 8, marginBottom: 8 },
   tabButtonActive: { backgroundColor: '#2563eb' },
   tabButtonText: { color: '#0f172a', fontWeight: '700' },
   tabButtonTextActive: { color: '#ffffff' },
   filterSection: { marginTop: 10 },
   filterLabel: { marginBottom: 6, color: '#475569', fontWeight: '700' },
-  filterRow: { flexDirection: 'row' },
   filterChip: { borderRadius: 999, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#e2e8f0', marginRight: 8, marginBottom: 8 },
   filterChipActive: { backgroundColor: '#0f172a' },
   filterChipText: { color: '#0f172a', fontWeight: '700' },

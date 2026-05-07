@@ -88,18 +88,20 @@ export default function AdminChatMonitorScreen() {
   return (
     <ScreenWrapper style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.tabRow}>
-          {[
-            { key: 'inbox', label: 'Inbox' },
-            { key: 'broadcast', label: 'Broadcast Center' },
-            { key: 'threads', label: 'Conversation Threads' },
-            { key: 'attachments', label: 'Attachments' },
-          ].map((item) => (
-            <TouchableOpacity key={item.key} style={[styles.tabButton, tab === item.key ? styles.tabButtonActive : null]} onPress={() => setTab(item.key)}>
-              <Text style={[styles.tabButtonText, tab === item.key ? styles.tabButtonTextActive : null]}>{item.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipCarouselContent} style={styles.chipCarousel}>
+          <View style={styles.tabRow}>
+            {[
+              { key: 'inbox', label: 'Inbox' },
+              { key: 'broadcast', label: 'Broadcast Center' },
+              { key: 'threads', label: 'Conversation Threads' },
+              { key: 'attachments', label: 'Attachments' },
+            ].map((item) => (
+              <TouchableOpacity key={item.key} style={[styles.tabButton, tab === item.key ? styles.tabButtonActive : null]} onPress={() => setTab(item.key)}>
+                <Text style={[styles.tabButtonText, tab === item.key ? styles.tabButtonTextActive : null]}>{item.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
 
         <View style={styles.searchCard}>
           <TextInput value={query} onChangeText={setQuery} placeholder="Search threads or messages" style={styles.input} />
@@ -118,20 +120,22 @@ export default function AdminChatMonitorScreen() {
             <Text style={styles.rowText}>{isOffice ? 'Compose and send an announcement to staff, parents, or both from this workspace.' : 'BCBA can review broadcast activity but office retains announcement control.'}</Text>
             {isOffice ? (
               <>
-                <View style={styles.audienceRow}>
-                  {[
-                    { key: 'staff', label: 'Staff' },
-                    { key: 'parents', label: 'Parents' },
-                    { key: 'all', label: 'Everyone' },
-                  ].map((item) => {
-                    const active = announcementAudience === item.key;
-                    return (
-                      <TouchableOpacity key={item.key} style={[styles.audienceChip, active ? styles.audienceChipActive : null]} onPress={() => setAnnouncementAudience(item.key)}>
-                        <Text style={[styles.audienceChipText, active ? styles.audienceChipTextActive : null]}>{item.label}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipCarouselContent} style={styles.audienceCarousel}>
+                  <View style={styles.audienceRow}>
+                    {[
+                      { key: 'staff', label: 'Staff' },
+                      { key: 'parents', label: 'Parents' },
+                      { key: 'all', label: 'Everyone' },
+                    ].map((item) => {
+                      const active = announcementAudience === item.key;
+                      return (
+                        <TouchableOpacity key={item.key} style={[styles.audienceChip, active ? styles.audienceChipActive : null]} onPress={() => setAnnouncementAudience(item.key)}>
+                          <Text style={[styles.audienceChipText, active ? styles.audienceChipTextActive : null]}>{item.label}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </ScrollView>
                 <TextInput value={announcementSubject} onChangeText={setAnnouncementSubject} placeholder="Announcement subject" style={styles.input} />
                 <TextInput value={announcementBody} onChangeText={setAnnouncementBody} placeholder="Write the announcement" multiline style={[styles.input, styles.multilineInput]} />
                 <Text style={styles.rowText}>Recipients: {announcementRecipients.length}</Text>
@@ -185,7 +189,9 @@ export default function AdminChatMonitorScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
   content: { padding: 16 },
-  tabRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 14 },
+  chipCarousel: { marginTop: 14 },
+  chipCarouselContent: { paddingRight: 8 },
+  tabRow: { flexDirection: 'row' },
   tabButton: { borderRadius: 999, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#f1f5f9', marginRight: 8, marginBottom: 8 },
   tabButtonActive: { backgroundColor: '#2563eb' },
   tabButtonText: { color: '#0f172a', fontWeight: '700' },
@@ -194,7 +200,8 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#fff' },
   card: { marginTop: 12, borderRadius: 18, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e5e7eb', padding: 16 },
   cardTitle: { fontSize: 16, fontWeight: '800', color: '#0f172a', marginBottom: 12 },
-  audienceRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 10 },
+  audienceCarousel: { marginBottom: 10 },
+  audienceRow: { flexDirection: 'row' },
   audienceChip: { borderRadius: 999, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#eff6ff', marginRight: 8, marginBottom: 8 },
   audienceChipActive: { backgroundColor: '#2563eb' },
   audienceChipText: { color: '#1d4ed8', fontWeight: '700' },

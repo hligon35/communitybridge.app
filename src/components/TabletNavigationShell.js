@@ -496,24 +496,26 @@ export default function TabletNavigationShell({ currentRoute, children }) {
                 </View>
                 <ScrollView style={styles.mobileNavScroll} contentContainerStyle={styles.mobileNavScrollContent} showsVerticalScrollIndicator>
                   {renderNavItems(false, () => setMobileNavOpen(false))}
-                  <TouchableOpacity style={[styles.mobileBreakButton, breakEndsAt ? styles.mobileBreakButtonActive : null]} onPress={() => setBreakPickerOpen(true)}>
-                    <MaterialIcons name="free-breakfast" size={20} color="#0f172a" />
-                    <Text style={styles.mobileBreakText}>Break</Text>
-                    {breakEndsAt ? <Text style={styles.mobileBreakTimerText}>{formatBreakCountdown(breakEndsAt, breakNow)}</Text> : null}
-                  </TouchableOpacity>
-                  <View style={styles.mobileUtilitySection}>
-                    <TouchableOpacity style={styles.mobileUtilityButton} onPress={() => { setMobileNavOpen(false); openTarget({ root: 'Settings', screen: 'Help' }); }}>
-                      <MaterialIcons name="help-outline" size={20} color="#1d4ed8" />
-                      <Text style={styles.mobileUtilityText}>Help</Text>
+                  <View style={styles.mobileFooterSection}>
+                    <TouchableOpacity style={[styles.mobileBreakButton, breakEndsAt ? styles.mobileBreakButtonActive : null]} onPress={() => setBreakPickerOpen(true)}>
+                      <MaterialIcons name="free-breakfast" size={20} color="#0f172a" />
+                      <Text style={styles.mobileBreakText}>Break</Text>
+                      {breakEndsAt ? <Text style={styles.mobileBreakTimerText}>{formatBreakCountdown(breakEndsAt, breakNow)}</Text> : null}
                     </TouchableOpacity>
-                    <TouchableOpacity style={[styles.mobileUtilityButton, updateBusy ? styles.mobileUtilityButtonDisabled : null]} onPress={checkForOtaUpdate} disabled={updateBusy}>
-                      <Image source={checkUpdatesIcon} style={[styles.mobileUtilityIcon, updateBusy ? styles.drawerUtilityIconDisabled : null]} resizeMode="contain" />
-                      <Text style={styles.mobileUtilityText}>{updateBusy ? 'Checking for updates...' : 'Check for updates'}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.mobileLogoutButton} onPress={() => { setMobileNavOpen(false); logout?.(); }}>
-                      <MaterialIcons name="logout" size={20} color="#b91c1c" />
-                      <Text style={styles.mobileLogoutText}>Logout</Text>
-                    </TouchableOpacity>
+                    <View style={styles.mobileUtilitySection}>
+                      <TouchableOpacity style={styles.mobileUtilityButton} onPress={() => { setMobileNavOpen(false); openTarget({ root: 'Settings', screen: 'Help' }); }}>
+                        <MaterialIcons name="help-outline" size={20} color="#1d4ed8" />
+                        <Text style={styles.mobileUtilityText}>Help</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[styles.mobileUtilityButton, updateBusy ? styles.mobileUtilityButtonDisabled : null]} onPress={checkForOtaUpdate} disabled={updateBusy}>
+                        <Image source={checkUpdatesIcon} style={[styles.mobileUtilityIcon, updateBusy ? styles.drawerUtilityIconDisabled : null]} resizeMode="contain" />
+                        <Text style={styles.mobileUtilityText}>{updateBusy ? 'Checking for updates...' : 'Check for updates'}</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.mobileLogoutButton} onPress={() => { setMobileNavOpen(false); logout?.(); }}>
+                        <MaterialIcons name="logout" size={20} color="#b91c1c" />
+                        <Text style={styles.mobileLogoutText}>Logout</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </ScrollView>
               </View>
@@ -725,11 +727,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#1d4ed8',
   },
+  mobileFooterSection: { marginTop: 'auto' },
   mobileBreakButton: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 12, borderWidth: 1, borderColor: '#dbe2ea', backgroundColor: '#ffffff', marginTop: 10 },
   mobileBreakButtonActive: { backgroundColor: '#eff6ff', borderColor: '#93c5fd' },
   mobileBreakText: { color: '#0f172a', fontWeight: '700', marginLeft: 10 },
   mobileBreakTimerText: { color: '#0f172a', fontWeight: '800', marginLeft: 'auto' },
-  mobileUtilitySection: { marginTop: 'auto', paddingTop: 8, paddingBottom: 6, borderTopWidth: 1, borderTopColor: '#dbe2ea' },
+  mobileUtilitySection: { marginTop: 6, paddingTop: 8, paddingBottom: 6, borderTopWidth: 1, borderTopColor: '#dbe2ea' },
   mobileUtilityButton: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 12, backgroundColor: '#eff6ff', marginBottom: 10 },
   mobileUtilityButtonDisabled: { opacity: 0.72 },
   mobileUtilityIcon: { width: 20, height: 20 },

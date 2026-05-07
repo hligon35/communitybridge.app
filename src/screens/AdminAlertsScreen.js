@@ -137,7 +137,8 @@ export default function AdminAlertsScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {loadError ? <Text style={styles.errorText}>{loadError}</Text> : null}
 
-        <View style={styles.tabRow}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabCarouselContent} style={styles.tabCarousel}>
+          <View style={styles.tabRow}>
           {[
             { key: 'tracker', label: 'Credential Tracker' },
             { key: 'alerts', label: 'Expiration Alerts' },
@@ -148,7 +149,8 @@ export default function AdminAlertsScreen() {
               <Text style={[styles.tabButtonText, tab === item.key ? styles.tabButtonTextActive : null]}>{item.label}</Text>
             </TouchableOpacity>
           ))}
-        </View>
+          </View>
+        </ScrollView>
 
         {(tab === 'tracker' || tab === 'alerts') ? (
           <View style={styles.card}>
@@ -192,7 +194,9 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
   content: { padding: 16 },
   errorText: { color: '#b91c1c', marginTop: 12 },
-  tabRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 14 },
+  tabCarousel: { marginTop: 14 },
+  tabCarouselContent: { paddingRight: 8 },
+  tabRow: { flexDirection: 'row' },
   tabButton: { borderRadius: 999, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#f1f5f9', marginRight: 8, marginBottom: 8 },
   tabButtonActive: { backgroundColor: '#2563eb' },
   tabButtonText: { color: '#0f172a', fontWeight: '700' },
