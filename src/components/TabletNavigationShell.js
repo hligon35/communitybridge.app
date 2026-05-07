@@ -458,7 +458,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
                   onItemPress?.();
                 }}
               >
-                <MaterialIcons name={item.icon} size={active ? 24 : 20} color="#000000" />
+                <MaterialIcons name={item.icon} size={active ? 24 : 20} color="#f8fafc" />
                 {!collapsedItems ? <Text style={[styles.navLabel, active ? styles.navLabelActive : null]}>{item.label}</Text> : null}
               </TouchableOpacity>
             );
@@ -553,11 +553,12 @@ export default function TabletNavigationShell({ currentRoute, children }) {
   return (
     <MobileAdminShellContext.Provider value={tabletShellValue}>
       <View style={styles.shellFrame}>
-        {Platform.OS !== 'web' && insets.top > 0 ? <View style={{ height: insets.top, backgroundColor: '#e2e8f0' }} /> : null}
+        <View style={[styles.shellHeader, { paddingTop: Platform.OS !== 'web' ? Math.max(insets.top, 12) : 12 }]}> 
+          <Text style={styles.shellHeaderTitle} numberOfLines={1}>{currentScreenTitle}</Text>
+        </View>
         <View style={styles.shell}>
           <View style={[styles.drawer, { paddingTop: 20, paddingBottom: 20 + Math.max(insets.bottom, 0) }, collapsed ? styles.drawerCollapsed : null]}>
           <View style={[styles.drawerBrandWrap, collapsed ? styles.drawerBrandWrapCollapsed : null]}>
-            {!collapsed ? <Text style={styles.drawerScreenTitle} numberOfLines={2}>{currentScreenTitle}</Text> : null}
           </View>
           {!collapsed ? (
             <View style={styles.drawerIdentityWrap}>
@@ -572,7 +573,50 @@ export default function TabletNavigationShell({ currentRoute, children }) {
           ) : null}
 
           {renderNavItems(collapsed)}
+          {showHeaderQuickMenu ? (
+            <View style={styles.drawerQuickActionWrap}>
+              <TouchableOpacity
+                style={[styles.drawerQuickActionButton, quickMenuOpen ? styles.drawerQuickActionButtonActive : null]}
+                onPress={() => setQuickMenuOpen((value) => !value)}
+                accessibilityLabel={showBcbaQuickActions ? 'Quick actions' : 'Quick add'}
+              >
+                <MaterialIcons name="add" size={20} color="#f8fafc" />
+                {!collapsed ? <Text style={styles.drawerQuickActionText}>{showBcbaQuickActions ? 'Quick actions' : 'Quick add'}</Text> : null}
+              </TouchableOpacity>
+              {quickMenuOpen ? (
+                <View style={[styles.drawerQuickMenu, { width: collapsed ? 216 : quickMenuWidth }]}> 
+                  {quickHeaderMenuItems.map((item) => (
+                    <TouchableOpacity
+                      key={item.key}
+                      style={styles.quickHeaderMenuItem}
+                      onPress={() => {
+                        setQuickMenuOpen(false);
+                        if (item.target) {
+                          openTarget(item.target);
+                          return;
+                        }
+                        if (item.logType) {
+                          openQuickLogModal(item);
+                        }
+                      }}
+                    >
+                      <Text style={styles.quickHeaderMenuText}>{item.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : null}
+            </View>
+          ) : null}
           <View style={styles.drawerUtilitySection}>
+            <TouchableOpacity style={[styles.drawerUtilityButton, breakEndsAt ? styles.drawerUtilityButtonActive : null]} onPress={() => setBreakPickerOpen(true)}>
+              <MaterialIcons name="free-breakfast" size={20} color="#f8fafc" />
+              {!collapsed ? <Text style={styles.drawerUtilityText}>Break</Text> : null}
+              {!collapsed && breakEndsAt ? <Text style={styles.drawerUtilityTimerText}>{formatBreakCountdown(breakEndsAt, breakNow)}</Text> : null}
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.drawerUtilityButton} onPress={() => openTarget({ root: 'Settings', screen: 'Help' })}>
+              <MaterialIcons name="help-outline" size={20} color="#f8fafc" />
+              {!collapsed ? <Text style={styles.drawerUtilityText}>Help</Text> : null}
+            </TouchableOpacity>
             <TouchableOpacity style={[styles.drawerUtilityButton, updateBusy ? styles.drawerUtilityButtonDisabled : null]} onPress={checkForOtaUpdate} disabled={updateBusy}>
               <Image source={checkUpdatesIcon} style={[styles.drawerUtilityIcon, updateBusy ? styles.drawerUtilityIconDisabled : null]} resizeMode="contain" />
               {!collapsed ? <Text style={styles.drawerUtilityText}>{updateBusy ? 'Checking…' : 'Check for updates'}</Text> : null}
@@ -585,44 +629,6 @@ export default function TabletNavigationShell({ currentRoute, children }) {
         </View>
 
           <View style={[styles.contentWrap, { paddingTop: 12, paddingBottom: Math.max(insets.bottom, 12) }]}>
-            {showHeaderQuickMenu && quickMenuOpen ? <TouchableOpacity style={styles.quickMenuDismissLayer} activeOpacity={1} onPress={() => setQuickMenuOpen(false)} /> : null}
-            <View style={styles.topBar}>
-              <View style={styles.brandRow} />
-              <View style={styles.headerActions}>
-                {showHeaderQuickMenu ? (
-                <View style={styles.quickAddAnchor}>
-                  <TouchableOpacity style={[styles.iconOnlyButton, styles.quickAddButton, quickMenuOpen ? styles.iconOnlyButtonActive : null]} onPress={() => setQuickMenuOpen((value) => !value)} accessibilityLabel={showBcbaQuickActions ? 'Quick actions' : 'Quick add'}>
-                    <MaterialIcons name="add" size={20} color="#1d4ed8" />
-                  </TouchableOpacity>
-                  {quickMenuOpen ? (
-                    <View style={[styles.quickHeaderMenu, { width: quickMenuWidth }]}>
-                      {quickHeaderMenuItems.map((item) => (
-                        <TouchableOpacity
-                          key={item.key}
-                          style={styles.quickHeaderMenuItem}
-                          onPress={() => {
-                            setQuickMenuOpen(false);
-                            if (item.target) {
-                              openTarget(item.target);
-                              return;
-                            }
-                            if (item.logType) {
-                              openQuickLogModal(item);
-                            }
-                          }}
-                        >
-                          <Text style={styles.quickHeaderMenuText}>{item.label}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  ) : null}
-                </View>
-                ) : null}
-                <TouchableOpacity style={styles.iconOnlyButton} onPress={() => openTarget({ root: 'Settings', screen: 'Help' })} accessibilityLabel="Help">
-                  <MaterialIcons name="help-outline" size={20} color="#1d4ed8" />
-                </TouchableOpacity>
-              </View>
-            </View>
             <Modal visible={!!quickLogDraft} transparent animationType="fade" onRequestClose={() => !quickLogSaving && setQuickLogDraft(null)}>
               <View style={styles.modalOverlay}>
                 <View style={styles.modalCard}>
@@ -658,28 +664,42 @@ export default function TabletNavigationShell({ currentRoute, children }) {
 const styles = StyleSheet.create({
   shellFrame: { flex: 1, backgroundColor: '#e2e8f0' },
   mobileShellFrame: { flex: 1, backgroundColor: '#ffffff' },
+  shellHeader: {
+    backgroundColor: '#e2e8f0',
+    paddingHorizontal: 24,
+    paddingBottom: 12,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  shellHeaderTitle: { color: '#0f172a', fontWeight: '800', fontSize: 24, lineHeight: 30, textAlign: 'center' },
   shell: { flex: 1, flexDirection: 'row', backgroundColor: '#e2e8f0' },
   drawer: { width: 280, backgroundColor: '#0f172a', paddingHorizontal: 16 },
   drawerCollapsed: { width: 92, paddingHorizontal: 10 },
-  drawerBrandWrap: { alignItems: 'flex-start', justifyContent: 'center', marginBottom: 8, minHeight: 48 },
+  drawerBrandWrap: { alignItems: 'flex-start', justifyContent: 'center', marginBottom: 8, minHeight: 12 },
   drawerBrandWrapCollapsed: { alignItems: 'center' },
-  drawerScreenTitle: { color: '#f8fafc', fontWeight: '800', fontSize: 28, lineHeight: 32 },
   drawerIdentityWrap: { marginBottom: 16, paddingHorizontal: 6 },
   drawerIdentityText: { color: '#e2e8f0', fontWeight: '800', fontSize: 16, lineHeight: 22 },
   drawerToggle: { flexDirection: 'row', alignItems: 'center', marginBottom: 18 },
   drawerToggleText: { color: '#e2e8f0', fontWeight: '700', marginLeft: 10 },
   group: { marginBottom: 18 },
   groupLabel: { color: '#94a3b8', fontSize: 11, fontWeight: '800', textTransform: 'uppercase', marginBottom: 3 },
-  navItem: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, paddingVertical: 10, paddingHorizontal: 12, marginBottom: 4.5 },
-  navItemActive: { backgroundColor: '#e0f2fe' },
-  navLabel: { color: '#000000', fontWeight: '700', marginLeft: 10, fontSize: 15 },
-  navLabelActive: { color: '#000000', fontSize: 16 },
+  navItem: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, paddingVertical: 10, paddingHorizontal: 12, marginBottom: 4.5, backgroundColor: '#172554' },
+  navItemActive: { backgroundColor: '#2563eb' },
+  navLabel: { color: '#f8fafc', fontWeight: '700', marginLeft: 10, fontSize: 15 },
+  navLabelActive: { color: '#f8fafc', fontSize: 16 },
+  drawerQuickActionWrap: { marginBottom: 12, position: 'relative' },
+  drawerQuickActionButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 14, backgroundColor: '#1d4ed8' },
+  drawerQuickActionButtonActive: { backgroundColor: '#1e40af' },
+  drawerQuickActionText: { color: '#f8fafc', fontWeight: '700', marginLeft: 10 },
+  drawerQuickMenu: { position: 'absolute', top: 48, left: 0, borderRadius: 14, borderWidth: 1, borderColor: '#dbe4f0', backgroundColor: '#ffffff', paddingVertical: 8, shadowColor: '#0f172a', shadowOpacity: 0.12, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 8, zIndex: 10 },
   drawerUtilitySection: { marginTop: 'auto' },
   drawerUtilityButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 2, paddingHorizontal: 12, borderRadius: 14, backgroundColor: '#1e293b', marginBottom: 8 },
+  drawerUtilityButtonActive: { backgroundColor: '#1e40af' },
   drawerUtilityButtonDisabled: { opacity: 0.72 },
   drawerUtilityIcon: { width: 20, height: 20 },
   drawerUtilityIconDisabled: { opacity: 0.5 },
   drawerUtilityText: { color: '#e2e8f0', fontWeight: '700', marginLeft: 10 },
+  drawerUtilityTimerText: { color: '#f8fafc', fontWeight: '800', marginLeft: 'auto' },
   logoutButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 14, backgroundColor: '#1e293b' },
   logoutText: { color: '#fecaca', fontWeight: '700', marginLeft: 10 },
   contentWrap: { flex: 1, paddingHorizontal: 12, position: 'relative' },

@@ -232,7 +232,7 @@
     "@react-native-community/cli": "latest",
     "@react-native-community/cli-server-api": "^20.0.2",
     "@types/node": "^22.10.2",
-    "@types/react": "^19.0.10",
+    "@types/react": "^19.2.14",
     "eslint": "^8.57.0",
     "expo-module-scripts": "^5.0.8",
     "globals": "^15.15.0",
