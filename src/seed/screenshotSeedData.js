@@ -1,5 +1,5 @@
 const { DEFAULT_RESOURCE_URL, SUPPORT_URL, DOWNLOAD_URL } = require('../config/brand');
-const raw = require('../../communitybridge_full_workflow_5_day_seed_balanced_aba.json');
+const raw = require('../../communitybridge_full_workflow_complete_coverage_seed.json');
 
 function splitName(name) {
   const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
@@ -107,6 +107,13 @@ const postsRaw = Array.isArray(raw.posts) ? raw.posts : [];
 const parentResourcesRaw = Array.isArray(raw.parentResources) ? raw.parentResources : [];
 const programDocumentsRaw = Array.isArray(raw.programDocuments) ? raw.programDocuments : [];
 const campusDocumentsRaw = Array.isArray(raw.campusDocuments) ? raw.campusDocuments : [];
+const itemsNeededRaw = Array.isArray(raw.itemsNeeded) ? raw.itemsNeeded : [];
+const attendanceRaw = Array.isArray(raw.attendance) ? raw.attendance : [];
+const arrivalPingsRaw = Array.isArray(raw.arrivalPings) ? raw.arrivalPings : [];
+const pickupQueueRaw = Array.isArray(raw.pickupQueue) ? raw.pickupQueue : [];
+const tapEventsRaw = Array.isArray(raw.tapEvents) ? raw.tapEvents : [];
+const skillAcquisitionDataRaw = Array.isArray(raw.skillAcquisitionData) ? raw.skillAcquisitionData : [];
+const behaviorTrackingDataRaw = Array.isArray(raw.behaviorTrackingData) ? raw.behaviorTrackingData : [];
 
 const usersById = new Map(usersRaw.map((user) => [String(user?.id || ''), user]));
 const usersByEmail = new Map(usersRaw.map((user) => [normalizeLookup(user?.email), user]).filter(([key]) => key));
@@ -208,6 +215,9 @@ const latestProgressByChildId = pickLatestByChild(progressReportsRaw, ['date', '
 const latestInsurancePlanByChildId = pickLatestByChild(insurancePlansRaw, ['updatedAt', 'createdAt', 'effectiveDate']);
 const latestAuthorizationByChildId = pickLatestByChild(authorizationsRaw, ['updatedAt', 'createdAt', 'expirationDate']);
 const latestInvoiceByChildId = pickLatestByChild(invoicesRaw, ['updatedAt', 'createdAt', 'dueDate']);
+const latestAttendanceByChildId = pickLatestByChild(attendanceRaw, ['checkInAt', 'date', 'createdAt', 'updatedAt']);
+const latestArrivalByChildId = pickLatestByChild(arrivalPingsRaw, ['createdAt', 'updatedAt']);
+const latestPickupQueueByChildId = pickLatestByChild(pickupQueueRaw, ['confirmedAt', 'queuedAt', 'createdAt', 'updatedAt']);
 
 const latestMoodByChildId = new Map();
 moodScoresRaw.forEach((entry) => {
@@ -222,6 +232,199 @@ moodScoresRaw.forEach((entry) => {
   }, null);
   if (childId && latestScore) latestMoodByChildId.set(childId, latestScore);
 });
+
+const seededScreenshotMoodHistoryByChild = moodScoresRaw.reduce((accumulator, entry, entryIndex) => {
+  const childId = getEntryChildId(entry);
+  if (!childId) return accumulator;
+  const scores = Array.isArray(entry?.scores) ? entry.scores : [];
+  accumulator[childId] = scores
+    .map((score, scoreIndex) => ({
+      id: String(score?.id || `${childId}-mood-${entryIndex + 1}-${scoreIndex + 1}`),
+      childId,
+      score: toNumber(score?.score, 0),
+      recordedAt: normalizeIso(`${score?.date || ''}T12:00:00`, score?.date) || '',
+      createdAt: normalizeIso(`${score?.date || ''}T12:00:00`, score?.date) || '',
+    }))
+    .filter((item) => item.recordedAt);
+  return accumulator;
+}, {});
+
+const seededScreenshotAttendanceHistoryByChild = attendanceRaw.reduce((accumulator, item, index) => {
+  const childId = getEntryChildId(item);
+  if (!childId) return accumulator;
+  if (!accumulator[childId]) accumulator[childId] = [];
+  const recordedFor = String(item?.date || item?.recordedFor || '').trim();
+  const checkInAt = normalizeIso(item?.checkInAt, recordedFor ? `${recordedFor}T09:00:00` : '');
+  const checkOutAt = normalizeIso(item?.checkOutAt, recordedFor ? `${recordedFor}T15:00:00` : '');
+  accumulator[childId].push({
+    id: String(item?.id || `${childId}-attendance-${index + 1}`),
+    childId,
+    sessionId: String(item?.sessionId || '').trim(),
+    recordedFor,
+    recordedAt: checkInAt || normalizeIso(recordedFor, '') || '',
+    dateKey: recordedFor,
+    status: String(item?.status || '').trim().toLowerCase(),
+    note: String(item?.note || '').trim(),
+    checkInAt,
+    checkOutAt,
+    checkedInBy: String(item?.checkedInBy || '').trim(),
+  });
+  return accumulator;
+}, {});
+
+const seededScreenshotAttendanceByDate = attendanceRaw.reduce((accumulator, item, index) => {
+  const dateKey = String(item?.date || item?.recordedFor || '').trim();
+  if (!dateKey) return accumulator;
+  if (!accumulator[dateKey]) accumulator[dateKey] = [];
+  accumulator[dateKey].push({
+    id: String(item?.id || `attendance-${index + 1}`),
+    childId: getEntryChildId(item),
+    sessionId: String(item?.sessionId || '').trim(),
+    dateKey,
+    recordedFor: dateKey,
+    status: String(item?.status || '').trim().toLowerCase(),
+    note: String(item?.note || '').trim(),
+    checkInAt: normalizeIso(item?.checkInAt, ''),
+    checkOutAt: normalizeIso(item?.checkOutAt, ''),
+    checkedInBy: String(item?.checkedInBy || '').trim(),
+  });
+  return accumulator;
+}, {});
+
+const seededScreenshotArrivalPingsByChild = arrivalPingsRaw.reduce((accumulator, item, index) => {
+  const childId = getEntryChildId(item);
+  if (!childId) return accumulator;
+  if (!accumulator[childId]) accumulator[childId] = [];
+  accumulator[childId].push({
+    id: String(item?.id || `${childId}-arrival-${index + 1}`),
+    childId,
+    parentId: String(item?.parentId || '').trim(),
+    campusId: String(item?.campusId || '').trim(),
+    distanceMeters: toNumber(item?.distanceMeters, null),
+    method: String(item?.method || '').trim(),
+    status: String(item?.status || '').trim(),
+    createdAt: normalizeIso(item?.createdAt, '') || '',
+  });
+  return accumulator;
+}, {});
+
+const seededScreenshotPickupQueueByChild = pickupQueueRaw.reduce((accumulator, item, index) => {
+  const childId = getEntryChildId(item);
+  if (!childId) return accumulator;
+  if (!accumulator[childId]) accumulator[childId] = [];
+  const verifier = toParticipant(item?.verifiedBy || '');
+  accumulator[childId].push({
+    id: String(item?.id || `${childId}-pickup-${index + 1}`),
+    childId,
+    parentId: String(item?.parentId || '').trim(),
+    pickupPerson: String(item?.pickupPerson || '').trim(),
+    status: String(item?.status || '').trim(),
+    arrivalPingId: String(item?.arrivalPingId || '').trim(),
+    queuedAt: normalizeIso(item?.queuedAt, '') || '',
+    confirmedAt: normalizeIso(item?.confirmedAt, '') || '',
+    verifiedBy: String(item?.verifiedBy || '').trim(),
+    verifiedByName: verifier?.name || '',
+    reason: String(item?.reason || '').trim(),
+  });
+  return accumulator;
+}, {});
+
+Object.keys(seededScreenshotPickupQueueByChild).forEach((childId) => {
+  seededScreenshotPickupQueueByChild[childId] = seededScreenshotPickupQueueByChild[childId]
+    .sort((left, right) => {
+      const leftTs = Date.parse(String(left?.confirmedAt || left?.queuedAt || ''));
+      const rightTs = Date.parse(String(right?.confirmedAt || right?.queuedAt || ''));
+      if (!Number.isFinite(leftTs) && !Number.isFinite(rightTs)) return 0;
+      if (!Number.isFinite(leftTs)) return 1;
+      if (!Number.isFinite(rightTs)) return -1;
+      return rightTs - leftTs;
+    });
+});
+
+const seededScreenshotTapEventsByChild = tapEventsRaw.reduce((accumulator, item, index) => {
+  const childId = getEntryChildId(item);
+  if (!childId) return accumulator;
+  if (!accumulator[childId]) accumulator[childId] = [];
+  accumulator[childId].push({
+    feedId: String(item?.id || `${childId}-tap-${index + 1}`),
+    sessionId: String(item?.sessionId || '').trim(),
+    label: String(item?.label || item?.eventType || 'Tap event').trim(),
+    detailLabel: String(item?.notes || item?.eventType || '').trim() || (item?.value != null ? `Count ${item.value}` : null),
+    occurredAt: normalizeIso(item?.createdAt, '') || '',
+    status: 'synced',
+    eventType: String(item?.eventType || '').trim(),
+    value: toNumber(item?.value, null),
+  });
+  return accumulator;
+}, {});
+
+Object.keys(seededScreenshotTapEventsByChild).forEach((childId) => {
+  seededScreenshotTapEventsByChild[childId] = seededScreenshotTapEventsByChild[childId]
+    .sort((left, right) => Date.parse(String(right?.occurredAt || '')) - Date.parse(String(left?.occurredAt || '')))
+    .slice(0, 12);
+});
+
+const seededScreenshotItemsNeededByChild = itemsNeededRaw.reduce((accumulator, item, index) => {
+  const childId = getEntryChildId(item);
+  if (!childId) return accumulator;
+  if (!accumulator[childId]) accumulator[childId] = [];
+  const requester = toParticipant(item?.requestedBy || '');
+  const parent = toParticipant(item?.parentId || '');
+  accumulator[childId].push({
+    id: String(item?.id || `${childId}-needed-${index + 1}`),
+    childId,
+    parentId: String(item?.parentId || '').trim(),
+    parentName: parent?.name || '',
+    category: String(item?.category || '').trim(),
+    item: String(item?.item || '').trim(),
+    status: String(item?.status || '').trim(),
+    requestedBy: String(item?.requestedBy || '').trim(),
+    requestedByName: requester?.name || '',
+    requestedAt: normalizeIso(item?.requestedAt, '') || '',
+    dueDate: String(item?.dueDate || '').trim(),
+    resolvedAt: normalizeIso(item?.resolvedAt, '') || '',
+  });
+  return accumulator;
+}, {});
+
+const seededScreenshotSkillAcquisitionByChild = skillAcquisitionDataRaw.reduce((accumulator, item, index) => {
+  const childId = getEntryChildId(item);
+  if (!childId) return accumulator;
+  if (!accumulator[childId]) accumulator[childId] = [];
+  accumulator[childId].push({
+    id: String(item?.id || `${childId}-skill-${index + 1}`),
+    childId,
+    goalId: String(item?.goalId || '').trim(),
+    date: String(item?.date || '').trim(),
+    trials: toNumber(item?.trials, 0),
+    correct: toNumber(item?.correct, 0),
+    prompted: toNumber(item?.prompted, 0),
+    incorrect: toNumber(item?.incorrect, 0),
+    masteryPercent: toNumber(item?.masteryPercent, 0),
+    promptLevel: String(item?.promptLevel || '').trim(),
+  });
+  return accumulator;
+}, {});
+
+const seededScreenshotBehaviorTrackingByChild = behaviorTrackingDataRaw.reduce((accumulator, item, index) => {
+  const childId = getEntryChildId(item);
+  if (!childId) return accumulator;
+  if (!accumulator[childId]) accumulator[childId] = [];
+  accumulator[childId].push({
+    id: String(item?.id || `${childId}-behavior-${index + 1}`),
+    childId,
+    date: String(item?.date || '').trim(),
+    behavior: String(item?.behavior || '').trim(),
+    frequency: toNumber(item?.frequency, 0),
+    durationMinutes: toNumber(item?.durationMinutes, 0),
+    intensity: String(item?.intensity || '').trim(),
+    antecedent: String(item?.antecedent || '').trim(),
+    consequence: String(item?.consequence || '').trim(),
+    replacementBehavior: String(item?.replacementBehavior || '').trim(),
+    response: String(item?.response || '').trim(),
+  });
+  return accumulator;
+}, {});
 
 const nextSessionByChildId = new Map();
 nextSessionsRaw.forEach((session, index) => {
@@ -313,6 +516,9 @@ const seededScreenshotChildren = childrenRaw.map((child) => {
   const { firstName, lastName } = splitName(child?.name);
   const latestProgress = latestProgressByChildId.get(childId);
   const latestMood = latestMoodByChildId.get(childId);
+  const latestAttendance = latestAttendanceByChildId.get(childId);
+  const latestArrival = latestArrivalByChildId.get(childId);
+  const latestPickupQueue = latestPickupQueueByChildId.get(childId);
   const nextSession = nextSessionByChildId.get(childId);
   const latestSummary = latestSessionSummaryByChildId.get(childId);
   const explicitParents = Array.isArray(child?.parents) ? child.parents.filter(Boolean) : [];
@@ -367,6 +573,19 @@ const seededScreenshotChildren = childrenRaw.map((child) => {
     programCurriculum: String(child?.curriculum || '').trim(),
     programsWorkedOn: Array.isArray(latestSummary?.summary?.programsWorkedOn) ? clone(latestSummary.summary.programsWorkedOn) : [],
     behaviorNotes: String(child?.behaviorNotes || '').trim(),
+    attendanceStatus: String(child?.attendanceStatus || latestAttendance?.status || '').trim(),
+    attendanceRecordedAt: normalizeIso(latestAttendance?.checkInAt, latestAttendance?.date || '') || '',
+    arrivalStatus: String(child?.arrivalStatus || latestArrival?.status || '').trim(),
+    arrivalMethod: String(latestArrival?.method || '').trim(),
+    arrivalDistanceMeters: toNumber(latestArrival?.distanceMeters, null),
+    latestArrivalAt: normalizeIso(latestArrival?.createdAt, '') || '',
+    pickupQueueStatus: String(child?.pickupQueueStatus || latestPickupQueue?.status || '').trim(),
+    pickupPerson: String(child?.pickupPerson || latestPickupQueue?.pickupPerson || '').trim(),
+    pickupQueuedAt: normalizeIso(latestPickupQueue?.queuedAt, '') || '',
+    pickupConfirmedAt: normalizeIso(latestPickupQueue?.confirmedAt, '') || '',
+    pickupVerifiedBy: String(latestPickupQueue?.verifiedBy || '').trim(),
+    pickupVerifiedByName: toParticipant(latestPickupQueue?.verifiedBy || '')?.name || '',
+    pickupReason: String(child?.pickupReason || latestPickupQueue?.reason || '').trim(),
     insuranceStatus: String(child?.insuranceStatus || '').trim(),
     insurance: buildInsuranceSnapshot(child),
     programDocs: programDocsByChildId.get(childId) || parentResourcesRaw.map((resource, index) => ({
@@ -502,6 +721,15 @@ module.exports = {
   seededScreenshotParents,
   seededScreenshotTherapists: seededScreenshotStaff,
   seededScreenshotChildren,
+  seededScreenshotMoodHistoryByChild,
+  seededScreenshotAttendanceByDate,
+  seededScreenshotAttendanceHistoryByChild,
+  seededScreenshotArrivalPingsByChild,
+  seededScreenshotPickupQueueByChild,
+  seededScreenshotTapEventsByChild,
+  seededScreenshotItemsNeededByChild,
+  seededScreenshotSkillAcquisitionByChild,
+  seededScreenshotBehaviorTrackingByChild,
   seededScreenshotMessages,
   seededScreenshotPosts,
   seededScreenshotUrgentMemos,

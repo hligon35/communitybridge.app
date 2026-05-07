@@ -117,10 +117,44 @@ function resolveAttendanceSummary(child) {
   const dropoffLabel = child?.dropoffTimeISO ? new Date(child.dropoffTimeISO).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
   const pickupLabel = child?.pickupTimeISO ? new Date(child.pickupTimeISO).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
   const timeLabel = dropoffLabel && pickupLabel ? `${dropoffLabel} - ${pickupLabel}` : '';
-  const detail = timeLabel || sessionLabel || (status === 'not scheduled' ? 'No session assigned' : 'Current session status');
+  const baseDetail = timeLabel || sessionLabel || (status === 'not scheduled' ? 'No session assigned' : 'Current session status');
+  const arrivalLabel = String(child?.arrivalStatus || '').trim();
+  const detail = arrivalLabel ? `${baseDetail} • Arrival ${titleCaseWords(arrivalLabel)}` : baseDetail;
   return {
     value: titleCaseWords(status),
     detail,
+  };
+}
+
+function resolvePickupQueueSummary(child, queueItems = []) {
+  const latestItem = Array.isArray(queueItems) && queueItems.length ? queueItems[0] : null;
+  const status = String(child?.pickupQueueStatus || latestItem?.status || '').trim();
+  const pickupPerson = String(child?.pickupPerson || latestItem?.pickupPerson || '').trim();
+  const confirmedAt = String(child?.pickupConfirmedAt || latestItem?.confirmedAt || '').trim();
+  const queuedAt = String(child?.pickupQueuedAt || latestItem?.queuedAt || '').trim();
+  const reason = String(child?.pickupReason || latestItem?.reason || '').trim();
+  const verifier = String(child?.pickupVerifiedByName || latestItem?.verifiedByName || '').trim();
+
+  if (!status) {
+    return {
+      value: 'Not queued',
+      detail: 'No pickup queue activity recorded yet.',
+    };
+  }
+
+  const details = [];
+  if (pickupPerson) details.push(pickupPerson);
+  if (confirmedAt) {
+    details.push(`Confirmed ${formatSummaryTimestamp(confirmedAt)}`);
+  } else if (queuedAt) {
+    details.push(`Queued ${formatSummaryTimestamp(queuedAt)}`);
+  }
+  if (verifier) details.push(`Verified by ${verifier}`);
+  if (reason) details.push(reason);
+
+  return {
+    value: titleCaseWords(status),
+    detail: details.join(' • ') || 'Most recent pickup queue update',
   };
 }
 
@@ -226,7 +260,7 @@ export default function StudentDirectoryScreen() {
   const navigation = useNavigation();
   const { width } = useWindowDimensions();
   const { user } = useAuth();
-  const { children = [], parents = [], therapists = [], fetchAndSync } = useData();
+  const { children = [], parents = [], therapists = [], fetchAndSync, activeSeedPreset = '', seededAttendanceHistoryByChild = {}, seededPickupQueueByChild = {} } = useData();
   const { currentOrganization, currentProgram, currentCampus } = useTenant() || {};
   const isBcba = isBcbaRole(user?.role);
   const isOffice = isOfficeAdminRole(user?.role);
@@ -340,6 +374,15 @@ export default function StudentDirectoryScreen() {
       cancelled = true;
     };
 
+    if (activeSeedPreset === 'screenshot') {
+      setAttendanceHistoryLoading(false);
+      setAttendanceHistoryError('');
+      setAttendanceHistory(Array.isArray(seededAttendanceHistoryByChild?.[selectedChild.id]) ? seededAttendanceHistoryByChild[selectedChild.id] : []);
+      return () => {
+        cancelled = true;
+      };
+    }
+
     setAttendanceHistoryLoading(true);
     setAttendanceHistoryError('');
     Api.getAttendanceHistory(selectedChild.id, 10)
@@ -360,7 +403,7 @@ export default function StudentDirectoryScreen() {
     return () => {
       cancelled = true;
     };
-  }, [activeTab, selectedChild?.id]);
+  }, [activeSeedPreset, activeTab, seededAttendanceHistoryByChild, selectedChild?.id]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -489,6 +532,9 @@ export default function StudentDirectoryScreen() {
     if (activeTab === 'overview') {
       const moodSummary = resolveMoodSummary(selectedChild);
       const attendanceSummary = resolveAttendanceSummary(selectedChild);
+      const pickupQueueItems = Array.isArray(seededPickupQueueByChild?.[selectedChild.id]) ? seededPickupQueueByChild[selectedChild.id] : [];
+      const pickupQueueSummary = resolvePickupQueueSummary(selectedChild, pickupQueueItems);
+      const showPickupQueueCard = activeSeedPreset === 'screenshot' || Boolean(selectedChild?.pickupQueueStatus);
       const nextSession = Array.isArray(selectedChild.upcoming) && selectedChild.upcoming.length ? selectedChild.upcoming[0] : null;
       const hasCareTeam = Boolean(careTeam.bcba || careTeam.amTherapist || careTeam.pmTherapist);
       return (
@@ -509,6 +555,14 @@ export default function StudentDirectoryScreen() {
               </View>
             </View>
           </View>
+
+          {showPickupQueueCard ? (
+            <View style={[styles.summaryCard, styles.summaryCardFull]}>
+              <Text style={styles.summaryCardLabel}>Pickup queue</Text>
+              <Text style={styles.summaryCardValue}>{pickupQueueSummary.value}</Text>
+              <Text style={styles.summaryCardDetail}>{pickupQueueSummary.detail}</Text>
+            </View>
+          ) : null}
 
           {nextSession ? (
             <View style={styles.upcomingRow}>
@@ -971,6 +1025,7 @@ const styles = StyleSheet.create({
   summaryCard: { flex: 1, borderRadius: 14, borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#ffffff', paddingVertical: 10, paddingHorizontal: 12 },
   summaryCardLeft: { marginRight: 6 },
   summaryCardRight: { marginLeft: 6 },
+  summaryCardFull: { marginTop: 12 },
   summaryCardHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   summaryCardTextWrap: { flex: 1, paddingRight: 8 },
   summaryCardLabel: { color: '#64748b', fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4 },

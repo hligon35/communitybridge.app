@@ -13,14 +13,17 @@ export default function TapLogsScreen() {
   const route = useRoute();
   const { childId, sessionPreview } = route.params || {};
   const { user } = useAuth();
-  const { children = [], fetchAndSync } = useData();
+  const { children = [], fetchAndSync, activeSeedPreset = '', seededTapEventsByChild = {} } = useData();
   const role = normalizeUserRole(user?.role);
   const isTherapist = role === USER_ROLES.THERAPIST;
   const canManageSession = isAdminRole(user?.role) || isStaffRole(user?.role);
   const child = (children || []).find((entry) => entry.id === childId) || null;
   const preview = Boolean(sessionPreview) || !child;
   const inactivePreview = isTherapist && preview;
-  const workspace = useTherapySessionWorkspace({ child, preview, canManageSession, fetchAndSync });
+  const seededRecentEvents = activeSeedPreset === 'screenshot' && child?.id
+    ? (Array.isArray(seededTapEventsByChild?.[child.id]) ? seededTapEventsByChild[child.id] : [])
+    : [];
+  const workspace = useTherapySessionWorkspace({ child, preview, canManageSession, fetchAndSync, seededRecentEvents });
   const items = inactivePreview ? [] : [...(workspace.recentEvents || [])];
 
   const [pendingRequest, setPendingRequest] = useState(null);

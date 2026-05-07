@@ -16,7 +16,7 @@ export default function TapTrackerScreen() {
   const navigation = useNavigation();
   const { user } = useAuth();
   const { childId, sessionPreview, autoStartSession, sessionType } = route.params || {};
-  const { children = [], fetchAndSync } = useData();
+  const { children = [], fetchAndSync, activeSeedPreset = '', seededTapEventsByChild = {} } = useData();
   const role = normalizeUserRole(user?.role);
   const isTherapist = role === USER_ROLES.THERAPIST;
   const canManageSession = isAdminRole(user?.role) || isStaffRole(user?.role);
@@ -24,7 +24,10 @@ export default function TapTrackerScreen() {
   const preview = Boolean(sessionPreview) || !child;
   const inactivePreview = isTherapist && preview;
   const displayChild = child || PREVIEW_CHILD;
-  const workspace = useTherapySessionWorkspace({ child, preview, canManageSession, fetchAndSync });
+  const seededRecentEvents = activeSeedPreset === 'screenshot' && child?.id
+    ? (Array.isArray(seededTapEventsByChild?.[child.id]) ? seededTapEventsByChild[child.id] : [])
+    : [];
+  const workspace = useTherapySessionWorkspace({ child, preview, canManageSession, fetchAndSync, seededRecentEvents });
   const [paused, setPaused] = useState(false);
   const [sessionSeconds, setSessionSeconds] = useState(0);
 

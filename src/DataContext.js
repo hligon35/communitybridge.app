@@ -7,6 +7,15 @@ import {
   seededScreenshotParents,
   seededScreenshotTherapists,
   seededScreenshotChildren,
+  seededScreenshotMoodHistoryByChild,
+  seededScreenshotAttendanceByDate,
+  seededScreenshotAttendanceHistoryByChild,
+  seededScreenshotArrivalPingsByChild,
+  seededScreenshotPickupQueueByChild,
+  seededScreenshotTapEventsByChild,
+  seededScreenshotItemsNeededByChild,
+  seededScreenshotSkillAcquisitionByChild,
+  seededScreenshotBehaviorTrackingByChild,
   seededScreenshotMessages,
   seededScreenshotPosts,
   seededScreenshotUrgentMemos,
@@ -117,6 +126,15 @@ export function DataProvider({ children: reactChildren }) {
   const [seededOrgSettings, setSeededOrgSettings] = useState({});
   const [seededExportJobs, setSeededExportJobs] = useState([]);
   const [seededAuditLogs, setSeededAuditLogs] = useState([]);
+  const [seededMoodHistoryByChild, setSeededMoodHistoryByChild] = useState({});
+  const [seededAttendanceByDate, setSeededAttendanceByDate] = useState({});
+  const [seededAttendanceHistoryByChild, setSeededAttendanceHistoryByChild] = useState({});
+  const [seededArrivalPingsByChild, setSeededArrivalPingsByChild] = useState({});
+  const [seededPickupQueueByChild, setSeededPickupQueueByChild] = useState({});
+  const [seededTapEventsByChild, setSeededTapEventsByChild] = useState({});
+  const [seededItemsNeededByChild, setSeededItemsNeededByChild] = useState({});
+  const [seededSkillAcquisitionByChild, setSeededSkillAcquisitionByChild] = useState({});
+  const [seededBehaviorTrackingByChild, setSeededBehaviorTrackingByChild] = useState({});
   const [storageReady, setStorageReady] = useState(false);
 
   function buildScreenshotDirectory() {
@@ -156,6 +174,15 @@ export function DataProvider({ children: reactChildren }) {
       orgSettings: cloneSeedValue(seededScreenshotOrgSettings),
       exportJobs: cloneSeedValue(seededScreenshotExportJobs),
       auditLogs: cloneSeedValue(seededScreenshotAuditLogs),
+      moodHistoryByChild: cloneSeedValue(seededScreenshotMoodHistoryByChild),
+      attendanceByDate: cloneSeedValue(seededScreenshotAttendanceByDate),
+      attendanceHistoryByChild: cloneSeedValue(seededScreenshotAttendanceHistoryByChild),
+      arrivalPingsByChild: cloneSeedValue(seededScreenshotArrivalPingsByChild),
+      pickupQueueByChild: cloneSeedValue(seededScreenshotPickupQueueByChild),
+      tapEventsByChild: cloneSeedValue(seededScreenshotTapEventsByChild),
+      itemsNeededByChild: cloneSeedValue(seededScreenshotItemsNeededByChild),
+      skillAcquisitionByChild: cloneSeedValue(seededScreenshotSkillAcquisitionByChild),
+      behaviorTrackingByChild: cloneSeedValue(seededScreenshotBehaviorTrackingByChild),
     };
   }
 
@@ -175,6 +202,15 @@ export function DataProvider({ children: reactChildren }) {
     setSeededOrgSettings({});
     setSeededExportJobs([]);
     setSeededAuditLogs([]);
+    setSeededMoodHistoryByChild({});
+    setSeededAttendanceByDate({});
+    setSeededAttendanceHistoryByChild({});
+    setSeededArrivalPingsByChild({});
+    setSeededPickupQueueByChild({});
+    setSeededTapEventsByChild({});
+    setSeededItemsNeededByChild({});
+    setSeededSkillAcquisitionByChild({});
+    setSeededBehaviorTrackingByChild({});
   }
 
   function applyLocalStateSnapshot(snapshot) {
@@ -194,6 +230,15 @@ export function DataProvider({ children: reactChildren }) {
     setSeededOrgSettings(snapshot?.orgSettings && typeof snapshot.orgSettings === 'object' ? snapshot.orgSettings : {});
     setSeededExportJobs(Array.isArray(snapshot?.exportJobs) ? snapshot.exportJobs : []);
     setSeededAuditLogs(Array.isArray(snapshot?.auditLogs) ? snapshot.auditLogs : []);
+    setSeededMoodHistoryByChild(snapshot?.moodHistoryByChild && typeof snapshot.moodHistoryByChild === 'object' ? snapshot.moodHistoryByChild : {});
+    setSeededAttendanceByDate(snapshot?.attendanceByDate && typeof snapshot.attendanceByDate === 'object' ? snapshot.attendanceByDate : {});
+    setSeededAttendanceHistoryByChild(snapshot?.attendanceHistoryByChild && typeof snapshot.attendanceHistoryByChild === 'object' ? snapshot.attendanceHistoryByChild : {});
+    setSeededArrivalPingsByChild(snapshot?.arrivalPingsByChild && typeof snapshot.arrivalPingsByChild === 'object' ? snapshot.arrivalPingsByChild : {});
+    setSeededPickupQueueByChild(snapshot?.pickupQueueByChild && typeof snapshot.pickupQueueByChild === 'object' ? snapshot.pickupQueueByChild : {});
+    setSeededTapEventsByChild(snapshot?.tapEventsByChild && typeof snapshot.tapEventsByChild === 'object' ? snapshot.tapEventsByChild : {});
+    setSeededItemsNeededByChild(snapshot?.itemsNeededByChild && typeof snapshot.itemsNeededByChild === 'object' ? snapshot.itemsNeededByChild : {});
+    setSeededSkillAcquisitionByChild(snapshot?.skillAcquisitionByChild && typeof snapshot.skillAcquisitionByChild === 'object' ? snapshot.skillAcquisitionByChild : {});
+    setSeededBehaviorTrackingByChild(snapshot?.behaviorTrackingByChild && typeof snapshot.behaviorTrackingByChild === 'object' ? snapshot.behaviorTrackingByChild : {});
   }
 
   function resetScreenshotSeed() {
@@ -1158,6 +1203,15 @@ export function DataProvider({ children: reactChildren }) {
       seededOrgSettings,
       seededExportJobs,
       seededAuditLogs,
+      seededMoodHistoryByChild,
+      seededAttendanceByDate,
+      seededAttendanceHistoryByChild,
+      seededArrivalPingsByChild,
+      seededPickupQueueByChild,
+      seededTapEventsByChild,
+      seededItemsNeededByChild,
+      seededSkillAcquisitionByChild,
+      seededBehaviorTrackingByChild,
       blockChatUser,
       unblockChatUser,
       clearAllData,

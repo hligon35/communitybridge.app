@@ -21,7 +21,7 @@ import {
   summarizeSessionStamp,
 } from '../utils/previewWorkspace';
 
-export function useTherapySessionWorkspace({ child, preview = false, canManageSession = true, fetchAndSync, initialDraftSummary = null }) {
+export function useTherapySessionWorkspace({ child, preview = false, canManageSession = true, fetchAndSync, initialDraftSummary = null, seededRecentEvents = [] }) {
   const [activeSession, setActiveSession] = useState(null);
   const [draftSummary, setDraftSummary] = useState(null);
   const [latestApprovedSummary, setLatestApprovedSummary] = useState(null);
@@ -55,6 +55,7 @@ export function useTherapySessionWorkspace({ child, preview = false, canManageSe
 
   useEffect(() => {
     let disposed = false;
+    const demoRecentEvents = Array.isArray(seededRecentEvents) ? seededRecentEvents : [];
     async function loadSessionState() {
       if (preview || !child?.id || !canManageSession) {
         if (!disposed) {
@@ -78,13 +79,13 @@ export function useTherapySessionWorkspace({ child, preview = false, canManageSe
           const eventsResult = await getTherapySessionEvents(activeResult.item.id, 24).catch(() => ({ items: [] }));
           if (!disposed) setRecentEvents((eventsResult.items || []).map((item) => mapEventToFeedItem(item)).slice(0, 12));
         } else if (!disposed) {
-          setRecentEvents([]);
+          setRecentEvents([...demoRecentEvents]);
         }
       } catch (_) {
         if (!disposed) {
           setActiveSession(null);
           setLatestApprovedSummary(null);
-          setRecentEvents([]);
+          setRecentEvents([...demoRecentEvents]);
         }
       } finally {
         if (!disposed) setLoadingSession(false);
@@ -94,7 +95,7 @@ export function useTherapySessionWorkspace({ child, preview = false, canManageSe
     return () => {
       disposed = true;
     };
-  }, [preview, child?.id, canManageSession]);
+  }, [preview, child?.id, canManageSession, seededRecentEvents]);
 
   useEffect(() => {
     if (!preview) {

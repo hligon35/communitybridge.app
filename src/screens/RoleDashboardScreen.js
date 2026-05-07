@@ -94,7 +94,7 @@ function childCarouselImageFor(child, index) {
 
 export default function RoleDashboardScreen({ navigation }) {
   const { user } = useAuth();
-  const { children = [], urgentMemos = [], directoryLoading = false, directoryError = '', fetchAndSync } = useData();
+  const { children = [], urgentMemos = [], directoryLoading = false, directoryError = '', fetchAndSync, activeSeedPreset = '', seededItemsNeededByChild = {} } = useData();
   const tenant = useTenant();
   const isTabletLayout = useIsTabletLayout();
   const role = normalizeUserRole(user?.role || USER_ROLES.PARENT);
@@ -170,12 +170,27 @@ export default function RoleDashboardScreen({ navigation }) {
   }, [activeChildren]);
 
   const pendingItems = useMemo(() => {
+    if (activeSeedPreset === 'screenshot') {
+      if (isTherapist) {
+        return Object.values(seededItemsNeededByChild || {})
+          .flat()
+          .filter((item) => {
+            const status = String(item?.status || '').trim().toLowerCase();
+            return status === 'requested' || status === 'overdue';
+          }).length;
+      }
+      if (!selectedChild?.id) return 0;
+      return (Array.isArray(seededItemsNeededByChild?.[selectedChild.id]) ? seededItemsNeededByChild[selectedChild.id] : []).filter((item) => {
+        const status = String(item?.status || '').trim().toLowerCase();
+        return status === 'requested' || status === 'overdue';
+      }).length;
+    }
     if (isTherapist) {
       return (urgentMemos || []).filter((memo) => !memo?.status || memo.status === 'pending').length;
     }
     if (!selectedChild?.id) return 0;
     return (urgentMemos || []).filter((memo) => memo?.childId === selectedChild.id && (!memo?.status || memo.status === 'pending')).length;
-  }, [isTherapist, selectedChild?.id, urgentMemos]);
+  }, [activeSeedPreset, isTherapist, seededItemsNeededByChild, selectedChild?.id, urgentMemos]);
 
   const moodSummary = useMemo(() => {
     const scores = activeChildren

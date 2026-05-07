@@ -134,7 +134,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
     || String(user?.email || '').trim()
     || 'User';
   const roleLabel = getDisplayRoleLabel(user?.role || '') || 'User';
-  const drawerGreeting = `Hello, ${preferredUserName} (${roleLabel}).`;
+  const drawerGreeting = `Hello, ${preferredUserName} (${roleLabel})`;
   const showQuickAdd = !showAdminWorkspace && isStaff;
   const showBcbaQuickActions = showAdminWorkspace && isBcbaRole(user?.role);
   const showHeaderQuickMenu = showQuickAdd || showBcbaQuickActions;
@@ -629,6 +629,21 @@ export default function TabletNavigationShell({ currentRoute, children }) {
         </View>
 
           <View style={[styles.contentWrap, { paddingTop: 12, paddingBottom: Math.max(insets.bottom, 12) }]}>
+            <Modal visible={breakPickerOpen} transparent animationType="fade" onRequestClose={() => setBreakPickerOpen(false)}>
+              <TouchableOpacity style={styles.breakModalBackdrop} activeOpacity={1} onPress={() => setBreakPickerOpen(false)}>
+                <TouchableOpacity activeOpacity={1} style={styles.breakModalCard} onPress={() => {}}>
+                  <Text style={styles.breakModalTitle}>Break</Text>
+                  <Text style={styles.breakModalSubtitle}>Choose a break length.</Text>
+                  <View style={styles.breakGrid}>
+                    {BREAK_OPTIONS.map((minutes) => (
+                      <TouchableOpacity key={minutes} style={styles.breakOptionButton} onPress={() => startBreak(minutes)}>
+                        <Text style={styles.breakOptionText}>{minutes} min</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </TouchableOpacity>
+              </TouchableOpacity>
+            </Modal>
             <Modal visible={!!quickLogDraft} transparent animationType="fade" onRequestClose={() => !quickLogSaving && setQuickLogDraft(null)}>
               <View style={styles.modalOverlay}>
                 <View style={styles.modalCard}>
@@ -693,7 +708,7 @@ const styles = StyleSheet.create({
   drawerQuickActionText: { color: '#f8fafc', fontWeight: '700', marginLeft: 10 },
   drawerQuickMenu: { position: 'absolute', top: 48, left: 0, borderRadius: 14, borderWidth: 1, borderColor: '#dbe4f0', backgroundColor: '#ffffff', paddingVertical: 8, shadowColor: '#0f172a', shadowOpacity: 0.12, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 8, zIndex: 10 },
   drawerUtilitySection: { marginTop: 'auto' },
-  drawerUtilityButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 2, paddingHorizontal: 12, borderRadius: 14, backgroundColor: '#1e293b', marginBottom: 8 },
+  drawerUtilityButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 14, backgroundColor: '#1e293b', marginBottom: 8 },
   drawerUtilityButtonActive: { backgroundColor: '#1e40af' },
   drawerUtilityButtonDisabled: { opacity: 0.72 },
   drawerUtilityIcon: { width: 20, height: 20 },

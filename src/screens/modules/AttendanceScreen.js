@@ -17,7 +17,7 @@ function todayKey() {
 export default function AttendanceScreen() {
   const tenant = useTenant() || {};
   const { user } = useAuth();
-  const { children = [] } = useData() || {};
+  const { children = [], activeSeedPreset = '', seededAttendanceByDate = {}, seededAttendanceHistoryByChild = {} } = useData() || {};
   const { labels = {}, currentProgram, currentCampus, featureFlags = {} } = tenant;
   const enabled = featureFlags.attendanceModule !== false;
 
@@ -30,6 +30,15 @@ export default function AttendanceScreen() {
   const [error, setError] = useState('');
   const dateKey = todayKey();
   const canWrite = isAdminRole(user?.role) || isStaffRole(user?.role);
+  const isSeededDemo = activeSeedPreset === 'screenshot';
+  const effectiveDateKey = useMemo(() => {
+    if (!isSeededDemo) return dateKey;
+    const seededKeys = Object.keys(seededAttendanceByDate || {}).sort();
+    if (!seededKeys.length) return dateKey;
+    return Array.isArray(seededAttendanceByDate?.[dateKey]) && seededAttendanceByDate[dateKey].length
+      ? dateKey
+      : seededKeys[seededKeys.length - 1];
+  }, [dateKey, isSeededDemo, seededAttendanceByDate]);
 
   const roster = useMemo(() => {
     if (!Array.isArray(children)) return [];
@@ -52,6 +61,16 @@ export default function AttendanceScreen() {
   useEffect(() => {
     if (!enabled) return undefined;
     let mounted = true;
+    if (isSeededDemo) {
+      const nextMarks = {};
+      (Array.isArray(seededAttendanceByDate?.[effectiveDateKey]) ? seededAttendanceByDate[effectiveDateKey] : []).forEach((entry) => {
+        if (entry?.childId && entry?.status) nextMarks[entry.childId] = entry.status;
+      });
+      setMarks(nextMarks);
+      setError('');
+      setLoadingToday(false);
+      return () => { mounted = false; };
+    }
     (async () => {
       setLoadingToday(true);
       setError('');
@@ -70,7 +89,7 @@ export default function AttendanceScreen() {
       }
     })();
     return () => { mounted = false; };
-  }, [dateKey, enabled]);
+  }, [dateKey, effectiveDateKey, enabled, isSeededDemo, seededAttendanceByDate]);
 
   useEffect(() => {
     if (!enabled || !selectedChildId) {
@@ -78,6 +97,11 @@ export default function AttendanceScreen() {
       return undefined;
     }
     let mounted = true;
+    if (isSeededDemo) {
+      setHistoryItems(Array.isArray(seededAttendanceHistoryByChild?.[selectedChildId]) ? seededAttendanceHistoryByChild[selectedChildId] : []);
+      setHistoryLoading(false);
+      return () => { mounted = false; };
+    }
     (async () => {
       setHistoryLoading(true);
       try {
@@ -90,7 +114,7 @@ export default function AttendanceScreen() {
       }
     })();
     return () => { mounted = false; };
-  }, [enabled, selectedChildId]);
+  }, [enabled, isSeededDemo, seededAttendanceHistoryByChild, selectedChildId]);
 
   function setMark(childId, status) {
     logPress('Attendance:Mark', { childId, status });
@@ -121,6 +145,23 @@ export default function AttendanceScreen() {
       .filter((entry) => entry.childId && entry.status);
     if (!entries.length) {
       Alert.alert('Nothing to save', 'Mark at least one student before saving attendance.');
+      return;
+    }
+    if (isSeededDemo) {
+      if (selectedChildId && marks[selectedChildId]) {
+        setHistoryItems((current) => {
+          const nextEntry = {
+            id: `demo-attendance-${selectedChildId}-${effectiveDateKey}`,
+            childId: selectedChildId,
+            recordedFor: effectiveDateKey,
+            dateKey: effectiveDateKey,
+            status: marks[selectedChildId],
+            note: 'Updated in Demo View',
+          };
+          return [nextEntry, ...(Array.isArray(current) ? current.filter((item) => String(item?.dateKey || item?.recordedFor || '') !== effectiveDateKey) : [])];
+        });
+      }
+      Alert.alert('Attendance saved', `Demo View updated for ${effectiveDateKey}.\nPresent: ${counts.present}\nAbsent: ${counts.absent}\nTardy: ${counts.tardy}\nUnmarked: ${counts.unmarked}`);
       return;
     }
     setSaving(true);
@@ -155,7 +196,7 @@ export default function AttendanceScreen() {
       <ScrollView contentContainerStyle={moduleStyles.content} keyboardShouldPersistTaps="handled">
         <View style={moduleStyles.header}>
           <Text style={moduleStyles.title}>Attendance</Text>
-          <Text style={moduleStyles.subtitle}>Daily roster for {labels.myClass || 'My Class'} • {dateKey}</Text>
+          <Text style={moduleStyles.subtitle}>Daily roster for {labels.myClass || 'My Class'} • {effectiveDateKey}</Text>
           <View style={moduleStyles.contextRow}>
             {currentProgram?.name ? (
               <View style={moduleStyles.contextChip}><Text style={moduleStyles.contextChipText}>{currentProgram.name}</Text></View>

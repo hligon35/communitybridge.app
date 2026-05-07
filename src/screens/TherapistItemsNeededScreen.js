@@ -25,7 +25,7 @@ function findRelevantChildren(role, userId, children) {
 
 export default function TherapistItemsNeededScreen({ route }) {
   const { user } = useAuth();
-  const { children = [], sendAdminMemo } = useData();
+  const { children = [], sendAdminMemo, activeSeedPreset = '', seededItemsNeededByChild = {} } = useData();
   const role = normalizeUserRole(user?.role);
   const relevantChildren = useMemo(() => findRelevantChildren(role, user?.id, children), [children, role, user?.id]);
   const requestedChildId = String(route?.params?.childId || '').trim();
@@ -47,6 +47,10 @@ export default function TherapistItemsNeededScreen({ route }) {
     () => relevantChildren.find((child) => child?.id === selectedChildId) || relevantChildren[0] || null,
     [relevantChildren, selectedChildId]
   );
+  const recentRequests = useMemo(() => {
+    if (activeSeedPreset !== 'screenshot' || !selectedChild?.id) return [];
+    return Array.isArray(seededItemsNeededByChild?.[selectedChild.id]) ? seededItemsNeededByChild[selectedChild.id] : [];
+  }, [activeSeedPreset, seededItemsNeededByChild, selectedChild?.id]);
 
   const toggleItem = (item) => {
     setSelectedItems((current) => (
@@ -144,6 +148,19 @@ export default function TherapistItemsNeededScreen({ route }) {
           <TouchableOpacity onPress={submit} style={[styles.primaryBtn, saving ? styles.primaryBtnDisabled : null]} disabled={saving}>
             <Text style={styles.primaryBtnText}>{saving ? 'Sending...' : 'Send request'}</Text>
           </TouchableOpacity>
+
+          {recentRequests.length ? (
+            <View style={styles.historySection}>
+              <Text style={styles.sectionLabel}>Recent requests</Text>
+              {recentRequests.map((item) => (
+                <View key={item.id} style={styles.historyItem}>
+                  <Text style={styles.historyTitle}>{item.item || 'Requested item'}</Text>
+                  <Text style={styles.historyMeta}>{item.category || 'General'} • {item.status || 'requested'}</Text>
+                  <Text style={styles.historyMeta}>Requested by {item.requestedByName || 'Staff'}{item.dueDate ? ` • Due ${item.dueDate}` : ''}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
         </View>
       </ScrollView>
     </ScreenWrapper>
@@ -209,4 +226,8 @@ const styles = StyleSheet.create({
   },
   primaryBtnDisabled: { opacity: 0.7 },
   primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  historySection: { marginTop: 18 },
+  historyItem: { marginTop: 10, borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 12, backgroundColor: '#f8fafc', padding: 12 },
+  historyTitle: { color: '#0f172a', fontWeight: '800' },
+  historyMeta: { marginTop: 4, color: '#64748b' },
 });
