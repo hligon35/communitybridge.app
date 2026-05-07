@@ -1,12 +1,18 @@
 import { useEffect, useState } from 'react';
+import { useData } from '../../../DataContext';
 import { getOrganizationInsights } from '../services/sessionInsightsApi';
 
 export function useOrganizationInsights(options = {}) {
+  const { activeSeedPreset = '', seededOrganizationInsights = null } = useData() || {};
   const [state, setState] = useState({ loading: false, error: '', data: null });
 
   useEffect(() => {
     let disposed = false;
     async function load() {
+      if (activeSeedPreset === 'screenshot' && seededOrganizationInsights && typeof seededOrganizationInsights === 'object') {
+        if (!disposed) setState({ loading: false, error: '', data: seededOrganizationInsights });
+        return;
+      }
       if (!disposed) setState((current) => ({ ...current, loading: true, error: '' }));
       try {
         const result = await getOrganizationInsights(options);
@@ -19,7 +25,7 @@ export function useOrganizationInsights(options = {}) {
     return () => {
       disposed = true;
     };
-  }, [JSON.stringify(options || {})]);
+  }, [activeSeedPreset, seededOrganizationInsights, JSON.stringify(options || {})]);
 
   return state;
 }

@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { initializeApp, getApp, getApps } from 'firebase/app';
-import { getAuth, getReactNativePersistence, initializeAuth } from 'firebase/auth';
+import { getAuth, initializeAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getFunctions } from 'firebase/functions';
 import { getStorage } from 'firebase/storage';
@@ -572,16 +572,6 @@ function ensureReactNativeAuthRegistered() {
   }
 }
 
-function getAsyncStorageMaybe() {
-  try {
-    // eslint-disable-next-line global-require
-    const mod = require('@react-native-async-storage/async-storage');
-    return mod?.default || mod?.AsyncStorage || mod || null;
-  } catch (_) {
-    return null;
-  }
-}
-
 function isAuthComponentNotRegisteredError(e) {
   try {
     const msg = String(e?.message || '');
@@ -633,15 +623,10 @@ export function getAuthInstance() {
     // Prefer explicit React Native Auth initialization to avoid web-targeted builds
     // throwing: "Component auth has not been registered yet".
     if (Platform.OS !== 'web') {
-      const storage = getAsyncStorageMaybe();
-      const persistence = storage ? getReactNativePersistence(storage) : undefined;
-
-      if (persistence) {
-        inst = initializeAuth(getApp(), { persistence });
-      } else {
-        // Fallback: attempt default auth. (This may still fail on some bundles.)
-        inst = getAuth(getApp());
-      }
+      // Native builds should require a fresh login after the app is closed.
+      // Initializing Auth without AsyncStorage-backed persistence keeps the
+      // session in-memory for the current launch only.
+      inst = initializeAuth(getApp());
     } else {
       inst = getAuth(getApp());
     }

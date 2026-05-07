@@ -149,7 +149,7 @@ function HeaderReportFilters({
 export default function ReportsScreen({ route }) {
   const { user } = useAuth();
   const workspaceLabel = getWorkspaceLabel(user?.role);
-  const { children = [], parents = [], urgentMemos = [], messages = [] } = useData();
+  const { children = [], parents = [], urgentMemos = [], messages = [], activeSeedPreset = '', seededExportJobs = [] } = useData();
   const { width } = useWindowDimensions();
   const role = String(user?.role || '').trim().toLowerCase();
   const isBcba = isBcbaRole(user?.role);
@@ -216,6 +216,11 @@ export default function ReportsScreen({ route }) {
   useEffect(() => {
     let mounted = true;
     const loadJobs = async () => {
+      if (activeSeedPreset === 'screenshot') {
+        if (mounted) setJobsError('');
+        if (mounted) setJobs(Array.isArray(seededExportJobs) ? seededExportJobs : []);
+        return;
+      }
       try {
         const result = await Api.listExportJobs(12);
         if (mounted) setJobsError('');
@@ -229,7 +234,7 @@ export default function ReportsScreen({ route }) {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [activeSeedPreset, seededExportJobs]);
 
   const activeSessionSummaries = useMemo(() => {
     if (selectedChild?.id) return sessionSummariesByChild[selectedChild.id] || [];

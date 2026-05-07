@@ -6,6 +6,7 @@ import { useAuth } from './AuthContext';
 import {
   seededScreenshotParents,
   seededScreenshotTherapists,
+  seededScreenshotStaffWorkspacesById,
   seededScreenshotChildren,
   seededScreenshotMoodHistoryByChild,
   seededScreenshotAttendanceByDate,
@@ -16,6 +17,9 @@ import {
   seededScreenshotItemsNeededByChild,
   seededScreenshotSkillAcquisitionByChild,
   seededScreenshotBehaviorTrackingByChild,
+  seededScreenshotDashboardMetrics,
+  seededScreenshotTherapistDocumentationInsights,
+  seededScreenshotOrganizationInsights,
   seededScreenshotMessages,
   seededScreenshotPosts,
   seededScreenshotUrgentMemos,
@@ -135,6 +139,10 @@ export function DataProvider({ children: reactChildren }) {
   const [seededItemsNeededByChild, setSeededItemsNeededByChild] = useState({});
   const [seededSkillAcquisitionByChild, setSeededSkillAcquisitionByChild] = useState({});
   const [seededBehaviorTrackingByChild, setSeededBehaviorTrackingByChild] = useState({});
+  const [seededStaffWorkspacesById, setSeededStaffWorkspacesById] = useState({});
+  const [seededDashboardMetrics, setSeededDashboardMetrics] = useState({});
+  const [seededTherapistDocumentationInsights, setSeededTherapistDocumentationInsights] = useState(null);
+  const [seededOrganizationInsights, setSeededOrganizationInsights] = useState(null);
   const [storageReady, setStorageReady] = useState(false);
 
   function buildScreenshotDirectory() {
@@ -183,6 +191,10 @@ export function DataProvider({ children: reactChildren }) {
       itemsNeededByChild: cloneSeedValue(seededScreenshotItemsNeededByChild),
       skillAcquisitionByChild: cloneSeedValue(seededScreenshotSkillAcquisitionByChild),
       behaviorTrackingByChild: cloneSeedValue(seededScreenshotBehaviorTrackingByChild),
+      staffWorkspacesById: cloneSeedValue(seededScreenshotStaffWorkspacesById),
+      dashboardMetrics: cloneSeedValue(seededScreenshotDashboardMetrics),
+      therapistDocumentationInsights: cloneSeedValue(seededScreenshotTherapistDocumentationInsights),
+      organizationInsights: cloneSeedValue(seededScreenshotOrganizationInsights),
     };
   }
 
@@ -211,6 +223,10 @@ export function DataProvider({ children: reactChildren }) {
     setSeededItemsNeededByChild({});
     setSeededSkillAcquisitionByChild({});
     setSeededBehaviorTrackingByChild({});
+    setSeededStaffWorkspacesById({});
+    setSeededDashboardMetrics({});
+    setSeededTherapistDocumentationInsights(null);
+    setSeededOrganizationInsights(null);
   }
 
   function applyLocalStateSnapshot(snapshot) {
@@ -239,6 +255,10 @@ export function DataProvider({ children: reactChildren }) {
     setSeededItemsNeededByChild(snapshot?.itemsNeededByChild && typeof snapshot.itemsNeededByChild === 'object' ? snapshot.itemsNeededByChild : {});
     setSeededSkillAcquisitionByChild(snapshot?.skillAcquisitionByChild && typeof snapshot.skillAcquisitionByChild === 'object' ? snapshot.skillAcquisitionByChild : {});
     setSeededBehaviorTrackingByChild(snapshot?.behaviorTrackingByChild && typeof snapshot.behaviorTrackingByChild === 'object' ? snapshot.behaviorTrackingByChild : {});
+    setSeededStaffWorkspacesById(snapshot?.staffWorkspacesById && typeof snapshot.staffWorkspacesById === 'object' ? snapshot.staffWorkspacesById : {});
+    setSeededDashboardMetrics(snapshot?.dashboardMetrics && typeof snapshot.dashboardMetrics === 'object' ? snapshot.dashboardMetrics : {});
+    setSeededTherapistDocumentationInsights(snapshot?.therapistDocumentationInsights && typeof snapshot.therapistDocumentationInsights === 'object' ? snapshot.therapistDocumentationInsights : null);
+    setSeededOrganizationInsights(snapshot?.organizationInsights && typeof snapshot.organizationInsights === 'object' ? snapshot.organizationInsights : null);
   }
 
   function resetScreenshotSeed() {
@@ -1212,6 +1232,10 @@ export function DataProvider({ children: reactChildren }) {
       seededItemsNeededByChild,
       seededSkillAcquisitionByChild,
       seededBehaviorTrackingByChild,
+      seededStaffWorkspacesById,
+      seededDashboardMetrics,
+      seededTherapistDocumentationInsights,
+      seededOrganizationInsights,
       blockChatUser,
       unblockChatUser,
       clearAllData,

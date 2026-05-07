@@ -9,7 +9,7 @@ import * as Api from '../Api';
 
 export default function AdminAlertsScreen() {
   const { user } = useAuth();
-  const { therapists = [], children = [] } = useData();
+  const { therapists = [], activeSeedPreset = '', seededStaffWorkspacesById = {}, seededAuditLogs = [] } = useData();
   const isBcba = isBcbaRole(user?.role);
   const [tab, setTab] = useState('tracker');
   const [staffWorkspaceMap, setStaffWorkspaceMap] = useState({});
@@ -21,6 +21,12 @@ export default function AdminAlertsScreen() {
   useEffect(() => {
     let mounted = true;
     (async () => {
+      if (activeSeedPreset === 'screenshot') {
+        setLoadError('');
+        setStaffWorkspaceMap(seededStaffWorkspacesById && typeof seededStaffWorkspacesById === 'object' ? seededStaffWorkspacesById : {});
+        setAuditItems(Array.isArray(seededAuditLogs) ? seededAuditLogs : []);
+        return;
+      }
       try {
         setLoadError('');
         const [workspaceResult, auditResult] = await Promise.all([
@@ -45,7 +51,7 @@ export default function AdminAlertsScreen() {
     return () => {
       mounted = false;
     };
-  }, [therapists]);
+  }, [activeSeedPreset, seededAuditLogs, seededStaffWorkspacesById, therapists]);
 
   const complianceItems = useMemo(() => {
     return (therapists || []).map((staff, index) => {

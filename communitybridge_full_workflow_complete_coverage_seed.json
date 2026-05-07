@@ -230,6 +230,13 @@
       "passwordHint": "Use your review password"
     },
     {
+      "id": "user-parent-dev-switch",
+      "name": "Joshua Simmons",
+      "email": "dev@communitybridge.app",
+      "role": "parent",
+      "passwordHint": "Use your dev switch password"
+    },
+    {
       "id": "user-therapist-review",
       "name": "Jordan Ellis",
       "email": "review-therapist@communitybridge.app",
@@ -361,6 +368,34 @@
         "pickupNotifications": true,
         "updatedAt": "2026-04-27T08:00:00"
       }
+    },
+    {
+      "id": "par-dev-001",
+      "name": "Joshua Simmons ",
+      "phone": "317-555-5199",
+      "email": "dev@communitybridge.app",
+      "avatar": "",
+      "childIds": [
+        "child-001",
+        "child-002"
+      ],
+      "address": "200 Demo Lane, Indianapolis, IN 46200",
+      "relationshipType": "Parent/Guardian",
+      "preferredContactMethod": "app",
+      "languagePreference": "English",
+      "emergencyContact": {
+        "name": "Demo Emergency Contact",
+        "phone": "317-555-5299",
+        "relationship": "Relative"
+      },
+      "authorizedPickup": [
+        {
+          "name": "Joshua Simmons",
+          "phone": "317-555-5199",
+          "relationship": "Parent/Guardian",
+          "photoIdVerified": true
+        }
+      ]
     },
     {
       "id": "par-002",
@@ -578,6 +613,12 @@
           "name": "Alicia Cook",
           "email": "review-parent@communitybridge.app",
           "phone": "317-555-5101"
+        },
+        {
+          "id": "par-dev-001",
+          "name": "Joshua Simmons",
+          "email": "dev@communitybridge.app",
+          "phone": "317-555-5199"
         }
       ],
       "assignedABA": [
@@ -633,6 +674,12 @@
           "name": "Alicia Cook",
           "email": "review-parent@communitybridge.app",
           "phone": "317-555-5101"
+        },
+        {
+          "id": "par-dev-001",
+          "name": "Joshua Simmons",
+          "email": "dev@communitybridge.app",
+          "phone": "317-555-5199"
         }
       ],
       "assignedABA": [

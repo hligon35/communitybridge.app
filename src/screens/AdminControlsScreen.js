@@ -105,7 +105,7 @@ function TrendCard({ title, items, accent = '#2563eb', horizontalInset = 26 }) {
 export default function AdminControlsScreen() {
   const { width } = useWindowDimensions();
   const { user } = useAuth();
-  const { children = [], therapists = [], urgentMemos = [] } = useData();
+  const { children = [], therapists = [], urgentMemos = [], activeSeedPreset = '', seededDashboardMetrics = {} } = useData();
   const isBcba = isBcbaRole(user?.role);
   const isTabletLayout = useIsTabletLayout();
   const estimatedContentWidth = Math.max(320, width - (isTabletLayout ? 320 : 48));
@@ -113,6 +113,26 @@ export default function AdminControlsScreen() {
   const showChartGrid = estimatedContentWidth >= 900;
 
   const summary = useMemo(() => {
+    if (activeSeedPreset === 'screenshot' && seededDashboardMetrics && typeof seededDashboardMetrics === 'object' && Object.keys(seededDashboardMetrics).length) {
+      const staffUtilization = (therapists || []).slice(0, 5).map((staff) => {
+        const count = (children || []).filter((child) => [child?.amTherapist, child?.pmTherapist, child?.bcaTherapist].some((entry) => {
+          if (!entry) return false;
+          if (typeof entry === 'string') return entry === staff?.id;
+          return entry?.id === staff?.id;
+        })).length;
+        return { label: formatStaffUtilizationLabel(staff), value: count };
+      });
+      return {
+        sessionsToday: Number(seededDashboardMetrics?.sessionsToday || 0),
+        cancellations: Number(seededDashboardMetrics?.cancellationsToday || 0),
+        incidents: Number(seededDashboardMetrics?.incidentsToday || 0),
+        overdueNotes: Number(seededDashboardMetrics?.overdueDocumentation || 0),
+        attendanceTrend: Array.isArray(seededDashboardMetrics?.attendanceTrend) ? seededDashboardMetrics.attendanceTrend : [],
+        behaviorTrend: Array.isArray(seededDashboardMetrics?.behaviorTrend) ? seededDashboardMetrics.behaviorTrend : [],
+        staffUtilization,
+      };
+    }
+
     const sessionsToday = (children || []).filter((child) => child?.dropoffTimeISO || child?.pickupTimeISO).length;
     const cancellations = (urgentMemos || []).filter((memo) => /cancel/i.test(String(memo?.title || memo?.body || memo?.note || ''))).length;
     const incidents = (urgentMemos || []).filter((memo) => String(memo?.type || '').toLowerCase() !== 'admin_memo').length;
@@ -128,7 +148,7 @@ export default function AdminControlsScreen() {
       return { label: formatStaffUtilizationLabel(staff), value: count };
     });
     return { sessionsToday, cancellations, incidents, overdueNotes, attendanceTrend, behaviorTrend, staffUtilization };
-  }, [children, therapists, urgentMemos]);
+  }, [activeSeedPreset, children, seededDashboardMetrics, therapists, urgentMemos]);
 
   const alerts = useMemo(() => {
     if (isBcba) {

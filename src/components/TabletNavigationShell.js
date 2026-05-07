@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const checkUpdatesIcon = require('../../assets/icons/checkUpdates.png');
 const BREAK_OPTIONS = [5, 10, 15, 30];
+const MOBILE_BOTTOM_MENU_HEIGHT = 36;
 
 export const MobileAdminShellContext = createContext({
   showMobileAdminShell: false,
@@ -99,6 +100,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
   const [quickLogSaving, setQuickLogSaving] = useState(false);
   const [updateBusy, setUpdateBusy] = useState(false);
   const [breakPickerOpen, setBreakPickerOpen] = useState(false);
+  const [breakEndConfirmOpen, setBreakEndConfirmOpen] = useState(false);
   const [breakEndsAt, setBreakEndsAt] = useState(null);
   const [breakDurationMinutes, setBreakDurationMinutes] = useState(0);
   const [breakNow, setBreakNow] = useState(Date.now());
@@ -263,6 +265,63 @@ export default function TabletNavigationShell({ currentRoute, children }) {
     }).catch(() => null);
     if (endId) scheduledIds.push(endId);
     breakNotificationIdsRef.current = scheduledIds;
+  }
+
+  async function endBreakEarly() {
+    setBreakEndConfirmOpen(false);
+    setBreakPickerOpen(false);
+    setBreakEndsAt(null);
+    setBreakDurationMinutes(0);
+    setBreakNow(Date.now());
+    await cancelBreakNotifications();
+  }
+
+  function handleBreakPress() {
+    if (breakEndsAt && breakNow < breakEndsAt) {
+      setBreakPickerOpen(false);
+      setBreakEndConfirmOpen(true);
+      return;
+    }
+    setBreakEndConfirmOpen(false);
+    setBreakPickerOpen(true);
+  }
+
+  function renderBreakModals() {
+    return (
+      <>
+        <Modal visible={breakPickerOpen} transparent animationType="fade" onRequestClose={() => setBreakPickerOpen(false)}>
+          <TouchableOpacity style={styles.breakModalBackdrop} activeOpacity={1} onPress={() => setBreakPickerOpen(false)}>
+            <TouchableOpacity activeOpacity={1} style={styles.breakModalCard} onPress={() => {}}>
+              <Text style={styles.breakModalTitle}>Break</Text>
+              <Text style={styles.breakModalSubtitle}>Choose a break length.</Text>
+              <View style={styles.breakGrid}>
+                {BREAK_OPTIONS.map((minutes) => (
+                  <TouchableOpacity key={minutes} style={styles.breakOptionButton} onPress={() => startBreak(minutes)}>
+                    <Text style={styles.breakOptionText}>{minutes} min</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
+        <Modal visible={breakEndConfirmOpen} transparent animationType="fade" onRequestClose={() => setBreakEndConfirmOpen(false)}>
+          <TouchableOpacity style={styles.breakModalBackdrop} activeOpacity={1} onPress={() => setBreakEndConfirmOpen(false)}>
+            <TouchableOpacity activeOpacity={1} style={styles.breakModalCard} onPress={() => {}}>
+              <Text style={styles.breakModalTitle}>End Break Early?</Text>
+              <Text style={styles.breakModalSubtitle}>{`You have ${formatBreakCountdown(breakEndsAt, breakNow)} still running left in your break.`}</Text>
+              <View style={styles.breakConfirmActions}>
+                <TouchableOpacity style={styles.breakConfirmSecondaryButton} onPress={() => setBreakEndConfirmOpen(false)}>
+                  <Text style={styles.breakConfirmSecondaryText}>Keep break</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.breakConfirmPrimaryButton} onPress={endBreakEarly}>
+                  <Text style={styles.breakConfirmPrimaryText}>Confirm</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
+      </>
+    );
   }
 
   const linkedTherapistChildren = useMemo(() => {
@@ -442,24 +501,28 @@ export default function TabletNavigationShell({ currentRoute, children }) {
 
   if (!isTabletLayout && !showMobileAdminShell) return children;
 
-  const renderNavItems = (collapsedItems = false, onItemPress = null) => (
+  const renderNavItems = (collapsedItems = false, onItemPress = null, mobileVariant = false) => (
     <>
       {navGroups.map((group) => (
         <View key={group.label} style={styles.group}>
-          {!collapsedItems ? <Text style={styles.groupLabel}>{group.label}</Text> : null}
+          {!collapsedItems ? <Text style={[styles.groupLabel, mobileVariant ? styles.mobileGroupLabel : null]}>{group.label}</Text> : null}
           {group.items.map((item) => {
             const active = currentRoute === (item.target.screen || item.target.root);
             return (
               <TouchableOpacity
                 key={item.key}
-                style={[styles.navItem, active ? styles.navItemActive : null]}
+                style={[
+                  styles.navItem,
+                  mobileVariant ? styles.mobileNavItem : null,
+                  active ? styles.navItemActive : null,
+                ]}
                 onPress={() => {
                   openTarget(item.target);
                   onItemPress?.();
                 }}
               >
-                <MaterialIcons name={item.icon} size={active ? 24 : 20} color="#f8fafc" />
-                {!collapsedItems ? <Text style={[styles.navLabel, active ? styles.navLabelActive : null]}>{item.label}</Text> : null}
+                <MaterialIcons name={item.icon} size={active ? 24 : 20} color={active ? '#f8fafc' : (mobileVariant ? '#1d4ed8' : '#f8fafc')} />
+                {!collapsedItems ? <Text style={[styles.navLabel, mobileVariant ? styles.mobileNavLabel : null, active ? styles.navLabelActive : null]}>{item.label}</Text> : null}
               </TouchableOpacity>
             );
           })}
@@ -481,7 +544,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
                 styles.mobileNavOverlayShell,
                 {
                   top: Math.max(insets.top, 16),
-                  bottom: Math.max(insets.bottom, 0) + 42,
+                  bottom: Math.max(insets.bottom, 0) + MOBILE_BOTTOM_MENU_HEIGHT,
                 },
               ]}
             >
@@ -495,9 +558,9 @@ export default function TabletNavigationShell({ currentRoute, children }) {
                   </TouchableOpacity>
                 </View>
                 <ScrollView style={styles.mobileNavScroll} contentContainerStyle={styles.mobileNavScrollContent} showsVerticalScrollIndicator>
-                  {renderNavItems(false, () => setMobileNavOpen(false))}
+                  {renderNavItems(false, () => setMobileNavOpen(false), true)}
                   <View style={styles.mobileFooterSection}>
-                    <TouchableOpacity style={[styles.mobileBreakButton, breakEndsAt ? styles.mobileBreakButtonActive : null]} onPress={() => setBreakPickerOpen(true)}>
+                    <TouchableOpacity style={[styles.mobileBreakButton, breakEndsAt ? styles.mobileBreakButtonActive : null]} onPress={handleBreakPress}>
                       <MaterialIcons name="free-breakfast" size={20} color="#0f172a" />
                       <Text style={styles.mobileBreakText}>Break</Text>
                       {breakEndsAt ? <Text style={styles.mobileBreakTimerText}>{formatBreakCountdown(breakEndsAt, breakNow)}</Text> : null}
@@ -530,21 +593,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
               <MaterialIcons name={mobileNavOpen ? 'close' : 'menu'} size={22} color="#ffffff" />
             </TouchableOpacity>
           </View>
-          <Modal visible={breakPickerOpen} transparent animationType="fade" onRequestClose={() => setBreakPickerOpen(false)}>
-            <TouchableOpacity style={styles.breakModalBackdrop} activeOpacity={1} onPress={() => setBreakPickerOpen(false)}>
-              <TouchableOpacity activeOpacity={1} style={styles.breakModalCard} onPress={() => {}}>
-                <Text style={styles.breakModalTitle}>Break</Text>
-                <Text style={styles.breakModalSubtitle}>Choose a break length.</Text>
-                <View style={styles.breakGrid}>
-                  {BREAK_OPTIONS.map((minutes) => (
-                    <TouchableOpacity key={minutes} style={styles.breakOptionButton} onPress={() => startBreak(minutes)}>
-                      <Text style={styles.breakOptionText}>{minutes} min</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </TouchableOpacity>
-            </TouchableOpacity>
-          </Modal>
+          {renderBreakModals()}
         </View>
       </MobileAdminShellContext.Provider>
     );
@@ -608,7 +657,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
             </View>
           ) : null}
           <View style={styles.drawerUtilitySection}>
-            <TouchableOpacity style={[styles.drawerUtilityButton, breakEndsAt ? styles.drawerUtilityButtonActive : null]} onPress={() => setBreakPickerOpen(true)}>
+            <TouchableOpacity style={[styles.drawerUtilityButton, breakEndsAt ? styles.drawerUtilityButtonActive : null]} onPress={handleBreakPress}>
               <MaterialIcons name="free-breakfast" size={20} color="#f8fafc" />
               {!collapsed ? <Text style={styles.drawerUtilityText}>Break</Text> : null}
               {!collapsed && breakEndsAt ? <Text style={styles.drawerUtilityTimerText}>{formatBreakCountdown(breakEndsAt, breakNow)}</Text> : null}
@@ -629,21 +678,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
         </View>
 
           <View style={[styles.contentWrap, { paddingTop: 12, paddingBottom: Math.max(insets.bottom, 12) }]}>
-            <Modal visible={breakPickerOpen} transparent animationType="fade" onRequestClose={() => setBreakPickerOpen(false)}>
-              <TouchableOpacity style={styles.breakModalBackdrop} activeOpacity={1} onPress={() => setBreakPickerOpen(false)}>
-                <TouchableOpacity activeOpacity={1} style={styles.breakModalCard} onPress={() => {}}>
-                  <Text style={styles.breakModalTitle}>Break</Text>
-                  <Text style={styles.breakModalSubtitle}>Choose a break length.</Text>
-                  <View style={styles.breakGrid}>
-                    {BREAK_OPTIONS.map((minutes) => (
-                      <TouchableOpacity key={minutes} style={styles.breakOptionButton} onPress={() => startBreak(minutes)}>
-                        <Text style={styles.breakOptionText}>{minutes} min</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </TouchableOpacity>
-              </TouchableOpacity>
-            </Modal>
+            {renderBreakModals()}
             <Modal visible={!!quickLogDraft} transparent animationType="fade" onRequestClose={() => !quickLogSaving && setQuickLogDraft(null)}>
               <View style={styles.modalOverlay}>
                 <View style={styles.modalCard}>
@@ -698,9 +733,12 @@ const styles = StyleSheet.create({
   drawerToggleText: { color: '#e2e8f0', fontWeight: '700', marginLeft: 10 },
   group: { marginBottom: 18 },
   groupLabel: { color: '#94a3b8', fontSize: 11, fontWeight: '800', textTransform: 'uppercase', marginBottom: 3 },
+  mobileGroupLabel: { color: '#64748b' },
   navItem: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, paddingVertical: 10, paddingHorizontal: 12, marginBottom: 4.5, backgroundColor: '#172554' },
+  mobileNavItem: { backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#dbe2ea' },
   navItemActive: { backgroundColor: '#2563eb' },
   navLabel: { color: '#f8fafc', fontWeight: '700', marginLeft: 10, fontSize: 15 },
+  mobileNavLabel: { color: '#0f172a' },
   navLabelActive: { color: '#f8fafc', fontSize: 16 },
   drawerQuickActionWrap: { marginBottom: 12, position: 'relative' },
   drawerQuickActionButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 14, backgroundColor: '#1d4ed8' },
@@ -739,7 +777,7 @@ const styles = StyleSheet.create({
   quickHeaderMenuText: { color: '#0f172a', fontWeight: '700' },
   screenWrap: { flex: 1, borderRadius: 24, overflow: 'hidden', backgroundColor: '#f8fafc' },
   mobileScreenWrap: { flex: 1, borderRadius: 0, overflow: 'visible', backgroundColor: '#ffffff' },
-  mobileNavOverlayShell: { position: 'absolute', left: 0, right: 0, zIndex: 20 },
+  mobileNavOverlayShell: { position: 'absolute', left: 0, right: 0, zIndex: 20, backgroundColor: '#f8fafc' },
   mobileNavOverlay: { flex: 1, backgroundColor: '#f8fafc', paddingHorizontal: 16, borderTopWidth: 1, borderTopColor: '#e2e8f0' },
   mobileNavHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
   mobileNavTitle: { fontSize: 18, fontWeight: '800', color: '#0f172a', lineHeight: 24, maxWidth: 260 },
@@ -752,12 +790,12 @@ const styles = StyleSheet.create({
     borderTopColor: '#e2e8f0',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 36,
+    minHeight: MOBILE_BOTTOM_MENU_HEIGHT,
     paddingTop: 0,
   },
   mobileBottomMenuButton: {
     width: '100%',
-    height: 36,
+    height: MOBILE_BOTTOM_MENU_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#1d4ed8',
@@ -781,6 +819,11 @@ const styles = StyleSheet.create({
   breakGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   breakOptionButton: { width: '48%', borderRadius: 12, borderWidth: 1, borderColor: '#dbe2ea', backgroundColor: '#f8fafc', paddingVertical: 14, alignItems: 'center', marginBottom: 10 },
   breakOptionText: { color: '#0f172a', fontWeight: '800' },
+  breakConfirmActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12 },
+  breakConfirmSecondaryButton: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10, backgroundColor: '#e2e8f0', marginRight: 8 },
+  breakConfirmSecondaryText: { color: '#0f172a', fontWeight: '700' },
+  breakConfirmPrimaryButton: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10, backgroundColor: '#2563eb' },
+  breakConfirmPrimaryText: { color: '#ffffff', fontWeight: '700' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.45)', justifyContent: 'center', padding: 24 },
   modalCard: { borderRadius: 20, backgroundColor: '#ffffff', padding: 18 },
   modalTitle: { fontSize: 18, fontWeight: '800', color: '#0f172a' },

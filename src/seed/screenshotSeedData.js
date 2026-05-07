@@ -84,6 +84,25 @@ function dedupeByKey(items, keySelector) {
   return Array.from(next.values());
 }
 
+function toShortDateLabel(value) {
+  const iso = normalizeIso(value, '');
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleDateString([], { weekday: 'short' });
+  } catch (_) {
+    return '—';
+  }
+}
+
+function titleCaseWords(value) {
+  return String(value || '')
+    .trim()
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ');
+}
+
 const organization = raw.organization || {};
 const firstProgram = (Array.isArray(raw.programs) ? raw.programs : [])[0] || {};
 const firstCampus = (Array.isArray(raw.campuses) ? raw.campuses : [])[0] || {};
@@ -96,10 +115,12 @@ const progressReportsRaw = Array.isArray(raw.progressReports) ? raw.progressRepo
 const nextSessionsRaw = Array.isArray(raw.nextSessions) ? raw.nextSessions : [];
 const moodScoresRaw = Array.isArray(raw.moodScores) ? raw.moodScores : [];
 const sessionSummariesRaw = Array.isArray(raw.sessionSummaries) ? raw.sessionSummaries : [];
+const activeSessionStatesRaw = Array.isArray(raw.activeSessionStates) ? raw.activeSessionStates : [];
 const timeChangeProposalsRaw = Array.isArray(raw.timeChangeProposals) ? raw.timeChangeProposals : [];
 const urgentMemosRaw = Array.isArray(raw.urgentMemos) ? raw.urgentMemos : [];
 const exportJobsRaw = Array.isArray(raw.exportJobs) ? raw.exportJobs : [];
 const auditLogsRaw = Array.isArray(raw.auditLogs) ? raw.auditLogs : [];
+const dashboardMetricsRaw = raw.dashboardMetrics && typeof raw.dashboardMetrics === 'object' ? raw.dashboardMetrics : {};
 const insurancePlansRaw = Array.isArray(raw.insurancePlans) ? raw.insurancePlans : [];
 const authorizationsRaw = Array.isArray(raw.authorizations) ? raw.authorizations : [];
 const invoicesRaw = Array.isArray(raw.invoices) ? raw.invoices : [];
@@ -170,6 +191,47 @@ const seededScreenshotStaff = dedupeByKey(
   [...therapistEntities, ...staffEntities, ...reviewUserEntities],
   (entry) => String(entry?.id || entry?.userId || entry?.email || entry?.name || '').trim().toLowerCase()
 );
+
+const complianceDocumentTemplates = dedupeByKey(
+  [...programDocumentsRaw, ...campusDocumentsRaw],
+  (entry, index) => String(entry?.id || entry?.url || `compliance-doc-${index + 1}`).trim().toLowerCase()
+).map((entry, index) => ({
+  id: String(entry?.id || `compliance-doc-${index + 1}`),
+  title: String(entry?.title || 'Compliance document').trim(),
+  url: String(entry?.url || DEFAULT_RESOURCE_URL).trim(),
+  uploadedAt: normalizeIso(entry?.updatedAt, entry?.createdAt || '') || '',
+  mimeType: String(entry?.mimeType || 'application/pdf').trim(),
+}));
+
+const seededScreenshotStaffWorkspacesById = seededScreenshotStaff.reduce((accumulator, staff, index) => {
+  const expirationPool = ['2026-05-12', '2026-05-28', '2026-06-18', '2026-07-22'];
+  const expiration = expirationPool[index % expirationPool.length];
+  const docs = complianceDocumentTemplates.length
+    ? [
+        complianceDocumentTemplates[index % complianceDocumentTemplates.length],
+        complianceDocumentTemplates[(index + 1) % complianceDocumentTemplates.length],
+      ].map((item, docIndex) => ({
+        ...clone(item),
+        id: `${staff.id}-doc-${docIndex + 1}`,
+      }))
+    : [];
+
+  accumulator[staff.id] = {
+    id: staff.id,
+    credentials: {
+      certificationExpiration: `${expiration}T17:00:00`,
+      certificationType: String(staff?.role || 'staff').trim(),
+      lastReviewedAt: normalizeIso('2026-04-25T09:00:00', '') || '',
+    },
+    availability: {
+      status: index % 2 === 0 ? 'assigned' : 'available',
+    },
+    documents: docs,
+    updatedAt: normalizeIso('2026-05-01T08:00:00', '') || '',
+    createdAt: normalizeIso('2026-04-20T08:00:00', '') || '',
+  };
+  return accumulator;
+}, {});
 
 const peopleByAnyId = new Map();
 function registerPerson(entity) {
@@ -425,6 +487,40 @@ const seededScreenshotBehaviorTrackingByChild = behaviorTrackingDataRaw.reduce((
   });
   return accumulator;
 }, {});
+
+const seededScreenshotDashboardMetrics = (() => {
+  const attendanceTrend = Array.isArray(dashboardMetricsRaw?.attendanceTrend)
+    ? dashboardMetricsRaw.attendanceTrend.map((item) => ({
+        label: toShortDateLabel(item?.date),
+        value: toNumber(item?.present, 0) || 0,
+      }))
+    : [];
+
+  const behaviorTrend = Array.from(
+    behaviorTrackingDataRaw.reduce((accumulator, item) => {
+      const label = String(item?.behavior || '').trim();
+      if (!label) return accumulator;
+      const current = accumulator.get(label) || 0;
+      accumulator.set(label, current + (toNumber(item?.frequency, 0) || 0));
+      return accumulator;
+    }, new Map()).entries()
+  )
+    .sort((left, right) => right[1] - left[1])
+    .slice(0, 4)
+    .map(([label, value]) => ({ label: titleCaseWords(label), value }));
+
+  return {
+    sessionsToday: toNumber(dashboardMetricsRaw?.sessionsToday, 0) || 0,
+    cancellationsToday: toNumber(dashboardMetricsRaw?.cancellationsToday, 0) || 0,
+    incidentsToday: toNumber(dashboardMetricsRaw?.incidentsToday, 0) || 0,
+    overdueDocumentation: toNumber(dashboardMetricsRaw?.overdueDocumentation, 0) || 0,
+    authorizationRiskCount: toNumber(dashboardMetricsRaw?.authorizationRiskCount, 0) || 0,
+    unreadUrgentMemoCount: toNumber(dashboardMetricsRaw?.unreadUrgentMemoCount, 0) || 0,
+    exportFailureCount: toNumber(dashboardMetricsRaw?.exportFailureCount, 0) || 0,
+    attendanceTrend,
+    behaviorTrend,
+  };
+})();
 
 const nextSessionByChildId = new Map();
 nextSessionsRaw.forEach((session, index) => {
@@ -717,9 +813,114 @@ const seededScreenshotAuditLogs = auditLogsRaw.map((item, index) => ({
   createdAt: normalizeIso(item?.createdAt, new Date().toISOString()) || new Date().toISOString(),
 }));
 
+const seededScreenshotTherapistDocumentationInsights = (() => {
+  const childNameById = new Map(seededScreenshotChildren.map((child) => [child.id, child.name || 'Learner']));
+  const items = activeSessionStatesRaw
+    .map((item, index) => {
+      const childId = getEntryChildId(item);
+      const status = String(item?.status || '').trim().toLowerCase();
+      const dateSource = item?.submittedAt || item?.pausedAt || item?.startedAt || '';
+      return {
+        id: String(item?.id || `doc-state-${index + 1}`),
+        sessionId: String(item?.sessionId || '').trim(),
+        childId,
+        childName: childNameById.get(childId) || 'Learner',
+        status,
+        statusLabel: titleCaseWords(status || 'needs review'),
+        sessionDateLabel: toShortDateLabel(dateSource),
+      };
+    })
+    .filter((item) => item.childId);
+
+  const approvedCount = items.filter((item) => item.status === 'approved').length;
+  const generatedCount = sessionSummariesRaw.length || items.filter((item) => ['submitted', 'approved', 'rejected'].includes(item.status)).length;
+
+  return {
+    stats: {
+      sessionsEnded: items.length,
+      summariesGenerated: generatedCount,
+      summariesApproved: approvedCount,
+      overdueSummaries: toNumber(dashboardMetricsRaw?.overdueDocumentation, 0) || items.filter((item) => ['active', 'paused'].includes(item.status)).length,
+    },
+    items,
+  };
+})();
+
+const seededScreenshotOrganizationInsights = (() => {
+  const childById = new Map(seededScreenshotChildren.map((child) => [child.id, child]));
+  const summaries = seededScreenshotSessionSummaries;
+  const approvedSummaries = summaries.filter((item) => String(item?.status || '').trim().toLowerCase() === 'approved');
+  const sessionsByCampus = new Map();
+  const sessionsByProgram = new Map();
+
+  summaries.forEach((summary) => {
+    const child = childById.get(String(summary?.childId || '').trim());
+    if (!child) return;
+
+    const campusKey = String(child?.campusId || child?.campusName || '').trim() || 'campus-unknown';
+    const programKey = String(child?.programId || child?.programName || '').trim() || 'program-unknown';
+    const normalizedStatus = String(summary?.status || '').trim().toLowerCase();
+    const normalizedSummary = summary?.summary && typeof summary.summary === 'object' ? summary.summary : {};
+    const moodValue = toNumber(normalizedSummary?.moodScore?.selectedValue, null);
+    const behaviorEvents = Array.isArray(normalizedSummary?.interferingBehaviors)
+      ? normalizedSummary.interferingBehaviors.reduce((sum, item) => sum + (toNumber(item?.frequency, 0) || 0), 0)
+      : 0;
+
+    const nextCampus = sessionsByCampus.get(campusKey) || {
+      id: campusKey,
+      name: String(child?.campusName || 'Campus').trim(),
+      sessions: 0,
+      approvedSummaries: 0,
+      moodValues: [],
+      behaviorEvents: 0,
+    };
+    nextCampus.sessions += 1;
+    if (normalizedStatus === 'approved') nextCampus.approvedSummaries += 1;
+    if (Number.isFinite(moodValue)) nextCampus.moodValues.push(moodValue);
+    nextCampus.behaviorEvents += behaviorEvents;
+    sessionsByCampus.set(campusKey, nextCampus);
+
+    const nextProgram = sessionsByProgram.get(programKey) || {
+      id: programKey,
+      title: String(child?.programName || 'Program').trim(),
+      childIds: new Set(),
+      approvedSummaries: 0,
+      sessions: 0,
+    };
+    nextProgram.sessions += 1;
+    nextProgram.childIds.add(child.id);
+    if (normalizedStatus === 'approved') nextProgram.approvedSummaries += 1;
+    sessionsByProgram.set(programKey, nextProgram);
+  });
+
+  return {
+    stats: {
+      activeChildren: seededScreenshotChildren.filter((child) => !child?.inactive).length,
+      sessions: summaries.length,
+      approvedSummaries: approvedSummaries.length,
+      activeCampuses: sessionsByCampus.size,
+    },
+    campuses: Array.from(sessionsByCampus.values()).map((item) => ({
+      id: item.id,
+      name: item.name,
+      sessions: item.sessions,
+      approvedSummaries: item.approvedSummaries,
+      averageMood: item.moodValues.length ? Math.round((item.moodValues.reduce((sum, value) => sum + value, 0) / item.moodValues.length) * 10) / 10 : null,
+      behaviorEvents: item.behaviorEvents,
+      approvalRateLabel: item.sessions ? `${Math.round((item.approvedSummaries / item.sessions) * 100)}%` : '0%',
+    })),
+    programs: Array.from(sessionsByProgram.values()).map((item) => ({
+      id: item.id,
+      title: item.title,
+      statusLabel: `${item.approvedSummaries}/${item.sessions} approved • ${item.childIds.size} learners`,
+    })),
+  };
+})();
+
 module.exports = {
   seededScreenshotParents,
   seededScreenshotTherapists: seededScreenshotStaff,
+  seededScreenshotStaffWorkspacesById,
   seededScreenshotChildren,
   seededScreenshotMoodHistoryByChild,
   seededScreenshotAttendanceByDate,
@@ -730,6 +931,9 @@ module.exports = {
   seededScreenshotItemsNeededByChild,
   seededScreenshotSkillAcquisitionByChild,
   seededScreenshotBehaviorTrackingByChild,
+  seededScreenshotDashboardMetrics,
+  seededScreenshotTherapistDocumentationInsights,
+  seededScreenshotOrganizationInsights,
   seededScreenshotMessages,
   seededScreenshotPosts,
   seededScreenshotUrgentMemos,

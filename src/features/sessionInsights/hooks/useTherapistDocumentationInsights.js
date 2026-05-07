@@ -1,12 +1,18 @@
 import { useEffect, useState } from 'react';
+import { useData } from '../../../DataContext';
 import { getTherapistDocumentationInsights } from '../services/sessionInsightsApi';
 
 export function useTherapistDocumentationInsights(options = {}) {
+  const { activeSeedPreset = '', seededTherapistDocumentationInsights = null } = useData() || {};
   const [state, setState] = useState({ loading: false, error: '', data: null });
 
   useEffect(() => {
     let disposed = false;
     async function load() {
+      if (activeSeedPreset === 'screenshot' && seededTherapistDocumentationInsights && typeof seededTherapistDocumentationInsights === 'object') {
+        if (!disposed) setState({ loading: false, error: '', data: seededTherapistDocumentationInsights });
+        return;
+      }
       if (!disposed) setState((current) => ({ ...current, loading: true, error: '' }));
       try {
         const result = await getTherapistDocumentationInsights(options);
@@ -19,7 +25,7 @@ export function useTherapistDocumentationInsights(options = {}) {
     return () => {
       disposed = true;
     };
-  }, [JSON.stringify(options || {})]);
+  }, [activeSeedPreset, seededTherapistDocumentationInsights, JSON.stringify(options || {})]);
 
   return state;
 }

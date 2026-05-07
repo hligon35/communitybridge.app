@@ -22,7 +22,7 @@ export default function ExportDataScreen(){
   const navigation = useNavigation();
   const { user } = useAuth();
   const workspaceLabel = getWorkspaceLabel(user?.role);
-  const { messages = [], children = [], therapists = [], parents = [], urgentMemos = [] } = useData();
+  const { messages = [], children = [], therapists = [], parents = [], urgentMemos = [], activeSeedPreset = '', seededExportJobs = [] } = useData();
   const [selectedCategory, setSelectedCategory] = useState('reports');
   const [selectedFormat, setSelectedFormat] = useState('csv');
   const [jobs, setJobs] = useState([]);
@@ -38,6 +38,11 @@ export default function ExportDataScreen(){
   const recordCount = useMemo(() => selectedCategory === 'billing' ? children.length : messages.length + children.length, [children.length, messages.length, selectedCategory]);
 
   async function loadJobs() {
+    if (activeSeedPreset === 'screenshot') {
+      setJobsError('');
+      setJobs(Array.isArray(seededExportJobs) ? seededExportJobs : []);
+      return;
+    }
     try {
       const result = await Api.listExportJobs(12);
       setJobsError('');
@@ -50,7 +55,7 @@ export default function ExportDataScreen(){
 
   useEffect(() => {
     loadJobs();
-  }, []);
+  }, [activeSeedPreset, seededExportJobs]);
 
   function openArtifact(url) {
     if (!url) return;
