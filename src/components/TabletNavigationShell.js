@@ -1,4 +1,4 @@
-import React, { createContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Image, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as Updates from 'expo-updates';
@@ -14,6 +14,7 @@ import { humanizeScreenLabel } from '../utils/screenLabels';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const checkUpdatesIcon = require('../../assets/icons/checkUpdates.png');
+const BREAK_OPTIONS = [5, 10, 15, 30];
 
 export const MobileAdminShellContext = createContext({
   showMobileAdminShell: false,
@@ -38,6 +39,50 @@ function openTarget(target) {
   navigationRef.navigate('Main', { screen: target.root, ...(target.params ? { params: target.params } : {}) });
 }
 
+let notificationsModule = null;
+function getNotificationsModule() {
+  if (notificationsModule) return notificationsModule;
+  try {
+    notificationsModule = require('expo-notifications');
+    return notificationsModule;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function ensureBreakNotificationsReady() {
+  if (Platform.OS === 'web') return { ok: false, reason: 'web-unsupported' };
+  const Notifications = getNotificationsModule();
+  if (!Notifications) return { ok: false, reason: 'missing-deps' };
+  try {
+    const existing = await Notifications.getPermissionsAsync();
+    let status = existing?.status;
+    if (status !== 'granted') {
+      const requested = await Notifications.requestPermissionsAsync();
+      status = requested?.status;
+    }
+    if (status !== 'granted') return { ok: false, reason: 'permission-denied' };
+    if (Platform.OS === 'android' && typeof Notifications.setNotificationChannelAsync === 'function') {
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'default',
+        importance: Notifications.AndroidImportance.HIGH,
+        sound: 'default',
+      });
+    }
+    return { ok: true, Notifications };
+  } catch (error) {
+    return { ok: false, reason: 'setup-failed', message: error?.message || String(error) };
+  }
+}
+
+function formatBreakCountdown(endAt, now = Date.now()) {
+  const remainingMs = Math.max(0, Number(endAt || 0) - Number(now || 0));
+  const totalSeconds = Math.ceil(remainingMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
 export default function TabletNavigationShell({ currentRoute, children }) {
   const isTabletLayout = useIsTabletLayout();
   const { width, height } = useWindowDimensions();
@@ -53,6 +98,11 @@ export default function TabletNavigationShell({ currentRoute, children }) {
   const [quickLogBody, setQuickLogBody] = useState('');
   const [quickLogSaving, setQuickLogSaving] = useState(false);
   const [updateBusy, setUpdateBusy] = useState(false);
+  const [breakPickerOpen, setBreakPickerOpen] = useState(false);
+  const [breakEndsAt, setBreakEndsAt] = useState(null);
+  const [breakDurationMinutes, setBreakDurationMinutes] = useState(0);
+  const [breakNow, setBreakNow] = useState(Date.now());
+  const breakNotificationIdsRef = useRef([]);
   const isStaff = isStaffRole(user?.role);
   const showAdminWorkspace = canAccessAdminWorkspace(user?.role);
   const isParentWorkspace = !showAdminWorkspace && !isStaff;
@@ -127,6 +177,93 @@ export default function TabletNavigationShell({ currentRoute, children }) {
     setQuickLogBody('');
     setQuickLogSaving(false);
   }, [currentRoute]);
+
+  useEffect(() => {
+    if (!breakEndsAt) return undefined;
+    setBreakNow(Date.now());
+    const timerId = setInterval(() => {
+      setBreakNow(Date.now());
+    }, 1000);
+    return () => clearInterval(timerId);
+  }, [breakEndsAt]);
+
+  useEffect(() => {
+    if (!breakEndsAt) return;
+    if (breakNow < breakEndsAt) return;
+    setBreakEndsAt(null);
+    setBreakDurationMinutes(0);
+  }, [breakEndsAt, breakNow]);
+
+  useEffect(() => {
+    const Notifications = getNotificationsModule();
+    if (!Notifications || typeof Notifications.addNotificationReceivedListener !== 'function') return undefined;
+    const subscription = Notifications.addNotificationReceivedListener((event) => {
+      const data = event?.request?.content?.data || {};
+      if (data?.type !== 'break-end') return;
+      setBreakEndsAt(null);
+      setBreakDurationMinutes(0);
+      Alert.alert('Break complete', `Your ${data?.minutes || 0}-minute break has ended.`);
+    });
+    return () => {
+      subscription?.remove?.();
+    };
+  }, []);
+
+  async function cancelBreakNotifications() {
+    const Notifications = getNotificationsModule();
+    if (!Notifications || typeof Notifications.cancelScheduledNotificationAsync !== 'function') {
+      breakNotificationIdsRef.current = [];
+      return;
+    }
+    const ids = [...breakNotificationIdsRef.current];
+    breakNotificationIdsRef.current = [];
+    await Promise.all(ids.map((id) => Notifications.cancelScheduledNotificationAsync(id).catch(() => {})));
+  }
+
+  async function startBreak(minutes) {
+    const durationMinutes = Number(minutes);
+    if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) return;
+
+    const endAt = Date.now() + (durationMinutes * 60 * 1000);
+    setBreakPickerOpen(false);
+    setBreakDurationMinutes(durationMinutes);
+    setBreakEndsAt(endAt);
+    setBreakNow(Date.now());
+    await cancelBreakNotifications();
+
+    const setup = await ensureBreakNotificationsReady();
+    if (!setup.ok || !setup.Notifications) return;
+
+    const Notifications = setup.Notifications;
+    const scheduledIds = [];
+
+    if (durationMinutes > 2) {
+      const warningId = await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'Break reminder',
+          body: '2 minutes left on your break.',
+          sound: 'default',
+          channelId: 'default',
+          data: { type: 'break-warning', minutes: durationMinutes },
+        },
+        trigger: { seconds: Math.max(1, durationMinutes * 60 - 120) },
+      }).catch(() => null);
+      if (warningId) scheduledIds.push(warningId);
+    }
+
+    const endId = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'Break complete',
+        body: `Your ${durationMinutes}-minute break is over.`,
+        sound: 'default',
+        channelId: 'default',
+        data: { type: 'break-end', minutes: durationMinutes },
+      },
+      trigger: { seconds: Math.max(1, durationMinutes * 60) },
+    }).catch(() => null);
+    if (endId) scheduledIds.push(endId);
+    breakNotificationIdsRef.current = scheduledIds;
+  }
 
   const linkedTherapistChildren = useMemo(() => {
     const therapistId = String(user?.id || '').trim();
@@ -321,7 +458,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
                   onItemPress?.();
                 }}
               >
-                <MaterialIcons name={item.icon} size={20} color={active ? '#0f172a' : '#cbd5e1'} />
+                <MaterialIcons name={item.icon} size={active ? 24 : 20} color="#000000" />
                 {!collapsedItems ? <Text style={[styles.navLabel, active ? styles.navLabelActive : null]}>{item.label}</Text> : null}
               </TouchableOpacity>
             );
@@ -338,43 +475,73 @@ export default function TabletNavigationShell({ currentRoute, children }) {
           <View style={[styles.contentWrap, styles.mobileContentWrap, { paddingTop: 0, paddingBottom: 0 }]}>
             <View style={styles.mobileScreenWrap}>{children}</View>
           </View>
+          {mobileNavOpen ? (
+            <View
+              style={[
+                styles.mobileNavOverlayShell,
+                {
+                  top: Math.max(insets.top, 16),
+                  bottom: Math.max(insets.bottom, 0) + 42,
+                },
+              ]}
+            >
+              <View style={styles.mobileNavOverlay}>
+                <View style={styles.mobileNavHeader}>
+                  <View>
+                    <Text style={styles.mobileNavTitle} numberOfLines={2}>{drawerGreeting}</Text>
+                  </View>
+                  <TouchableOpacity style={styles.mobileNavCloseButton} onPress={() => setMobileNavOpen(false)} accessibilityLabel="Close navigation menu">
+                    <MaterialIcons name="close" size={24} color="#0f172a" />
+                  </TouchableOpacity>
+                </View>
+                <ScrollView style={styles.mobileNavScroll} contentContainerStyle={styles.mobileNavScrollContent} showsVerticalScrollIndicator>
+                  {renderNavItems(false, () => setMobileNavOpen(false))}
+                  <TouchableOpacity style={[styles.mobileBreakButton, breakEndsAt ? styles.mobileBreakButtonActive : null]} onPress={() => setBreakPickerOpen(true)}>
+                    <MaterialIcons name="free-breakfast" size={20} color="#0f172a" />
+                    <Text style={styles.mobileBreakText}>Break</Text>
+                    {breakEndsAt ? <Text style={styles.mobileBreakTimerText}>{formatBreakCountdown(breakEndsAt, breakNow)}</Text> : null}
+                  </TouchableOpacity>
+                  <View style={styles.mobileUtilitySection}>
+                    <TouchableOpacity style={styles.mobileUtilityButton} onPress={() => { setMobileNavOpen(false); openTarget({ root: 'Settings', screen: 'Help' }); }}>
+                      <MaterialIcons name="help-outline" size={20} color="#1d4ed8" />
+                      <Text style={styles.mobileUtilityText}>Help</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.mobileUtilityButton, updateBusy ? styles.mobileUtilityButtonDisabled : null]} onPress={checkForOtaUpdate} disabled={updateBusy}>
+                      <Image source={checkUpdatesIcon} style={[styles.mobileUtilityIcon, updateBusy ? styles.drawerUtilityIconDisabled : null]} resizeMode="contain" />
+                      <Text style={styles.mobileUtilityText}>{updateBusy ? 'Checking for updates...' : 'Check for updates'}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.mobileLogoutButton} onPress={() => { setMobileNavOpen(false); logout?.(); }}>
+                      <MaterialIcons name="logout" size={20} color="#b91c1c" />
+                      <Text style={styles.mobileLogoutText}>Logout</Text>
+                    </TouchableOpacity>
+                  </View>
+                </ScrollView>
+              </View>
+            </View>
+          ) : null}
           <View style={[styles.mobileBottomMenuShell, { paddingBottom: Math.max(insets.bottom, 0) }]}>
             <TouchableOpacity
               style={styles.mobileBottomMenuButton}
-              onPress={() => setMobileNavOpen(true)}
-              accessibilityLabel="Open navigation menu"
+              onPress={() => setMobileNavOpen((current) => !current)}
+              accessibilityLabel={mobileNavOpen ? 'Close navigation menu' : 'Open navigation menu'}
             >
-              <MaterialIcons name="menu" size={22} color="#ffffff" />
+              <MaterialIcons name={mobileNavOpen ? 'close' : 'menu'} size={22} color="#ffffff" />
             </TouchableOpacity>
           </View>
-          <Modal visible={mobileNavOpen} animationType="slide" transparent={false} onRequestClose={() => setMobileNavOpen(false)}>
-            <View style={[styles.mobileNavOverlay, { paddingTop: Math.max(insets.top, 16), paddingBottom: Math.max(insets.bottom, 16) }]}>
-              <View style={styles.mobileNavHeader}>
-                <View>
-                  <Text style={styles.mobileNavTitle}>Navigation</Text>
+          <Modal visible={breakPickerOpen} transparent animationType="fade" onRequestClose={() => setBreakPickerOpen(false)}>
+            <TouchableOpacity style={styles.breakModalBackdrop} activeOpacity={1} onPress={() => setBreakPickerOpen(false)}>
+              <TouchableOpacity activeOpacity={1} style={styles.breakModalCard} onPress={() => {}}>
+                <Text style={styles.breakModalTitle}>Break</Text>
+                <Text style={styles.breakModalSubtitle}>Choose a break length.</Text>
+                <View style={styles.breakGrid}>
+                  {BREAK_OPTIONS.map((minutes) => (
+                    <TouchableOpacity key={minutes} style={styles.breakOptionButton} onPress={() => startBreak(minutes)}>
+                      <Text style={styles.breakOptionText}>{minutes} min</Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
-                <TouchableOpacity style={styles.mobileNavCloseButton} onPress={() => setMobileNavOpen(false)} accessibilityLabel="Close navigation menu">
-                  <MaterialIcons name="close" size={24} color="#0f172a" />
-                </TouchableOpacity>
-              </View>
-              <ScrollView style={styles.mobileNavScroll} contentContainerStyle={styles.mobileNavScrollContent} showsVerticalScrollIndicator>
-                {renderNavItems(false, () => setMobileNavOpen(false))}
-                <View style={styles.mobileUtilitySection}>
-                  <TouchableOpacity style={styles.mobileUtilityButton} onPress={() => { setMobileNavOpen(false); openTarget({ root: 'Settings', screen: 'Help' }); }}>
-                    <MaterialIcons name="help-outline" size={20} color="#1d4ed8" />
-                    <Text style={styles.mobileUtilityText}>Help</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[styles.mobileUtilityButton, updateBusy ? styles.mobileUtilityButtonDisabled : null]} onPress={checkForOtaUpdate} disabled={updateBusy}>
-                    <Image source={checkUpdatesIcon} style={[styles.mobileUtilityIcon, updateBusy ? styles.drawerUtilityIconDisabled : null]} resizeMode="contain" />
-                    <Text style={styles.mobileUtilityText}>{updateBusy ? 'Checking for updates...' : 'Check for updates'}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.mobileLogoutButton} onPress={() => { setMobileNavOpen(false); logout?.(); }}>
-                    <MaterialIcons name="logout" size={20} color="#b91c1c" />
-                    <Text style={styles.mobileLogoutText}>Logout</Text>
-                  </TouchableOpacity>
-                </View>
-              </ScrollView>
-            </View>
+              </TouchableOpacity>
+            </TouchableOpacity>
           </Modal>
         </View>
       </MobileAdminShellContext.Provider>
@@ -492,7 +659,7 @@ const styles = StyleSheet.create({
   shell: { flex: 1, flexDirection: 'row', backgroundColor: '#e2e8f0' },
   drawer: { width: 280, backgroundColor: '#0f172a', paddingHorizontal: 16 },
   drawerCollapsed: { width: 92, paddingHorizontal: 10 },
-  drawerBrandWrap: { alignItems: 'flex-start', justifyContent: 'center', marginBottom: 14, minHeight: 48 },
+  drawerBrandWrap: { alignItems: 'flex-start', justifyContent: 'center', marginBottom: 8, minHeight: 48 },
   drawerBrandWrapCollapsed: { alignItems: 'center' },
   drawerScreenTitle: { color: '#f8fafc', fontWeight: '800', fontSize: 28, lineHeight: 32 },
   drawerIdentityWrap: { marginBottom: 16, paddingHorizontal: 6 },
@@ -500,13 +667,13 @@ const styles = StyleSheet.create({
   drawerToggle: { flexDirection: 'row', alignItems: 'center', marginBottom: 18 },
   drawerToggleText: { color: '#e2e8f0', fontWeight: '700', marginLeft: 10 },
   group: { marginBottom: 18 },
-  groupLabel: { color: '#94a3b8', fontSize: 11, fontWeight: '800', textTransform: 'uppercase', marginBottom: 8 },
-  navItem: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, paddingVertical: 10, paddingHorizontal: 12, marginBottom: 6 },
+  groupLabel: { color: '#94a3b8', fontSize: 11, fontWeight: '800', textTransform: 'uppercase', marginBottom: 3 },
+  navItem: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, paddingVertical: 10, paddingHorizontal: 12, marginBottom: 4.5 },
   navItemActive: { backgroundColor: '#e0f2fe' },
-  navLabel: { color: '#e2e8f0', fontWeight: '700', marginLeft: 10 },
-  navLabelActive: { color: '#0f172a' },
+  navLabel: { color: '#000000', fontWeight: '700', marginLeft: 10, fontSize: 15 },
+  navLabelActive: { color: '#000000', fontSize: 16 },
   drawerUtilitySection: { marginTop: 'auto' },
-  drawerUtilityButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 14, backgroundColor: '#1e293b', marginBottom: 8 },
+  drawerUtilityButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 2, paddingHorizontal: 12, borderRadius: 14, backgroundColor: '#1e293b', marginBottom: 8 },
   drawerUtilityButtonDisabled: { opacity: 0.72 },
   drawerUtilityIcon: { width: 20, height: 20 },
   drawerUtilityIconDisabled: { opacity: 0.5 },
@@ -535,12 +702,13 @@ const styles = StyleSheet.create({
   quickHeaderMenuText: { color: '#0f172a', fontWeight: '700' },
   screenWrap: { flex: 1, borderRadius: 24, overflow: 'hidden', backgroundColor: '#f8fafc' },
   mobileScreenWrap: { flex: 1, borderRadius: 0, overflow: 'visible', backgroundColor: '#ffffff' },
-  mobileNavOverlay: { flex: 1, backgroundColor: '#f8fafc', paddingHorizontal: 16 },
-  mobileNavHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
-  mobileNavTitle: { fontSize: 28, fontWeight: '800', color: '#0f172a' },
+  mobileNavOverlayShell: { position: 'absolute', left: 0, right: 0, zIndex: 20 },
+  mobileNavOverlay: { flex: 1, backgroundColor: '#f8fafc', paddingHorizontal: 16, borderTopWidth: 1, borderTopColor: '#e2e8f0' },
+  mobileNavHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
+  mobileNavTitle: { fontSize: 18, fontWeight: '800', color: '#0f172a', lineHeight: 24, maxWidth: 260 },
   mobileNavCloseButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: '#e2e8f0' },
   mobileNavScroll: { flex: 1 },
-  mobileNavScrollContent: { paddingBottom: 20 },
+  mobileNavScrollContent: { flexGrow: 1, paddingBottom: 0 },
   mobileBottomMenuShell: {
     backgroundColor: '#ffffff',
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -557,13 +725,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#1d4ed8',
   },
-  mobileUtilitySection: { marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#dbe2ea' },
+  mobileBreakButton: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 12, borderWidth: 1, borderColor: '#dbe2ea', backgroundColor: '#ffffff', marginTop: 10 },
+  mobileBreakButtonActive: { backgroundColor: '#eff6ff', borderColor: '#93c5fd' },
+  mobileBreakText: { color: '#0f172a', fontWeight: '700', marginLeft: 10 },
+  mobileBreakTimerText: { color: '#0f172a', fontWeight: '800', marginLeft: 'auto' },
+  mobileUtilitySection: { marginTop: 'auto', paddingTop: 8, paddingBottom: 6, borderTopWidth: 1, borderTopColor: '#dbe2ea' },
   mobileUtilityButton: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 12, backgroundColor: '#eff6ff', marginBottom: 10 },
   mobileUtilityButtonDisabled: { opacity: 0.72 },
   mobileUtilityIcon: { width: 20, height: 20 },
   mobileUtilityText: { color: '#0f172a', fontWeight: '700', marginLeft: 10 },
   mobileLogoutButton: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 12, backgroundColor: '#fee2e2' },
   mobileLogoutText: { color: '#b91c1c', fontWeight: '800', marginLeft: 10 },
+  breakModalBackdrop: { flex: 1, backgroundColor: 'rgba(15,23,42,0.25)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  breakModalCard: { borderRadius: 18, backgroundColor: '#ffffff', padding: 16, minWidth: 220 },
+  breakModalTitle: { fontSize: 18, fontWeight: '800', color: '#0f172a' },
+  breakModalSubtitle: { marginTop: 4, marginBottom: 12, color: '#64748b' },
+  breakGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  breakOptionButton: { width: '48%', borderRadius: 12, borderWidth: 1, borderColor: '#dbe2ea', backgroundColor: '#f8fafc', paddingVertical: 14, alignItems: 'center', marginBottom: 10 },
+  breakOptionText: { color: '#0f172a', fontWeight: '800' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.45)', justifyContent: 'center', padding: 24 },
   modalCard: { borderRadius: 20, backgroundColor: '#ffffff', padding: 18 },
   modalTitle: { fontSize: 18, fontWeight: '800', color: '#0f172a' },

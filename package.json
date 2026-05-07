@@ -12,6 +12,7 @@
     "mobile:prestart": "npm run prestart:expo",
     "prestart:expo": "node ./scripts/preflight-expo-start.js",
     "start:expo": "cross-env EXPO_NO_DEPENDENCY_VALIDATION=1 NODE_OPTIONS=--max_old_space_size=8192 expo start",
+    "start:expo:fast": "cross-env EXPO_NO_DEPENDENCY_VALIDATION=1 NODE_OPTIONS=--max_old_space_size=8192 expo start --dev-client --lan",
     "update:mobile:all:internal": "npm run update:internal:arm",
     "update:mobile:all:testflight-internal": "npm run update:testflight-internal:arm",
     "update:mobile:all:preview": "npm run update:preview:arm",
