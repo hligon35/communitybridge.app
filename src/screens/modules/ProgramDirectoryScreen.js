@@ -1,14 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRoute } from '@react-navigation/native';
 import { ScreenWrapper } from '../../components/ScreenWrapper';
 import { useAuth } from '../../AuthContext';
+import { useData } from '../../DataContext';
 import { useTenant } from '../../core/tenant/TenantContext';
 import { isBcbaRole } from '../../core/tenant/models';
 import * as Api from '../../Api';
 
-export default function ProgramDirectoryScreen() {
+export default function ProgramDirectoryScreen({ navigation }) {
   const { user } = useAuth();
+  const route = useRoute();
+  const { children = [] } = useData();
   const tenant = useTenant() || {};
   const { programs = [], currentOrganization, currentProgramId, setSelectedProgramId, featureFlags = {} } = tenant;
   const enabled = featureFlags.programDirectory !== false;
@@ -20,7 +24,24 @@ export default function ProgramDirectoryScreen() {
   const [draftGeneralizationPlan, setDraftGeneralizationPlan] = useState('Practice across settings, people, and materials.');
   const [status, setStatus] = useState('idle');
   const [loadError, setLoadError] = useState('');
+  const [selectedChildId, setSelectedChildId] = useState('');
+  const [targetItems, setTargetItems] = useState([]);
+  const [selectedTargetId, setSelectedTargetId] = useState('');
+  const [targetName, setTargetName] = useState('');
+  const [targetType, setTargetType] = useState('skill_acquisition');
+  const [measurementType, setMeasurementType] = useState('frequency');
+  const [targetStatus, setTargetStatus] = useState('active');
+  const [operationalDefinition, setOperationalDefinition] = useState('');
+  const [masteryCriteria, setMasteryCriteria] = useState('80% across 3 consecutive sessions');
+  const [visibleToParent, setVisibleToParent] = useState(false);
+  const [parentFriendlyLabel, setParentFriendlyLabel] = useState('');
+  const [parentSummaryTemplate, setParentSummaryTemplate] = useState('');
+  const requestedChildId = String(route?.params?.childId || route?.params?.studentId || '').trim();
+  const focusMode = String(route?.params?.focusMode || '').trim().toLowerCase();
   const sortedPrograms = useMemo(() => [...(programs || [])].sort((a, b) => String(a?.name || '').localeCompare(String(b?.name || ''))), [programs]);
+  const sortedChildren = useMemo(() => [...(Array.isArray(children) ? children : [])].sort((a, b) => String(a?.name || '').localeCompare(String(b?.name || ''))), [children]);
+  const selectedChild = sortedChildren.find((child) => child?.id === selectedChildId) || sortedChildren[0] || null;
+  const selectedTarget = targetItems.find((item) => item?.id === selectedTargetId) || null;
   const editorDraftKey = `program_editor_draft_${String(currentOrganization?.id || 'org')}_${String(currentProgramId || 'default')}`;
   const skillTemplates = useMemo(() => sortedPrograms.filter((program) => !String(program?.type || '').toLowerCase().includes('behavior')).slice(0, 6), [sortedPrograms]);
   const behaviorTemplates = useMemo(() => sortedPrograms.filter((program) => String(program?.type || '').toLowerCase().includes('behavior')).slice(0, 6), [sortedPrograms]);
@@ -31,6 +52,19 @@ export default function ProgramDirectoryScreen() {
     status: program?.id === currentProgramId ? 'Active' : index % 3 === 0 ? 'Review' : 'Running',
     updatedAt: program?.updatedAt || program?.createdAt || 'Recently updated',
   })), [currentProgramId, sortedPrograms]);
+
+  useEffect(() => {
+    if (requestedChildId && sortedChildren.some((child) => child?.id === requestedChildId)) {
+      setSelectedChildId(requestedChildId);
+    } else if (!selectedChildId && sortedChildren[0]?.id) {
+      setSelectedChildId(sortedChildren[0].id);
+    }
+  }, [requestedChildId, selectedChildId, sortedChildren]);
+
+  useEffect(() => {
+    if (focusMode === 'editor') setViewMode('target-builder');
+    if (focusMode === 'clinical') setViewMode('clinical-review');
+  }, [focusMode]);
 
   useEffect(() => {
     let mounted = true;
@@ -60,6 +94,60 @@ export default function ProgramDirectoryScreen() {
       mounted = false;
     };
   }, [editorDraftKey, currentProgramId]);
+
+  useEffect(() => {
+    let disposed = false;
+    async function loadBehaviorTargets() {
+      if (!selectedChildId) {
+        if (!disposed) {
+          setTargetItems([]);
+          setSelectedTargetId('');
+        }
+        return;
+      }
+      try {
+        const result = await Api.listBehaviorTargetsByChild(selectedChildId, 100);
+        if (disposed) return;
+        const items = Array.isArray(result?.items) ? result.items : [];
+        setTargetItems(items);
+        setSelectedTargetId((current) => current || items[0]?.id || '');
+      } catch (error) {
+        if (!disposed) {
+          setTargetItems([]);
+          setSelectedTargetId('');
+          setLoadError(String(error?.message || error || 'Could not load behavior targets.'));
+        }
+      }
+    }
+    loadBehaviorTargets();
+    return () => {
+      disposed = true;
+    };
+  }, [selectedChildId]);
+
+  useEffect(() => {
+    if (!selectedTarget) {
+      setTargetName('');
+      setTargetType('skill_acquisition');
+      setMeasurementType('frequency');
+      setTargetStatus('active');
+      setOperationalDefinition('');
+      setMasteryCriteria('80% across 3 consecutive sessions');
+      setVisibleToParent(false);
+      setParentFriendlyLabel('');
+      setParentSummaryTemplate('');
+      return;
+    }
+    setTargetName(String(selectedTarget.targetName || ''));
+    setTargetType(String(selectedTarget.targetType || 'skill_acquisition'));
+    setMeasurementType(String(selectedTarget.measurementType || 'frequency'));
+    setTargetStatus(String(selectedTarget.status || 'active'));
+    setOperationalDefinition(String(selectedTarget.operationalDefinition || ''));
+    setMasteryCriteria(String(selectedTarget.masteryCriteria || ''));
+    setVisibleToParent(Boolean(selectedTarget.visibleToParent));
+    setParentFriendlyLabel(String(selectedTarget.parentFriendlyLabel || ''));
+    setParentSummaryTemplate(String(selectedTarget.parentSummaryTemplate || ''));
+  }, [selectedTarget]);
 
   useEffect(() => {
     AsyncStorage.setItem(editorDraftKey, JSON.stringify({ draftTarget, draftPromptHierarchy, draftMasteryCriteria, draftGeneralizationPlan })).catch(() => {});
@@ -103,8 +191,56 @@ export default function ProgramDirectoryScreen() {
     }
   }
 
-  function quickAction(title) {
-    Alert.alert(title, `${title} is staged from the BCBA editor and can now be tested from this screen.`);
+  async function persistBehaviorTarget() {
+    if (!selectedChild?.id) {
+      Alert.alert('Select a learner', 'Choose a learner before saving a behavior target.');
+      return;
+    }
+    if (!String(targetName || '').trim()) {
+      Alert.alert('Target required', 'Enter a target name before saving.');
+      return;
+    }
+    if (!String(operationalDefinition || '').trim()) {
+      Alert.alert('Operational definition required', 'Add an operational definition before saving.');
+      return;
+    }
+    if (!String(masteryCriteria || '').trim()) {
+      Alert.alert('Mastery criteria required', 'Add mastery criteria before saving.');
+      return;
+    }
+    try {
+      setStatus('saving-target');
+      const result = await Api.saveBehaviorTarget({
+        id: selectedTarget?.id || null,
+        childId: selectedChild.id,
+        programId: currentProgramId || null,
+        bcbaId: String(user?.id || '').trim(),
+        targetName,
+        targetType,
+        status: targetStatus,
+        operationalDefinition,
+        measurementType,
+        masteryCriteria,
+        visibleToParent,
+        parentFriendlyLabel,
+        parentSummaryTemplate,
+        activeFrom: new Date().toISOString(),
+        createdBy: String(user?.id || '').trim(),
+      }, selectedTarget || null);
+      const saved = result?.item || null;
+      if (saved) {
+        setTargetItems((current) => {
+          const exists = current.some((item) => item.id === saved.id);
+          const next = exists ? current.map((item) => (item.id === saved.id ? saved : item)) : [saved, ...current];
+          return next.sort((left, right) => String(left?.targetName || '').localeCompare(String(right?.targetName || '')));
+        });
+        setSelectedTargetId(saved.id);
+      }
+      setStatus('saved-target');
+    } catch (error) {
+      setStatus('error');
+      Alert.alert('Save failed', String(error?.message || error || 'Could not save this behavior target.'));
+    }
   }
 
   if (!enabled) {
@@ -131,12 +267,27 @@ export default function ProgramDirectoryScreen() {
             { key: 'library', label: 'Program Library' },
             { key: 'learner', label: 'Student Program List' },
             { key: 'editor', label: 'Program Editor' },
+            { key: 'target-builder', label: 'Target Builder' },
+            { key: 'clinical-review', label: 'Clinical Review' },
           ].map((item) => (
             <TouchableOpacity key={item.key} style={[styles.modeChip, viewMode === item.key ? styles.modeChipActive : null]} onPress={() => setViewMode(item.key)}>
               <Text style={[styles.modeChipText, viewMode === item.key ? styles.modeChipTextActive : null]}>{item.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
+
+        {(viewMode === 'target-builder' || viewMode === 'clinical-review') ? (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Assigned learners</Text>
+            <View style={styles.modeRow}>
+              {sortedChildren.map((child) => (
+                <TouchableOpacity key={child.id} style={[styles.modeChip, selectedChild?.id === child.id ? styles.modeChipActive : null]} onPress={() => setSelectedChildId(child.id)}>
+                  <Text style={[styles.modeChipText, selectedChild?.id === child.id ? styles.modeChipTextActive : null]}>{child.name || 'Learner'}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        ) : null}
 
         {viewMode === 'library' ? (
           <>
@@ -185,12 +336,74 @@ export default function ProgramDirectoryScreen() {
             <TextInput value={draftMasteryCriteria} onChangeText={(value) => setDraftMasteryCriteria(String(value || '').slice(0, 160))} placeholder="Mastery criteria" style={styles.input} maxLength={160} />
             <TextInput value={draftGeneralizationPlan} onChangeText={(value) => setDraftGeneralizationPlan(String(value || '').slice(0, 2000))} placeholder="Generalization plan" multiline style={[styles.input, styles.multiline]} maxLength={2000} />
             <View style={styles.actionRow}>
-              <TouchableOpacity style={styles.primaryButton} onPress={() => quickAction('Add program')}><Text style={styles.primaryButtonText}>Add Program</Text></TouchableOpacity>
-              <TouchableOpacity style={styles.secondaryButton} onPress={() => quickAction('Edit program')}><Text style={styles.secondaryButtonText}>Edit Program</Text></TouchableOpacity>
+              <TouchableOpacity style={styles.primaryButton} onPress={() => persistProgram(null)}><Text style={styles.primaryButtonText}>Save Program Draft</Text></TouchableOpacity>
               <TouchableOpacity style={styles.secondaryButton} onPress={() => persistProgram(new Date().toISOString())}><Text style={styles.secondaryButtonText}>Approve Program Changes</Text></TouchableOpacity>
-              <TouchableOpacity style={styles.secondaryButton} onPress={() => quickAction('Archive program')}><Text style={styles.secondaryButtonText}>Archive Program</Text></TouchableOpacity>
             </View>
             <Text style={styles.statusText}>{status === 'reviewed' ? 'Program changes marked ready for review.' : status === 'saved' ? 'Program draft saved.' : status === 'saving' ? 'Saving program changes…' : 'Shared BCBA workspace ready.'}</Text>
+          </View>
+        ) : null}
+
+        {viewMode === 'target-builder' ? (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Behavior target builder</Text>
+            <Text style={styles.listMeta}>Create and update structured ABA targets for the selected learner without exposing internal clinical detail to parents.</Text>
+            <View style={styles.modeRow}>
+              {targetItems.map((item) => (
+                <TouchableOpacity key={item.id} style={[styles.modeChip, selectedTarget?.id === item.id ? styles.modeChipActive : null]} onPress={() => setSelectedTargetId(item.id)}>
+                  <Text style={[styles.modeChipText, selectedTarget?.id === item.id ? styles.modeChipTextActive : null]}>{item.targetName || 'Target'}</Text>
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity style={styles.secondaryButton} onPress={() => setSelectedTargetId('')}><Text style={styles.secondaryButtonText}>New Target</Text></TouchableOpacity>
+            </View>
+            <TextInput value={targetName} onChangeText={setTargetName} placeholder="Target name" style={styles.input} />
+            <View style={styles.modeRow}>
+              {[
+                { value: 'skill_acquisition', label: 'Skill Acquisition' },
+                { value: 'behavior_reduction', label: 'Behavior Reduction' },
+              ].map((item) => (
+                <TouchableOpacity key={item.value} style={[styles.modeChip, targetType === item.value ? styles.modeChipActive : null]} onPress={() => setTargetType(item.value)}>
+                  <Text style={[styles.modeChipText, targetType === item.value ? styles.modeChipTextActive : null]}>{item.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={styles.modeRow}>
+              {['frequency', 'duration', 'abc', 'percent_correct', 'task_analysis', 'latency', 'whole_interval', 'partial_interval', 'momentary_time_sampling', 'rate'].map((item) => (
+                <TouchableOpacity key={item} style={[styles.modeChip, measurementType === item ? styles.modeChipActive : null]} onPress={() => setMeasurementType(item)}>
+                  <Text style={[styles.modeChipText, measurementType === item ? styles.modeChipTextActive : null]}>{item.replaceAll('_', ' ')}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TextInput value={operationalDefinition} onChangeText={setOperationalDefinition} placeholder="Operational definition" multiline style={[styles.input, styles.multiline]} />
+            <TextInput value={masteryCriteria} onChangeText={setMasteryCriteria} placeholder="Mastery criteria" style={styles.input} />
+            <View style={styles.modeRow}>
+              {['draft', 'active', 'on_hold', 'mastered', 'discontinued'].map((item) => (
+                <TouchableOpacity key={item} style={[styles.modeChip, targetStatus === item ? styles.modeChipActive : null]} onPress={() => setTargetStatus(item)}>
+                  <Text style={[styles.modeChipText, targetStatus === item ? styles.modeChipTextActive : null]}>{item.replaceAll('_', ' ')}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={styles.switchRow}>
+              <Text style={styles.switchLabel}>Visible to parent</Text>
+              <Switch value={visibleToParent} onValueChange={setVisibleToParent} />
+            </View>
+            <TextInput value={parentFriendlyLabel} onChangeText={setParentFriendlyLabel} placeholder="Parent-friendly label" style={styles.input} />
+            <TextInput value={parentSummaryTemplate} onChangeText={setParentSummaryTemplate} placeholder="Parent summary template" multiline style={[styles.input, styles.multiline]} />
+            <View style={styles.actionRow}>
+              <TouchableOpacity style={styles.primaryButton} onPress={() => persistBehaviorTarget()}><Text style={styles.primaryButtonText}>Save Behavior Target</Text></TouchableOpacity>
+              {selectedChild?.id ? <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate('LearnerClinicalProfile', { childId: selectedChild.id })}><Text style={styles.secondaryButtonText}>Open Clinical Profile</Text></TouchableOpacity> : null}
+            </View>
+            <Text style={styles.statusText}>{status === 'saved-target' ? 'Behavior target saved.' : status === 'saving-target' ? 'Saving behavior target…' : 'BCBA target builder ready.'}</Text>
+          </View>
+        ) : null}
+
+        {viewMode === 'clinical-review' ? (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Clinical review workflows</Text>
+            <Text style={styles.listMeta}>Open the learner clinical profile for trends and decisions, or jump into the BCBA session review queue.</Text>
+            <View style={styles.actionRow}>
+              <TouchableOpacity style={styles.primaryButton} onPress={() => navigation.navigate('BcbaSessionReviewQueue')}><Text style={styles.primaryButtonText}>Open Review Queue</Text></TouchableOpacity>
+              {selectedChild?.id ? <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate('LearnerClinicalProfile', { childId: selectedChild.id })}><Text style={styles.secondaryButtonText}>Open Learner Profile</Text></TouchableOpacity> : null}
+            </View>
           </View>
         ) : null}
       </ScrollView>
@@ -219,6 +432,8 @@ const styles = StyleSheet.create({
   primaryButtonText: { color: '#ffffff', fontWeight: '800' },
   secondaryButton: { borderRadius: 12, backgroundColor: '#e2e8f0', paddingVertical: 12, paddingHorizontal: 14, marginRight: 10, marginBottom: 10 },
   secondaryButtonText: { color: '#0f172a', fontWeight: '800' },
+  switchRow: { marginTop: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  switchLabel: { color: '#0f172a', fontWeight: '700' },
   statusText: { marginTop: 10, color: '#475569' },
   emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   emptyText: { color: '#475569', textAlign: 'center', lineHeight: 22 },

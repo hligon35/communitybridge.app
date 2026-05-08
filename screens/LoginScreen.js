@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Alert, ActivityIndicator, TouchableOpacity, Modal, Platform, Image, KeyboardAvoidingView, ScrollView, TouchableWithoutFeedback, Keyboard, useWindowDimensions } from 'react-native';
+import { View, Text, TextInput, Button, StyleSheet, Alert, ActivityIndicator, TouchableOpacity, Modal, Platform, Image, KeyboardAvoidingView, ScrollView, TouchableWithoutFeedback, Keyboard, Linking, useWindowDimensions } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -267,6 +267,24 @@ export default function LoginScreen({ navigation, suppressAutoRedirect = false }
     }
   }
 
+  function openOrganizationSignup() {
+    if (Platform.OS === 'web') {
+      try {
+        globalThis?.location?.assign?.('/organizations');
+        return;
+      } catch (_) {
+        // Fall through to Linking as a best-effort fallback.
+      }
+    }
+    Linking.openURL('/organizations').catch(() => {
+      showToast({
+        title: 'Organizations page unavailable',
+        message: 'Please try again in a browser.',
+        tone: 'info',
+      });
+    });
+  }
+
   // If already authenticated (e.g. dev auto-login), redirect to Home
   // This effect must be declared before any early returns to preserve
   // the order of Hooks between renders.
@@ -460,6 +478,15 @@ export default function LoginScreen({ navigation, suppressAutoRedirect = false }
             </TouchableOpacity>
           </View>
 
+          {isExplicitWebLoginRoute ? (
+            <View style={styles.organizationLinkWrap}>
+              <Text style={styles.organizationLinkText}>Rolling out CommunityBridge for an organization?</Text>
+              <TouchableOpacity onPress={openOrganizationSignup} accessibilityRole="link" disabled={busy}>
+                <Text style={styles.organizationLinkAction}>Organization sign-up starts here.</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+
           <Modal visible={showSignUp} animationType="slide" onRequestClose={() => setShowSignUp(false)}>
             <SignUpScreen
               onDone={(result) => {
@@ -555,6 +582,9 @@ const styles = StyleSheet.create({
   linksRow: { marginTop: 12, width: '100%', maxWidth: 360, flexDirection: 'row', justifyContent: 'center', alignSelf: 'center', alignItems: 'center' },
   linkText: { color: '#2563eb', fontWeight: '700' },
   linkSeparator: { marginHorizontal: 10, color: '#6b7280', fontWeight: '700' },
+  organizationLinkWrap: { marginTop: 16, width: '100%', maxWidth: 360, alignItems: 'center', alignSelf: 'center' },
+  organizationLinkText: { color: '#64748b', textAlign: 'center', lineHeight: 19 },
+  organizationLinkAction: { marginTop: 6, color: '#1d4ed8', fontWeight: '800', textAlign: 'center' },
   secondaryActions: { marginTop: 10, alignItems: 'center' },
   authButtonImage: { width: '100%', height: '100%' },
   authIconImage: { width: 24, height: 24 },

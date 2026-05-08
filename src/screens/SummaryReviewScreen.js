@@ -12,6 +12,7 @@ import { avatarSourceFor } from '../utils/idVisibility';
 import { USER_ROLES, isAdminRole, isStaffRole, normalizeUserRole } from '../core/tenant/models';
 import TherapySessionPanel from '../features/sessionTracking/components/TherapySessionPanel';
 import { useTherapySessionWorkspace } from '../features/sessionTracking/hooks/useTherapySessionWorkspace';
+import { useAbaSessionSheet } from '../features/aba/hooks/useAbaSessionSheet';
 import { isChildLinkedToTherapist } from '../features/sessionTracking/utils/dashboardSessionTarget';
 const { PREVIEW_CHILD } = require('../features/sessionTracking/utils/previewWorkspace');
 
@@ -19,7 +20,7 @@ export default function SummaryReviewScreen() {
   const route = useRoute();
   const navigation = useNavigation();
   const { user } = useAuth();
-  const { childId, sessionPreview, draftSummary } = route.params || {};
+  const { childId, sessionPreview, draftSummary, reviewSession } = route.params || {};
   const { children = [], fetchAndSync, seededSessionSummariesByChild = {} } = useData();
   const role = normalizeUserRole(user?.role);
   const isTherapist = role === USER_ROLES.THERAPIST;
@@ -28,12 +29,20 @@ export default function SummaryReviewScreen() {
   const preview = Boolean(sessionPreview) || !child;
   const displayChild = child || PREVIEW_CHILD;
   const workspace = useTherapySessionWorkspace({ child, preview, canManageSession, fetchAndSync, initialDraftSummary: draftSummary || null });
+  const abaSession = useAbaSessionSheet({ child, activeSession: reviewSession || null, user, preview });
   const [previousSessions, setPreviousSessions] = useState([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [sessionsError, setSessionsError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState('all');
   const [expandedSessionId, setExpandedSessionId] = useState('');
+  const [therapistCloseoutNotes, setTherapistCloseoutNotes] = useState('');
+  const [parentSafeCloseoutNotes, setParentSafeCloseoutNotes] = useState('');
+
+  useEffect(() => {
+    setTherapistCloseoutNotes(String(abaSession?.sheet?.therapistSessionNotes || ''));
+    setParentSafeCloseoutNotes(String(abaSession?.sheet?.parentSafeSessionNotes || ''));
+  }, [abaSession?.sheet?.id, abaSession?.sheet?.parentSafeSessionNotes, abaSession?.sheet?.therapistSessionNotes]);
 
   const subtitle = useMemo(() => {
     if (preview) return 'Interactive preview';
@@ -179,6 +188,20 @@ export default function SummaryReviewScreen() {
     }
   }
 
+  async function handleSummarySubmitted() {
+    if (reviewSession?.id && abaSession?.sheet?.id) {
+      try {
+        await abaSession.completeCurrentSheet({
+          therapistSessionNotes: therapistCloseoutNotes,
+          parentSafeSessionNotes: parentSafeCloseoutNotes,
+        });
+      } catch (_) {
+        // Keep the legacy summary submission path intact even if the ABA closeout update fails.
+      }
+    }
+    returnToWorkspaceRoot();
+  }
+
   function formatSessionStamp(item) {
     const source = item?.approvedAt || item?.updatedAt || item?.generatedAt || '';
     if (!source) return 'Session date unavailable';
@@ -215,7 +238,29 @@ export default function SummaryReviewScreen() {
             </View>
           </View>
         </View>
-        <TherapySessionPanel workspace={workspace} mode="summary" title="Session Report" onSubmitted={returnToWorkspaceRoot} />
+        {reviewSession?.id || abaSession?.sheet?.id ? (
+          <View style={styles.abaCloseoutCard}>
+            <Text style={styles.abaCloseoutTitle}>ABA Closeout Notes</Text>
+            <Text style={styles.abaCloseoutSubtitle}>Review and edit the internal clinical closeout plus the parent-safe note before the ABA sheet is finalized.</Text>
+            <Text style={styles.abaCloseoutLabel}>Therapist / clinical note</Text>
+            <TextInput
+              value={therapistCloseoutNotes}
+              onChangeText={setTherapistCloseoutNotes}
+              placeholder="Internal clinical closeout note"
+              multiline
+              style={styles.abaCloseoutInput}
+            />
+            <Text style={styles.abaCloseoutLabel}>Parent-safe note</Text>
+            <TextInput
+              value={parentSafeCloseoutNotes}
+              onChangeText={setParentSafeCloseoutNotes}
+              placeholder="Parent-safe session note"
+              multiline
+              style={styles.abaCloseoutInput}
+            />
+          </View>
+        ) : null}
+        <TherapySessionPanel workspace={workspace} mode="summary" title="Session Report" onSubmitted={handleSummarySubmitted} />
         {hasPreviousSessionsSection ? (
           <View style={styles.historyCard}>
             <Text style={styles.historyTitle}>Previous Sessions</Text>
@@ -305,6 +350,11 @@ const styles = StyleSheet.create({
   title: { color: '#2563eb', fontWeight: '800', textTransform: 'uppercase', fontSize: 12 },
   name: { fontSize: 22, fontWeight: '800', color: '#0f172a', marginTop: 4 },
   subtitle: { marginTop: 4, color: '#64748b' },
+  abaCloseoutCard: { marginTop: 12, borderRadius: 18, borderWidth: 1, borderColor: '#dbeafe', backgroundColor: '#f8fbff', padding: 16 },
+  abaCloseoutTitle: { fontSize: 17, fontWeight: '800', color: '#0f172a' },
+  abaCloseoutSubtitle: { marginTop: 6, color: '#475569', lineHeight: 20 },
+  abaCloseoutLabel: { marginTop: 12, color: '#0f172a', fontWeight: '700' },
+  abaCloseoutInput: { minHeight: 88, borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 12, backgroundColor: '#fff', paddingHorizontal: 12, paddingVertical: 10, marginTop: 8, textAlignVertical: 'top' },
   historyCard: { marginTop: 12, borderRadius: 18, borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#fff', padding: 16 },
   historyTitle: { fontSize: 18, fontWeight: '800', color: '#0f172a' },
   historySubtitle: { marginTop: 6, color: '#64748b', lineHeight: 20 },

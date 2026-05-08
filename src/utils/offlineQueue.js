@@ -89,6 +89,10 @@ export async function getOfflineQueueSize() {
   return items.length;
 }
 
+export async function listOfflineQueueItems() {
+  return read();
+}
+
 export async function clearOfflineQueue() {
   await write([]);
   notify({ kind: 'cleared', size: 0 });

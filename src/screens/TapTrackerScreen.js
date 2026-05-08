@@ -9,6 +9,8 @@ import { avatarSourceFor } from '../utils/idVisibility';
 import { USER_ROLES, isAdminRole, isStaffRole, normalizeUserRole } from '../core/tenant/models';
 import TherapySessionPanel from '../features/sessionTracking/components/TherapySessionPanel';
 import { useTherapySessionWorkspace } from '../features/sessionTracking/hooks/useTherapySessionWorkspace';
+import AbaLiveDataCard from '../features/aba/components/AbaLiveDataCard';
+import { useAbaSessionSheet } from '../features/aba/hooks/useAbaSessionSheet';
 const { PREVIEW_CHILD } = require('../features/sessionTracking/utils/previewWorkspace');
 
 export default function TapTrackerScreen() {
@@ -28,6 +30,7 @@ export default function TapTrackerScreen() {
     ? (Array.isArray(seededTapEventsByChild?.[child.id]) ? seededTapEventsByChild[child.id] : [])
     : [];
   const workspace = useTherapySessionWorkspace({ child, preview, canManageSession, fetchAndSync, seededRecentEvents });
+  const abaSession = useAbaSessionSheet({ child, activeSession: workspace.activeSession, user, preview });
   const [paused, setPaused] = useState(false);
   const [sessionSeconds, setSessionSeconds] = useState(0);
 
@@ -64,11 +67,13 @@ export default function TapTrackerScreen() {
       {
         text: 'Yes',
         onPress: () => {
-          workspace.handleEndSession().then((result) => {
+          const reviewSession = workspace.activeSession ? { ...workspace.activeSession } : null;
+          workspace.handleEndSession().then(async (result) => {
             navigation.navigate('SummaryReview', {
               childId: child?.id || null,
               sessionPreview: preview,
               draftSummary: result?.draftSummary || null,
+              reviewSession,
             });
           }).catch(() => {});
         },
@@ -109,6 +114,7 @@ export default function TapTrackerScreen() {
           showInactiveTracker={inactivePreview}
           inactiveTrackerMessage="Start a session to activate."
         />
+        <AbaLiveDataCard controller={abaSession} disabled={paused || inactivePreview || !workspace.activeSession} />
       </ScrollView>
     </ScreenWrapper>
   );

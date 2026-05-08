@@ -21,6 +21,16 @@ function formatStaffUtilizationLabel(staff) {
   return `${firstInitial}. ${lastShort}`;
 }
 
+function formatBehaviorIncidentLabel(label) {
+  const normalized = String(label || '').trim().toLowerCase();
+  if (/task\s*ref/.test(normalized) || normalized === 'task refusal') return 'Task Ref';
+  if (/elop/.test(normalized)) return 'Elop Att';
+  if (/aggr/.test(normalized) || normalized === 'aggression') return 'Aggr';
+  if (/non\s*comp/.test(normalized) || /noncompliance/.test(normalized)) return 'Non Comp';
+  if (normalized === 'sib') return 'Non Comp';
+  return String(label || '').trim() || 'Incident';
+}
+
 function Tile({ label, value, hint, accent = '#2563eb', compact = false }) {
   return (
     <View style={[styles.tile, compact ? styles.tileCompact : null]}>
@@ -90,7 +100,7 @@ function TrendCard({ title, items, accent = '#2563eb', horizontalInset = 26 }) {
               <View style={[styles.linePointValueWrap, { top: Math.max(0, point.y - 4) }]}>
                 <Text style={styles.linePointValue}>{point.value}</Text>
               </View>
-              <View style={[styles.linePoint, { top: point.y - 5, borderColor: accent }]}>
+              <View style={[styles.linePoint, { top: point.y - 11, borderColor: accent }]}>
                 <View style={[styles.linePointInner, { backgroundColor: accent }]} />
               </View>
               <Text style={styles.linePointLabel}>{point.label}</Text>
@@ -128,7 +138,12 @@ export default function AdminControlsScreen() {
         incidents: Number(seededDashboardMetrics?.incidentsToday || 0),
         overdueNotes: Number(seededDashboardMetrics?.overdueDocumentation || 0),
         attendanceTrend: Array.isArray(seededDashboardMetrics?.attendanceTrend) ? seededDashboardMetrics.attendanceTrend : [],
-        behaviorTrend: Array.isArray(seededDashboardMetrics?.behaviorTrend) ? seededDashboardMetrics.behaviorTrend : [],
+        behaviorTrend: Array.isArray(seededDashboardMetrics?.behaviorTrend)
+          ? seededDashboardMetrics.behaviorTrend.map((item) => ({
+              ...item,
+              label: formatBehaviorIncidentLabel(item?.label),
+            }))
+          : [],
         staffUtilization,
       };
     }
@@ -138,7 +153,7 @@ export default function AdminControlsScreen() {
     const incidents = (urgentMemos || []).filter((memo) => String(memo?.type || '').toLowerCase() !== 'admin_memo').length;
     const overdueNotes = (children || []).filter((child) => !child?.carePlan || !String(child.carePlan).trim()).length;
     const attendanceTrend = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((label, index) => ({ label, value: Math.max(1, sessionsToday - Math.min(index, 4)) }));
-    const behaviorTrend = ['Aggression', 'Elopement', 'Task Refusal', 'SIB'].map((label, index) => ({ label, value: Math.max(0, incidents - index) }));
+    const behaviorTrend = ['Task Ref', 'Elop Att', 'Aggr', 'Non Comp'].map((label, index) => ({ label, value: Math.max(0, incidents - index) }));
     const staffUtilization = (therapists || []).slice(0, 5).map((staff) => {
       const count = (children || []).filter((child) => [child?.amTherapist, child?.pmTherapist, child?.bcaTherapist].some((entry) => {
         if (!entry) return false;

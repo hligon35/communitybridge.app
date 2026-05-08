@@ -58,6 +58,8 @@ import ProgramDirectoryScreen from './src/screens/modules/ProgramDirectoryScreen
 import CampusDirectoryScreen from './src/screens/modules/CampusDirectoryScreen';
 import ProgramDocumentsScreen from './src/screens/modules/ProgramDocumentsScreen';
 import CampusDocumentsScreen from './src/screens/modules/CampusDocumentsScreen';
+import BcbaSessionReviewQueueScreen from './src/features/aba/screens/BcbaSessionReviewQueueScreen';
+import LearnerClinicalProfileScreen from './src/features/aba/screens/LearnerClinicalProfileScreen';
 import ChildProgressInsightsScreen from './src/features/sessionInsights/screens/ChildProgressInsightsScreen';
 import TherapistDocumentationDashboardScreen from './src/features/sessionInsights/screens/TherapistDocumentationDashboardScreen';
 import OrganizationInsightsDashboardScreen from './src/features/sessionInsights/screens/OrganizationInsightsDashboardScreen';
@@ -191,6 +193,8 @@ function ControlsStack() {
       <ControlsStackNav.Screen name="Attendance" component={AttendanceScreen} options={{ title: 'Attendance' }} />
       <ControlsStackNav.Screen name="ScheduleCalendar" component={ScheduleCalendarScreen} options={{ title: 'Scheduling' }} />
       <ControlsStackNav.Screen name="ProgramDirectory" component={ProgramDirectoryScreen} options={{ title: 'Programs & Goals' }} />
+      <ControlsStackNav.Screen name="BcbaSessionReviewQueue" component={BcbaSessionReviewQueueScreen} options={{ title: 'BCBA Review Queue' }} />
+      <ControlsStackNav.Screen name="LearnerClinicalProfile" component={LearnerClinicalProfileScreen} options={{ title: 'Learner Clinical Profile' }} />
       <ControlsStackNav.Screen name="CampusDirectory" component={CampusDirectoryScreen} options={{ title: 'Campus Directory' }} />
       <ControlsStackNav.Screen name="ProgramDocuments" component={ProgramDocumentsScreen} options={{ title: 'Program Documents' }} />
       <ControlsStackNav.Screen name="CampusDocuments" component={CampusDocumentsScreen} options={{ title: 'Campus Documents' }} />
@@ -230,6 +234,8 @@ function CommunityStack() {
       <CommunityStackNav.Screen name="Reports" component={ReportsScreen} options={{ title: 'Reports' }} />
       <CommunityStackNav.Screen name="ChildProgressInsights" component={ChildProgressInsightsScreen} options={{ title: 'Progress Insights' }} />
       <CommunityStackNav.Screen name="TherapistDocumentationDashboard" component={TherapistDocumentationDashboardScreen} options={{ title: 'Documentation Dashboard' }} />
+      <CommunityStackNav.Screen name="BcbaSessionReviewQueue" component={BcbaSessionReviewQueueScreen} options={{ title: 'BCBA Review Queue' }} />
+      <CommunityStackNav.Screen name="LearnerClinicalProfile" component={LearnerClinicalProfileScreen} options={{ title: 'Learner Clinical Profile' }} />
       <CommunityStackNav.Screen name="ParentDetail" component={ParentDetailScreen} options={{ title: 'Parent' }} />
       <CommunityStackNav.Screen name="FacultyDetail" component={FacultyDetailScreen} options={{ title: 'Faculty' }} />
     </CommunityStackNav.Navigator>

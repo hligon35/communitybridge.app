@@ -31,6 +31,7 @@ export function useTherapySessionWorkspace({ child, preview = false, canManageSe
   const [savingSession, setSavingSession] = useState(false);
   const [queuedEvents, setQueuedEvents] = useState([]);
   const [syncingQueuedEvents, setSyncingQueuedEvents] = useState(false);
+  const [queueSyncError, setQueueSyncError] = useState('');
   const [recentEvents, setRecentEvents] = useState([]);
   const [previewActiveSessionState, setPreviewActiveSessionState] = useState(null);
   const [previewDraftSummaryState, setPreviewDraftSummaryState] = useState(() => (preview ? PREVIEW_DRAFT_SUMMARY : null));
@@ -52,6 +53,10 @@ export function useTherapySessionWorkspace({ child, preview = false, canManageSe
   useEffect(() => {
     queuedEventsRef.current = queuedEvents;
   }, [queuedEvents]);
+
+  useEffect(() => {
+    if (!queuedEvents.length) setQueueSyncError('');
+  }, [queuedEvents.length]);
 
   useEffect(() => {
     let disposed = false;
@@ -182,6 +187,7 @@ export function useTherapySessionWorkspace({ child, preview = false, canManageSe
     if (!eventsToSend.length || !effectiveActiveSession?.id) return;
     if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
     setSyncingQueuedEvents(true);
+    setQueueSyncError('');
     try {
       if (preview) {
         setPreviewRecentEvents((current) => {
@@ -216,8 +222,21 @@ export function useTherapySessionWorkspace({ child, preview = false, canManageSe
       });
       setQueuedEvents([]);
       queuedEventsRef.current = [];
+      setQueueSyncError('');
+    } catch (error) {
+      setQueueSyncError(String(error?.message || error || 'Could not sync queued session events.'));
+      throw error;
     } finally {
       setSyncingQueuedEvents(false);
+    }
+  }
+
+  async function retryQueuedEvents() {
+    if (!queuedEventsRef.current.length || syncingQueuedEvents) return;
+    try {
+      await flushQueuedEvents();
+    } catch (_) {
+      // Preserve the queued events and visible retry state.
     }
   }
 
@@ -311,14 +330,21 @@ export function useTherapySessionWorkspace({ child, preview = false, canManageSe
   }
 
   async function handleSaveDraft() {
+    const overrideSummary = arguments[0] || null;
     if (preview) {
-      setPreviewDraftSummaryState(createPreviewDraftSummary(summaryNarrative, previewRecentEvents));
+      const nextPreviewDraft = overrideSummary
+        ? {
+            ...(previewDraftSummaryState || PREVIEW_DRAFT_SUMMARY),
+            summary: overrideSummary,
+          }
+        : createPreviewDraftSummary(summaryNarrative, previewRecentEvents);
+      setPreviewDraftSummaryState(nextPreviewDraft);
       return;
     }
     if (!draftSummary?.sessionId || savingSession) return;
     setSavingSession(true);
     try {
-      const nextSummary = {
+      const nextSummary = overrideSummary || {
         ...(draftSummary.summary || {}),
         dailyRecap: {
           ...(draftSummary.summary?.dailyRecap || {}),
@@ -336,8 +362,14 @@ export function useTherapySessionWorkspace({ child, preview = false, canManageSe
   }
 
   async function handleApproveSummary() {
+    const overrideSummary = arguments[0] || null;
     if (preview) {
-      const nextSummary = createPreviewDraftSummary(summaryNarrative, previewRecentEvents);
+      const nextSummary = overrideSummary
+        ? {
+            ...(previewDraftSummaryState || PREVIEW_DRAFT_SUMMARY),
+            summary: overrideSummary,
+          }
+        : createPreviewDraftSummary(summaryNarrative, previewRecentEvents);
       setPreviewDraftSummaryState(nextSummary);
       setPreviewLatestApprovedSummary({ ...nextSummary, approvedAt: new Date().toISOString() });
       return;
@@ -345,7 +377,7 @@ export function useTherapySessionWorkspace({ child, preview = false, canManageSe
     if (!draftSummary?.sessionId || savingSession) return;
     setSavingSession(true);
     try {
-      const nextSummary = {
+      const nextSummary = overrideSummary || {
         ...(draftSummary.summary || {}),
         dailyRecap: {
           ...(draftSummary.summary?.dailyRecap || {}),
@@ -372,6 +404,7 @@ export function useTherapySessionWorkspace({ child, preview = false, canManageSe
     latestApprovedSummary: effectiveLatestApprovedSummary,
     recentEvents: effectiveRecentEvents,
     queuedEvents,
+    queueSyncError,
     sessionNote,
     summaryNarrative,
     loadingSession,
@@ -383,6 +416,7 @@ export function useTherapySessionWorkspace({ child, preview = false, canManageSe
     queueSessionEvent,
     undoLastQueuedEvent,
     flushQueuedEvents,
+    retryQueuedEvents,
     handleStartSession,
     handleSaveNote,
     handleEndSession,

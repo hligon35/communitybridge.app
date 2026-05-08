@@ -9,13 +9,14 @@ import { ScreenWrapper } from '../components/ScreenWrapper';
 import MoodTrackerCard from '../components/MoodTrackerCard';
 import ImageToggle from '../components/ImageToggle';
 import SessionSummarySnapshot from '../components/SessionSummarySnapshot';
+import LatestSummaryCard from '../features/sessionInsights/components/LatestSummaryCard';
 import { childHasParent, findLinkedParentId } from '../utils/directoryLinking';
 import { avatarSourceFor } from '../utils/idVisibility';
 import { maskEmailDisplay, maskPhoneDisplay } from '../utils/inputFormat';
 import { THERAPY_ROLE_LABELS, getAssignmentRoleLabel, getDisplayRoleLabel } from '../utils/roleTerminology';
 import { useTenant } from '../core/tenant/TenantContext';
 import { isAdminRole, isStaffRole } from '../core/tenant/models';
-import { getLatestChildSessionSummary } from '../Api';
+import { getChildSessionSummaries, getLatestChildSessionSummary, getTherapySessionSummaryText, listParentSummariesByChild } from '../Api';
 
 export default function MyChildScreen() {
   const navigation = useNavigation();
@@ -78,8 +79,16 @@ export default function MyChildScreen() {
   const [proposePreset, setProposePreset] = useState('10m_later');
   const [expandedReviewSection, setExpandedReviewSection] = useState(null);
   const [latestApprovedSummary, setLatestApprovedSummary] = useState(null);
+  const [approvedSummaryHistory, setApprovedSummaryHistory] = useState([]);
+  const [approvedParentSummaries, setApprovedParentSummaries] = useState([]);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState('');
+  const [expandedHistorySessionId, setExpandedHistorySessionId] = useState('');
+  const [artifactModalOpen, setArtifactModalOpen] = useState(false);
+  const [artifactLoading, setArtifactLoading] = useState(false);
+  const [artifactError, setArtifactError] = useState('');
+  const [artifactTitle, setArtifactTitle] = useState('SessionSummary.txt');
+  const [artifactText, setArtifactText] = useState('');
 
   function getProposalTypeLabel(type) {
     const normalized = String(type || '').trim().toLowerCase();
@@ -173,7 +182,11 @@ export default function MyChildScreen() {
 
     async function loadLatestSummary() {
       if (!child?.id) {
-        if (!disposed) setLatestApprovedSummary(null);
+        if (!disposed) {
+          setLatestApprovedSummary(null);
+          setApprovedSummaryHistory([]);
+          setApprovedParentSummaries([]);
+        }
         return;
       }
       const seededItems = Array.isArray(seededSessionSummariesByChild?.[child.id]) ? seededSessionSummariesByChild[child.id] : null;
@@ -187,6 +200,8 @@ export default function MyChildScreen() {
           });
         if (!disposed) {
           setLatestApprovedSummary(approvedItems[0] || null);
+          setApprovedSummaryHistory(approvedItems);
+          setApprovedParentSummaries([]);
           setSummaryError('');
           setSummaryLoading(false);
         }
@@ -195,11 +210,37 @@ export default function MyChildScreen() {
       setSummaryLoading(true);
       setSummaryError('');
       try {
-        const result = await getLatestChildSessionSummary(child.id);
-        if (!disposed) setLatestApprovedSummary(result?.item || null);
+        const [latestResult, historyResult, parentSummaryResult] = await Promise.all([
+          getLatestChildSessionSummary(child.id),
+          getChildSessionSummaries(child.id, 12).catch(() => ({ items: [] })),
+          listParentSummariesByChild(child.id, 12).catch(() => ({ items: [] })),
+        ]);
+        if (!disposed) {
+          const items = Array.isArray(historyResult?.items) ? historyResult.items : [];
+          const approvedItems = items
+            .filter((item) => String(item?.status || '').trim().toLowerCase() === 'approved')
+            .sort((left, right) => {
+              const leftStamp = Date.parse(String(left?.approvedAt || left?.updatedAt || left?.generatedAt || ''));
+              const rightStamp = Date.parse(String(right?.approvedAt || right?.updatedAt || right?.generatedAt || ''));
+              return (Number.isFinite(rightStamp) ? rightStamp : 0) - (Number.isFinite(leftStamp) ? leftStamp : 0);
+            });
+          const parentItems = Array.isArray(parentSummaryResult?.items) ? parentSummaryResult.items : [];
+          const approvedParentItems = parentItems
+            .filter((item) => ['approved', 'sent'].includes(String(item?.status || '').trim().toLowerCase()))
+            .sort((left, right) => {
+              const leftStamp = Date.parse(String(left?.reviewedAt || left?.updatedAt || left?.createdAt || left?.date || ''));
+              const rightStamp = Date.parse(String(right?.reviewedAt || right?.updatedAt || right?.createdAt || right?.date || ''));
+              return (Number.isFinite(rightStamp) ? rightStamp : 0) - (Number.isFinite(leftStamp) ? leftStamp : 0);
+            });
+          setLatestApprovedSummary(latestResult?.item || approvedItems[0] || null);
+          setApprovedSummaryHistory(approvedItems);
+          setApprovedParentSummaries(approvedParentItems);
+        }
       } catch (error) {
         if (!disposed) {
           setLatestApprovedSummary(null);
+          setApprovedSummaryHistory([]);
+          setApprovedParentSummaries([]);
           setSummaryError(String(error?.message || error || 'Could not load the approved summary.'));
         }
       } finally {
@@ -213,6 +254,13 @@ export default function MyChildScreen() {
     };
   }, [child?.id, seededSessionSummariesByChild]);
 
+  useEffect(() => {
+    setExpandedHistorySessionId('');
+    setArtifactModalOpen(false);
+    setArtifactError('');
+    setArtifactText('');
+  }, [child?.id]);
+
   const latestApprovedSummarySubtitle = useMemo(() => {
     const source = latestApprovedSummary?.approvedAt || latestApprovedSummary?.updatedAt || latestApprovedSummary?.generatedAt || '';
     if (!source) return '';
@@ -222,6 +270,45 @@ export default function MyChildScreen() {
       return '';
     }
   }, [latestApprovedSummary]);
+
+  const previousApprovedSummaries = useMemo(() => {
+    const latestSessionId = String(latestApprovedSummary?.sessionId || '').trim();
+    return approvedSummaryHistory.filter((item) => String(item?.sessionId || '').trim() !== latestSessionId);
+  }, [approvedSummaryHistory, latestApprovedSummary?.sessionId]);
+
+  const latestApprovedParentSummary = approvedParentSummaries[0] || null;
+  const previousApprovedParentSummaries = useMemo(() => approvedParentSummaries.slice(1), [approvedParentSummaries]);
+
+  function formatSessionStamp(item) {
+    const source = item?.approvedAt || item?.updatedAt || item?.generatedAt || '';
+    if (!source) return 'Approved summary';
+    try {
+      return new Date(source).toLocaleString();
+    } catch (_) {
+      return 'Approved summary';
+    }
+  }
+
+  async function openSummaryArtifact(item) {
+    const sessionId = String(item?.sessionId || item?.id || '').trim();
+    if (!sessionId) {
+      Alert.alert('Artifact unavailable', 'This approved summary does not include a session artifact reference yet.');
+      return;
+    }
+    setArtifactModalOpen(true);
+    setArtifactLoading(true);
+    setArtifactError('');
+    setArtifactText('');
+    setArtifactTitle(`SessionSummary.txt • ${child?.name || 'Learner'}`);
+    try {
+      const result = await getTherapySessionSummaryText(sessionId);
+      setArtifactText(String(result?.text || '').trim());
+    } catch (error) {
+      setArtifactError(String(error?.message || error || 'Could not load the session summary artifact.'));
+    } finally {
+      setArtifactLoading(false);
+    }
+  }
 
   const linkedParents = useMemo(() => {
     if (!Array.isArray(parents) || !child?.id) return [];
@@ -396,13 +483,79 @@ export default function MyChildScreen() {
           </View>
         ) : summaryError ? (
           <Text style={styles.summaryErrorText}>{summaryError}</Text>
-        ) : latestApprovedSummary?.summary ? (
-          <SessionSummarySnapshot
-            summary={latestApprovedSummary}
-            title={`Approved ${THERAPY_ROLE_LABELS.therapist} Summary`}
-            subtitle={latestApprovedSummarySubtitle}
-            emptyText={`No approved ${THERAPY_ROLE_LABELS.therapist.toLowerCase()} summary is available yet.`}
-          />
+        ) : latestApprovedSummary?.summary || latestApprovedParentSummary ? (
+          <>
+            {latestApprovedSummary?.summary ? (
+              <LatestSummaryCard
+                summary={latestApprovedSummary}
+                subtitle={latestApprovedSummarySubtitle}
+                onOpenInsights={child?.id ? () => navigation.navigate('ChildProgressInsights', { childId: child.id }) : null}
+                onOpenArtifact={() => openSummaryArtifact(latestApprovedSummary).catch(() => {})}
+                artifactDisabled={!String(latestApprovedSummary?.sessionId || '').trim()}
+              />
+            ) : null}
+
+            {previousApprovedSummaries.length ? (
+              <View style={styles.summaryHistoryCard}>
+                <Text style={styles.summaryHistoryTitle}>Recent Approved Sessions</Text>
+                <Text style={styles.summaryHistorySubtitle}>Review prior approved session summaries for this learner without leaving the family progress screen.</Text>
+                {previousApprovedSummaries.map((item) => {
+                  const expanded = expandedHistorySessionId === item.id;
+                  return (
+                    <View key={item.id || item.sessionId} style={styles.summaryHistoryEntry}>
+                      <TouchableOpacity
+                        style={styles.summaryHistoryEntryHeader}
+                        onPress={() => setExpandedHistorySessionId((current) => (current === item.id ? '' : item.id))}
+                      >
+                        <View style={styles.summaryHistoryEntryTextWrap}>
+                          <Text style={styles.summaryHistoryEntryTitle}>{formatSessionStamp(item)}</Text>
+                          <Text style={styles.summaryHistoryEntryPreview} numberOfLines={expanded ? 0 : 2}>
+                            {item?.summary?.dailyRecap?.therapistNarrative || 'No recap note recorded.'}
+                          </Text>
+                        </View>
+                        <MaterialIcons name={expanded ? 'expand-less' : 'expand-more'} size={26} color="#334155" />
+                      </TouchableOpacity>
+                      <View style={styles.summaryHistoryActionsRow}>
+                        <TouchableOpacity style={styles.summaryHistoryAction} onPress={() => openSummaryArtifact(item).catch(() => {})}>
+                          <Text style={styles.summaryHistoryActionText}>Open SessionSummary.txt</Text>
+                        </TouchableOpacity>
+                      </View>
+                      {expanded ? (
+                        <View style={styles.summaryHistoryEntryBody}>
+                          <SessionSummarySnapshot
+                            summary={item}
+                            title="Approved Session Summary"
+                            subtitle={formatSessionStamp(item)}
+                            emptyText="No approved session summary has been recorded yet."
+                          />
+                        </View>
+                      ) : null}
+                    </View>
+                  );
+                })}
+              </View>
+            ) : null}
+
+            {latestApprovedParentSummary ? (
+              <View style={styles.summaryHistoryCard}>
+                <Text style={styles.summaryHistoryTitle}>Parent-Safe ABA Updates</Text>
+                <Text style={styles.summaryHistorySubtitle}>BCBA-approved behavior progress updates are summarized here without internal clinical detail.</Text>
+                <View style={styles.parentSummaryCard}>
+                  <Text style={styles.parentSummaryStamp}>{formatSessionStamp(latestApprovedParentSummary)}</Text>
+                  {latestApprovedParentSummary?.highLevelProgress ? <Text style={styles.parentSummaryBody}>{latestApprovedParentSummary.highLevelProgress}</Text> : null}
+                  {latestApprovedParentSummary?.strengthsObserved ? <Text style={styles.parentSummaryDetail}>Strengths: {latestApprovedParentSummary.strengthsObserved}</Text> : null}
+                  {latestApprovedParentSummary?.focusAreas ? <Text style={styles.parentSummaryDetail}>Focus areas: {latestApprovedParentSummary.focusAreas}</Text> : null}
+                  {latestApprovedParentSummary?.homeCarryoverTip ? <Text style={styles.parentSummaryDetail}>Carryover tip: {latestApprovedParentSummary.homeCarryoverTip}</Text> : null}
+                </View>
+                {previousApprovedParentSummaries.map((item) => (
+                  <View key={item.id || item.sessionDataSheetId} style={styles.parentSummaryHistoryEntry}>
+                    <Text style={styles.parentSummaryHistoryStamp}>{formatSessionStamp(item)}</Text>
+                    <Text style={styles.parentSummaryHistoryText} numberOfLines={3}>{item?.highLevelProgress || item?.focusAreas || 'Parent-safe ABA update available.'}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+          </>
         ) : (
           <View style={styles.reviewAccordionList}>
             {dailyReviewSections.map((section) => {
@@ -538,6 +691,30 @@ export default function MyChildScreen() {
           onRecorded={() => fetchAndSync({ force: true })}
         />
       </View>
+
+      <Modal transparent visible={artifactModalOpen} animationType="fade" onRequestClose={() => setArtifactModalOpen(false)}>
+        <TouchableWithoutFeedback onPress={() => setArtifactModalOpen(false)}>
+          <View style={styles.artifactModalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.artifactModalCard}>
+                <Text style={styles.artifactModalTitle}>{artifactTitle}</Text>
+                {artifactLoading ? <ActivityIndicator style={styles.artifactLoading} size="small" color="#2563eb" /> : null}
+                {artifactError ? <Text style={styles.summaryErrorText}>{artifactError}</Text> : null}
+                {!artifactLoading && !artifactError ? (
+                  <ScrollView style={styles.artifactTextWrap} contentContainerStyle={styles.artifactTextContent}>
+                    <Text style={styles.artifactText}>{artifactText || 'No session summary artifact is available yet.'}</Text>
+                  </ScrollView>
+                ) : null}
+                <View style={styles.artifactActionsRow}>
+                  <TouchableOpacity style={styles.artifactCloseButton} onPress={() => setArtifactModalOpen(false)}>
+                    <Text style={styles.artifactCloseButtonText}>Close</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
 
       {/* Care team */}
       <View style={styles.careTeamWrap}>
@@ -712,6 +889,35 @@ const styles = StyleSheet.create({
   reportsLinkButtonText: { color: '#1d4ed8', fontWeight: '800', fontSize: 12 },
   summaryLoadingWrap: { paddingVertical: 24, alignItems: 'center', justifyContent: 'center' },
   summaryErrorText: { color: '#b91c1c', paddingVertical: 12 },
+  summaryHistoryCard: { marginTop: 12, backgroundColor: '#ffffff', borderRadius: 16, borderWidth: 1, borderColor: '#e5e7eb', padding: 14 },
+  summaryHistoryTitle: { fontSize: 15, fontWeight: '800', color: '#111827' },
+  summaryHistorySubtitle: { marginTop: 4, color: '#64748b', lineHeight: 20 },
+  parentSummaryCard: { marginTop: 12, borderRadius: 14, backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#dbeafe', padding: 14 },
+  parentSummaryStamp: { color: '#1d4ed8', fontWeight: '800' },
+  parentSummaryBody: { marginTop: 8, color: '#0f172a', lineHeight: 22, fontWeight: '700' },
+  parentSummaryDetail: { marginTop: 8, color: '#475569', lineHeight: 20 },
+  parentSummaryHistoryEntry: { marginTop: 12, borderTopWidth: 1, borderTopColor: '#e2e8f0', paddingTop: 12 },
+  parentSummaryHistoryStamp: { color: '#111827', fontWeight: '700' },
+  parentSummaryHistoryText: { marginTop: 4, color: '#475569', lineHeight: 20 },
+  summaryHistoryEntry: { marginTop: 12, borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 12 },
+  summaryHistoryEntryHeader: { flexDirection: 'row', alignItems: 'center' },
+  summaryHistoryEntryTextWrap: { flex: 1, paddingRight: 12 },
+  summaryHistoryEntryTitle: { fontWeight: '800', color: '#111827' },
+  summaryHistoryEntryPreview: { marginTop: 4, color: '#475569', lineHeight: 20 },
+  summaryHistoryActionsRow: { flexDirection: 'row', marginTop: 10 },
+  summaryHistoryAction: { borderRadius: 10, backgroundColor: '#eff6ff', paddingVertical: 10, paddingHorizontal: 12 },
+  summaryHistoryActionText: { color: '#1d4ed8', fontWeight: '800' },
+  summaryHistoryEntryBody: { marginTop: 10 },
+  artifactModalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.42)', justifyContent: 'center', padding: 20 },
+  artifactModalCard: { maxHeight: '80%', borderRadius: 18, backgroundColor: '#ffffff', padding: 18 },
+  artifactModalTitle: { fontSize: 17, fontWeight: '800', color: '#111827' },
+  artifactLoading: { marginTop: 16 },
+  artifactTextWrap: { marginTop: 12, maxHeight: 420, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, backgroundColor: '#f8fafc' },
+  artifactTextContent: { padding: 12 },
+  artifactText: { color: '#334155', lineHeight: 20, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' },
+  artifactActionsRow: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 14 },
+  artifactCloseButton: { borderRadius: 12, backgroundColor: '#2563eb', paddingVertical: 10, paddingHorizontal: 14 },
+  artifactCloseButtonText: { color: '#ffffff', fontWeight: '800' },
   reviewAccordionList: { marginTop: 8 },
   reviewAccordionCard: {
     backgroundColor: '#ffffff',

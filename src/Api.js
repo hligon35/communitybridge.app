@@ -43,6 +43,39 @@ import {
   flushOfflineQueue as _flushOfflineQueue,
   getOfflineQueueSize as _getOfflineQueueSize,
 } from './utils/offlineQueue';
+import {
+  getBehaviorTarget as getBehaviorTargetRecord,
+  getSessionDataSheet as getSessionDataSheetRecord,
+  getSessionDataSheetBySession as getSessionDataSheetBySessionRecord,
+  listAbcObservationsBySheet as listAbcObservationsBySheetRecords,
+  listBehaviorEventsBySheet as listBehaviorEventsBySheetRecords,
+  listBehaviorTargetsByBcba as listBehaviorTargetsByBcbaRecords,
+  listBehaviorTargetsByChild as listBehaviorTargetsByChildRecords,
+  listDurationTimersBySheet as listDurationTimersBySheetRecords,
+  listIntervalSamplesBySheet as listIntervalSamplesBySheetRecords,
+  listIoaChecksByTarget as listIoaChecksByTargetRecords,
+  listLatencyRecordsBySheet as listLatencyRecordsBySheetRecords,
+  listParentSummariesByChild as listParentSummariesByChildRecords,
+  listPhaseChangesByTarget as listPhaseChangesByTargetRecords,
+  listSessionDataSheetsForBcba as listSessionDataSheetsForBcbaRecords,
+  listSessionDataSheetsForTherapist as listSessionDataSheetsForTherapistRecords,
+  listSkillTrialsBySheet as listSkillTrialsBySheetRecords,
+  listSupervisionChecksByChild as listSupervisionChecksByChildRecords,
+  listTargetReviewsByTarget as listTargetReviewsByTargetRecords,
+  saveAbcObservation as saveAbcObservationRecord,
+  saveBehaviorEvent as saveBehaviorEventRecord,
+  saveBehaviorTarget as saveBehaviorTargetRecord,
+  saveDurationTimer as saveDurationTimerRecord,
+  saveIntervalSample as saveIntervalSampleRecord,
+  saveIoaCheck as saveIoaCheckRecord,
+  saveLatencyRecord as saveLatencyRecordRecord,
+  saveParentSummary as saveParentSummaryRecord,
+  savePhaseChange as savePhaseChangeRecord,
+  saveSessionDataSheet as saveSessionDataSheetRecord,
+  saveSkillTrial as saveSkillTrialRecord,
+  saveSupervisionCheck as saveSupervisionCheckRecord,
+  saveTargetReview as saveTargetReviewRecord,
+} from './features/aba/services/abaFirestore';
 
 function _wrapWithOfflineFallback(kind, impl) {
   // Register the underlying impl as the dispatcher so flushOfflineQueue can
@@ -2423,6 +2456,161 @@ export async function updateProgramWorkspace(programId, payload) {
   };
 }
 
+export const saveBehaviorTarget = _wrapWithOfflineFallback('saveBehaviorTarget', async function saveBehaviorTargetImpl(payload, existing = null) {
+  requireUser();
+  return { ok: true, item: await saveBehaviorTargetRecord(payload, existing) };
+});
+
+export async function getBehaviorTarget(targetId) {
+  requireUser();
+  return { ok: true, item: await getBehaviorTargetRecord(targetId) };
+}
+
+export async function listBehaviorTargetsByChild(childId, max = 100) {
+  requireUser();
+  return { ok: true, items: await listBehaviorTargetsByChildRecords(childId, max) };
+}
+
+export async function listBehaviorTargetsByBcba(bcbaId, max = 100) {
+  requireUser();
+  return { ok: true, items: await listBehaviorTargetsByBcbaRecords(bcbaId, max) };
+}
+
+export const saveSessionDataSheet = _wrapWithOfflineFallback('saveSessionDataSheet', async function saveSessionDataSheetImpl(payload, existing = null) {
+  requireUser();
+  return { ok: true, item: await saveSessionDataSheetRecord(payload, existing) };
+});
+
+export async function getSessionDataSheet(sheetId) {
+  requireUser();
+  return { ok: true, item: await getSessionDataSheetRecord(sheetId) };
+}
+
+export async function getSessionDataSheetBySession(sessionId) {
+  requireUser();
+  return { ok: true, item: await getSessionDataSheetBySessionRecord(sessionId) };
+}
+
+export async function listSessionDataSheetsForTherapist(therapistId, max = 100) {
+  requireUser();
+  return { ok: true, items: await listSessionDataSheetsForTherapistRecords(therapistId, max) };
+}
+
+export async function listSessionDataSheetsForBcba(bcbaId, max = 100) {
+  requireUser();
+  return { ok: true, items: await listSessionDataSheetsForBcbaRecords(bcbaId, max) };
+}
+
+export const saveBehaviorEvent = _wrapWithOfflineFallback('saveBehaviorEvent', async function saveBehaviorEventImpl(payload, existing = null) {
+  requireUser();
+  return { ok: true, item: await saveBehaviorEventRecord(payload, existing) };
+});
+
+export async function listBehaviorEventsBySheet(sessionDataSheetId, max = 500) {
+  requireUser();
+  return { ok: true, items: await listBehaviorEventsBySheetRecords(sessionDataSheetId, max) };
+}
+
+export const saveAbcObservation = _wrapWithOfflineFallback('saveAbcObservation', async function saveAbcObservationImpl(payload, existing = null) {
+  requireUser();
+  return { ok: true, item: await saveAbcObservationRecord(payload, existing) };
+});
+
+export async function listAbcObservationsBySheet(sessionDataSheetId, max = 250) {
+  requireUser();
+  return { ok: true, items: await listAbcObservationsBySheetRecords(sessionDataSheetId, max) };
+}
+
+export const saveSkillTrial = _wrapWithOfflineFallback('saveSkillTrial', async function saveSkillTrialImpl(payload, existing = null) {
+  requireUser();
+  return { ok: true, item: await saveSkillTrialRecord(payload, existing) };
+});
+
+export async function listSkillTrialsBySheet(sessionDataSheetId, max = 1000) {
+  requireUser();
+  return { ok: true, items: await listSkillTrialsBySheetRecords(sessionDataSheetId, max) };
+}
+
+export const saveIntervalSample = _wrapWithOfflineFallback('saveIntervalSample', async function saveIntervalSampleImpl(payload, existing = null) {
+  requireUser();
+  return { ok: true, item: await saveIntervalSampleRecord(payload, existing) };
+});
+
+export async function listIntervalSamplesBySheet(sessionDataSheetId, max = 1000) {
+  requireUser();
+  return { ok: true, items: await listIntervalSamplesBySheetRecords(sessionDataSheetId, max) };
+}
+
+export const saveDurationTimer = _wrapWithOfflineFallback('saveDurationTimer', async function saveDurationTimerImpl(payload, existing = null) {
+  requireUser();
+  return { ok: true, item: await saveDurationTimerRecord(payload, existing) };
+});
+
+export async function listDurationTimersBySheet(sessionDataSheetId, max = 1000) {
+  requireUser();
+  return { ok: true, items: await listDurationTimersBySheetRecords(sessionDataSheetId, max) };
+}
+
+export const saveLatencyRecord = _wrapWithOfflineFallback('saveLatencyRecord', async function saveLatencyRecordImpl(payload, existing = null) {
+  requireUser();
+  return { ok: true, item: await saveLatencyRecordRecord(payload, existing) };
+});
+
+export async function listLatencyRecordsBySheet(sessionDataSheetId, max = 1000) {
+  requireUser();
+  return { ok: true, items: await listLatencyRecordsBySheetRecords(sessionDataSheetId, max) };
+}
+
+export const saveTargetReview = _wrapWithOfflineFallback('saveTargetReview', async function saveTargetReviewImpl(payload, existing = null) {
+  requireUser();
+  return { ok: true, item: await saveTargetReviewRecord(payload, existing) };
+});
+
+export async function listTargetReviewsByTarget(targetId, max = 100) {
+  requireUser();
+  return { ok: true, items: await listTargetReviewsByTargetRecords(targetId, max) };
+}
+
+export const saveSupervisionCheck = _wrapWithOfflineFallback('saveSupervisionCheck', async function saveSupervisionCheckImpl(payload, existing = null) {
+  requireUser();
+  return { ok: true, item: await saveSupervisionCheckRecord(payload, existing) };
+});
+
+export async function listSupervisionChecksByChild(childId, max = 100) {
+  requireUser();
+  return { ok: true, items: await listSupervisionChecksByChildRecords(childId, max) };
+}
+
+export const saveIoaCheck = _wrapWithOfflineFallback('saveIoaCheck', async function saveIoaCheckImpl(payload, existing = null) {
+  requireUser();
+  return { ok: true, item: await saveIoaCheckRecord(payload, existing) };
+});
+
+export async function listIoaChecksByTarget(targetId, max = 100) {
+  requireUser();
+  return { ok: true, items: await listIoaChecksByTargetRecords(targetId, max) };
+}
+
+export const savePhaseChange = _wrapWithOfflineFallback('savePhaseChange', async function savePhaseChangeImpl(payload, existing = null) {
+  requireUser();
+  return { ok: true, item: await savePhaseChangeRecord(payload, existing) };
+});
+
+export async function listPhaseChangesByTarget(targetId, max = 100) {
+  requireUser();
+  return { ok: true, items: await listPhaseChangesByTargetRecords(targetId, max) };
+}
+
+export const saveParentSummary = _wrapWithOfflineFallback('saveParentSummary', async function saveParentSummaryImpl(payload, existing = null) {
+  requireUser();
+  return { ok: true, item: await saveParentSummaryRecord(payload, existing) };
+});
+
+export async function listParentSummariesByChild(childId, max = 100) {
+  requireUser();
+  return { ok: true, items: await listParentSummariesByChildRecords(childId, max) };
+}
+
 export async function getOrgSettings() {
   const u = requireUser();
   const apiBase = String(BASE_URL || '').replace(/\/$/, '');
@@ -3383,6 +3571,37 @@ export default {
   listExportJobs,
   getProgramWorkspace,
   updateProgramWorkspace,
+  saveBehaviorTarget,
+  getBehaviorTarget,
+  listBehaviorTargetsByChild,
+  listBehaviorTargetsByBcba,
+  saveSessionDataSheet,
+  getSessionDataSheet,
+  getSessionDataSheetBySession,
+  listSessionDataSheetsForTherapist,
+  listSessionDataSheetsForBcba,
+  saveBehaviorEvent,
+  listBehaviorEventsBySheet,
+  saveAbcObservation,
+  listAbcObservationsBySheet,
+  saveSkillTrial,
+  listSkillTrialsBySheet,
+  saveIntervalSample,
+  listIntervalSamplesBySheet,
+  saveDurationTimer,
+  listDurationTimersBySheet,
+  saveLatencyRecord,
+  listLatencyRecordsBySheet,
+  saveTargetReview,
+  listTargetReviewsByTarget,
+  saveSupervisionCheck,
+  listSupervisionChecksByChild,
+  saveIoaCheck,
+  listIoaChecksByTarget,
+  savePhaseChange,
+  listPhaseChangesByTarget,
+  saveParentSummary,
+  listParentSummariesByChild,
   getOrgSettings,
   updateOrgSettings,
   getAttendanceForDate,
