@@ -1,15 +1,54 @@
 import React, { useContext } from 'react';
-import { View, Platform, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions } from 'react-native';
 import ScreenHeader from './ScreenHeader';
 import WebNav from './WebNav';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTenant } from '../core/tenant/TenantContext';
 import { useAuth } from '../AuthContext';
-import { isAdminRole } from '../core/tenant/models';
+import { canAccessAdminWorkspace, isAdminRole } from '../core/tenant/models';
 import { humanizeScreenLabel } from '../utils/screenLabels';
 import useIsTabletLayout from '../hooks/useIsTabletLayout';
 import { MobileAdminShellContext } from './TabletNavigationShell';
 import { shouldShowSubscreenBack } from '../utils/backNavigation';
+import { canAccessPhoneRoute, getPhoneFallbackCopy, getPhoneAccessProfile, isPhoneViewport as resolvePhoneViewport } from '../utils/mobileRoleAccess';
+
+function PhoneRouteFallback({ navigation, role, routeName }) {
+  const profile = getPhoneAccessProfile(role);
+  const copy = getPhoneFallbackCopy(role, routeName);
+
+  function goToRoot(rootName) {
+    const stackNav = navigation?.getParent?.();
+    const rootNav = stackNav?.getParent?.() || stackNav || navigation;
+    if (rootNav && typeof rootNav.navigate === 'function') {
+      rootNav.navigate(rootName);
+      return;
+    }
+    navigation?.navigate?.(rootName);
+  }
+
+  const primaryRoot = profile === 'parent' || profile === 'therapist' ? 'Home' : 'Controls';
+
+  return (
+    <View style={styles.phoneFallbackWrap}>
+      <View style={styles.phoneFallbackCard}>
+        <Text style={styles.phoneFallbackEyebrow}>Phone Workspace</Text>
+        <Text style={styles.phoneFallbackTitle}>{copy.title}</Text>
+        <Text style={styles.phoneFallbackBody}>{copy.body}</Text>
+        <View style={styles.phoneFallbackActions}>
+          <TouchableOpacity style={styles.phoneFallbackPrimaryButton} onPress={() => goToRoot(primaryRoot)}>
+            <Text style={styles.phoneFallbackPrimaryText}>Go to Dashboard</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.phoneFallbackSecondaryButton} onPress={() => goToRoot('Chats')}>
+            <Text style={styles.phoneFallbackSecondaryText}>Open Chats</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.phoneFallbackSecondaryButton} onPress={() => goToRoot('Settings')}>
+            <Text style={styles.phoneFallbackSecondaryText}>Settings</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+}
 
 export function ScreenWrapper({
   children,
@@ -34,12 +73,12 @@ export function ScreenWrapper({
   const labels = tenant?.labels || {};
   const shellContext = useContext(MobileAdminShellContext);
   const isWeb = Platform.OS === 'web';
-  const shortEdge = Math.min(width, height);
-  const longEdge = Math.max(width, height);
-  const isPhoneViewport = shortEdge < 600 && longEdge < 1100;
+  const isPhoneViewport = resolvePhoneViewport(width, height);
   const suppressLegacyWebNav = Boolean(isWeb && isAdminRole(user?.role) && isPhoneViewport);
-  const useAdminPhoneMainArea = Boolean(!isWeb && isAdminRole(user?.role) && isPhoneViewport && route?.name !== 'StudentDirectory' && route?.name !== 'FacultyDirectory');
-  const useAdminPhoneHeaderBelow = Boolean(!isWeb && isAdminRole(user?.role) && isPhoneViewport);
+  const hasAdminPhoneWorkspace = Boolean(!isWeb && canAccessAdminWorkspace(user?.role) && isPhoneViewport);
+  const isPhoneRouteAllowed = !(!isWeb && isPhoneViewport) || canAccessPhoneRoute(user?.role, route?.name);
+  const useAdminPhoneMainArea = Boolean(hasAdminPhoneWorkspace && route?.name !== 'StudentDirectory' && route?.name !== 'FacultyDirectory');
+  const useAdminPhoneHeaderBelow = Boolean(hasAdminPhoneWorkspace);
   const showMobileHeaderBelow = Boolean(useAdminPhoneHeaderBelow && mobileHeaderBelow);
   const showNativeStackHeader = !isWeb && !isTabletLayout;
 
@@ -104,6 +143,8 @@ export function ScreenWrapper({
             {resolvedWebBottomSpacerHeight > 0 ? <View style={{ height: resolvedWebBottomSpacerHeight }} accessibilityElementsHidden importantForAccessibility="no" /> : null}
           </View>
         </View>
+      ) : !isPhoneRouteAllowed ? (
+        <PhoneRouteFallback navigation={navigation} role={user?.role} routeName={route?.name} />
       ) : useAdminPhoneMainArea ? (
         <View style={styles.mobileAdminShell}>
           <View style={styles.mobileAdminMain}>
@@ -219,6 +260,65 @@ const styles = StyleSheet.create({
   mobileHeaderBelowContent: {
     paddingHorizontal: 4,
     paddingVertical: 10,
+  },
+  phoneFallbackWrap: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: '#f8fafc',
+    justifyContent: 'center',
+  },
+  phoneFallbackCard: {
+    borderRadius: 22,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    padding: 20,
+  },
+  phoneFallbackEyebrow: {
+    color: '#1d4ed8',
+    fontWeight: '800',
+    fontSize: 12,
+    textTransform: 'uppercase',
+  },
+  phoneFallbackTitle: {
+    marginTop: 8,
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  phoneFallbackBody: {
+    marginTop: 10,
+    color: '#475569',
+    lineHeight: 21,
+  },
+  phoneFallbackActions: {
+    marginTop: 18,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  phoneFallbackPrimaryButton: {
+    borderRadius: 999,
+    backgroundColor: '#2563eb',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginRight: 10,
+    marginBottom: 10,
+  },
+  phoneFallbackPrimaryText: {
+    color: '#ffffff',
+    fontWeight: '800',
+  },
+  phoneFallbackSecondaryButton: {
+    borderRadius: 999,
+    backgroundColor: '#e2e8f0',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginRight: 10,
+    marginBottom: 10,
+  },
+  phoneFallbackSecondaryText: {
+    color: '#0f172a',
+    fontWeight: '800',
   },
 });
 

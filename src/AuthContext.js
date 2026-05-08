@@ -4,15 +4,43 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Api from './Api';
 import { getAuthInstance, getAuthInitError } from './firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { resetToLogin, resetToTwoFactor } from './navigationRef';
+import { navigationRef, resetToLogin, resetToTwoFactor } from './navigationRef';
 import { logger, setDebugContext } from './utils/logger';
 import { reportErrorToSentry } from './utils/reportError';
 import { normalizeRoleOverride, isDevSwitcherUser, isDemoReviewerUser, isSpecialAccessUser, getMfaFreshnessWindowMs } from './utils/authState';
 import { syncLoggedInDevicePushRegistration, unregisterLoggedInDevicePushRegistration } from './utils/pushNotifications';
+import { getDemoRoleIdentity } from './utils/demoIdentity';
+
+function getRootWorkspaceForRole(role) {
+  const normalized = normalizeRoleOverride(role);
+  return normalized === 'admin' || normalized === 'bcba' ? 'Controls' : 'Home';
+}
+
+function navigateToRoleWorkspace(role) {
+  try {
+    if (!navigationRef?.isReady?.()) return;
+    navigationRef.navigate('Main', { screen: getRootWorkspaceForRole(role) });
+  } catch (_) {
+    // ignore navigation sync errors during role changes
+  }
+}
 
 const AuthContext = createContext(null);
 const MFA_VERIFIED_CACHE_KEY = 'bb_mfa_verified_at_cache_v1';
 const DEV_ROLE_OVERRIDE_KEY = 'bb_dev_role_override_v1';
+const DEV_ROLE_BEHAVIOR_KEY = 'bb_dev_role_behavior_v1';
+
+function normalizeDevRoleBehavior(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (normalized === 'parent' || normalized === 'admin') return normalized;
+  return 'remember';
+}
+
+function resolveDevRoleOverride(overrideRole, behavior) {
+  const normalizedBehavior = normalizeDevRoleBehavior(behavior);
+  if (normalizedBehavior === 'parent' || normalizedBehavior === 'admin') return normalizedBehavior;
+  return normalizeRoleOverride(overrideRole);
+}
 
 function readWebDevSessionBootstrap() {
   if (!__DEV__) return null;
@@ -55,6 +83,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState(null);
   const [devRoleOverride, setDevRoleOverride] = useState('');
+  const [devRoleBehavior, setDevRoleBehavior] = useState('remember');
 
   const [mfaRequired, setMfaRequired] = useState(false);
   const [mfaVerified, setMfaVerified] = useState(false);
@@ -147,13 +176,34 @@ export function AuthProvider({ children }) {
     }
   }
 
-  function applyDevRoleOverride(nextUser, overrideRole) {
+  async function readDevRoleBehavior() {
+    try {
+      return normalizeDevRoleBehavior(await AsyncStorage.getItem(DEV_ROLE_BEHAVIOR_KEY));
+    } catch (_) {
+      return 'remember';
+    }
+  }
+
+  async function writeDevRoleBehavior(behavior) {
+    try {
+      const normalized = normalizeDevRoleBehavior(behavior);
+      await AsyncStorage.setItem(DEV_ROLE_BEHAVIOR_KEY, normalized);
+      return normalized;
+    } catch (_) {
+      return 'remember';
+    }
+  }
+
+  function applyDevRoleOverride(nextUser, overrideRole, behavior = 'remember') {
     if (!nextUser) return nextUser;
     if (!isSpecialAccessUser(nextUser.email)) return nextUser;
-    const normalized = normalizeRoleOverride(overrideRole);
+    const normalized = resolveDevRoleOverride(overrideRole, behavior);
     if (!normalized) return nextUser;
+    const roleIdentity = getDemoRoleIdentity(normalized, nextUser) || nextUser;
     return {
       ...nextUser,
+      id: roleIdentity?.id || nextUser.id,
+      name: roleIdentity?.name || nextUser.name,
       devBaseRole: nextUser.role,
       role: normalized,
     };
@@ -326,8 +376,10 @@ export function AuthProvider({ children }) {
           role: isSpecialAccessUser(fbUser.email) ? 'admin' : 'parent',
         };
         const storedOverride = isSpecialAccessUser(fbUser.email) ? await readDevRoleOverride() : '';
+        const storedBehavior = isSpecialAccessUser(fbUser.email) ? await readDevRoleBehavior() : 'remember';
         setDevRoleOverride(storedOverride);
-        setUser(applyDevRoleOverride(profileForState, storedOverride));
+        setDevRoleBehavior(storedBehavior);
+        setUser(applyDevRoleOverride(profileForState, storedOverride, storedBehavior));
 
         // If the profile read was blocked by security rules, this is almost certainly
         // the MFA gate. Mark required immediately so the UI never briefly flashes Main.
@@ -488,9 +540,11 @@ export function AuthProvider({ children }) {
       role: isSpecialAccessUser(fbUser.email) ? 'admin' : 'parent',
     };
     const override = isSpecialAccessUser(nextUser?.email) ? await readDevRoleOverride() : '';
+    const behavior = isSpecialAccessUser(nextUser?.email) ? await readDevRoleBehavior() : 'remember';
     setDevRoleOverride(override);
+    setDevRoleBehavior(behavior);
     setToken(nextToken);
-    setUser(applyDevRoleOverride(nextUser, override));
+    setUser(applyDevRoleOverride(nextUser, override, behavior));
     return { token: nextToken, user: nextUser };
   }
 
@@ -512,6 +566,37 @@ export function AuthProvider({ children }) {
         role: normalized,
       };
     });
+    navigateToRoleWorkspace(normalized);
+  }
+
+  async function setDevStartupBehavior(nextBehavior) {
+    if (!__DEV__ && !isSpecialAccessUser(user?.email)) return;
+    if (!isSpecialAccessUser(user?.email)) return;
+
+    const normalizedBehavior = normalizeDevRoleBehavior(nextBehavior);
+    setDevRoleBehavior(normalizedBehavior);
+    await writeDevRoleBehavior(normalizedBehavior);
+
+    if (normalizedBehavior === 'remember') {
+      const currentRole = normalizeRoleOverride(user?.role);
+      if (currentRole) {
+        setDevRoleOverride(currentRole);
+        await writeDevRoleOverride(currentRole);
+      }
+      return;
+    }
+
+    setDevRoleOverride(normalizedBehavior);
+    await writeDevRoleOverride(normalizedBehavior);
+    setUser((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        devBaseRole: current.devBaseRole || current.role,
+        role: normalizedBehavior,
+      };
+    });
+    navigateToRoleWorkspace(normalizedBehavior);
   }
 
   const valueWithMfa = useMemo(
@@ -531,6 +616,8 @@ export function AuthProvider({ children }) {
         logout,
         setAuth,
         setRole,
+        devRoleBehavior,
+        setDevStartupBehavior,
         authError,
         passwordSetupRequired: Boolean(user?.passwordSetupRequired),
         mfaRequired: isDevBypass ? false : mfaRequired,
@@ -542,7 +629,7 @@ export function AuthProvider({ children }) {
         refreshMfaState,
       });
     },
-    [token, user, loading, authError, mfaRequired, mfaVerified, mfaLoading, devRoleOverride]
+    [token, user, loading, authError, mfaRequired, mfaVerified, mfaLoading, devRoleOverride, devRoleBehavior]
   );
 
   return <AuthContext.Provider value={valueWithMfa}>{children}</AuthContext.Provider>;

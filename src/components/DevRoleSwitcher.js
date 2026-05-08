@@ -13,7 +13,7 @@ import { ENABLE_DEV_SWITCHER } from '../config';
 const DEV_SWITCHER_VISIBILITY_KEY = '@communitybridge/dev-switcher-visible';
 
 export default function DevRoleSwitcher() {
-  const { setRole, user, isDemoReviewer } = useAuth();
+  const { setRole, user, isDemoReviewer, devRoleBehavior = 'remember', setDevStartupBehavior } = useAuth();
   const { clearAllData, resetScreenshotSeed } = useData();
   const tenant = useTenant() || {};
   const isDevAccount = isDevSwitcherUser(user?.email);
@@ -73,6 +73,13 @@ export default function DevRoleSwitcher() {
     setRole(r);
     setOpen(false);
     Alert.alert('Role changed', `Switched to ${r}`);
+  };
+
+  const changeDevBehavior = (behavior) => {
+    if (!setDevStartupBehavior) return;
+    logPress('DevTools:ChangeDevBehavior', { behavior });
+    setDevStartupBehavior(behavior);
+    Alert.alert('Dev behavior updated', behavior === 'remember' ? 'The dev account will keep using the last selected role on launch.' : `The dev account will open as ${behavior} on launch.`);
   };
 
   const {
@@ -195,6 +202,22 @@ export default function DevRoleSwitcher() {
             <Text>Admin</Text>
           </TouchableOpacity>
 
+          {isDevAccount ? (
+            <>
+              <View style={styles.divider} />
+              <Text style={styles.sectionLabel}>Dev Startup</Text>
+              <TouchableOpacity onPress={() => changeDevBehavior('remember')} style={[styles.menuBtn, devRoleBehavior === 'remember' ? styles.menuBtnActive : null]}>
+                <Text style={[styles.menuBtnText, devRoleBehavior === 'remember' ? styles.menuBtnTextActive : null]}>Remember last role</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => changeDevBehavior('parent')} style={[styles.menuBtn, devRoleBehavior === 'parent' ? styles.menuBtnActive : null]}>
+                <Text style={[styles.menuBtnText, devRoleBehavior === 'parent' ? styles.menuBtnTextActive : null]}>Parent on launch</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => changeDevBehavior('admin')} style={[styles.menuBtn, devRoleBehavior === 'admin' ? styles.menuBtnActive : null]}>
+                <Text style={[styles.menuBtnText, devRoleBehavior === 'admin' ? styles.menuBtnTextActive : null]}>Admin on launch</Text>
+              </TouchableOpacity>
+            </>
+          ) : null}
+
           {/* Tenant */}
           <View style={styles.divider} />
           <Text style={styles.sectionLabel}>Tenant</Text>
@@ -292,6 +315,17 @@ const styles = StyleSheet.create({
   menuBtn: {
     paddingVertical: 8,
     paddingHorizontal: 12,
+  },
+  menuBtnActive: {
+    backgroundColor: '#dbeafe',
+    borderRadius: 8,
+  },
+  menuBtnText: {
+    color: '#111827',
+  },
+  menuBtnTextActive: {
+    color: '#1d4ed8',
+    fontWeight: '800',
   },
   badgeWrap: {
     marginBottom: 8,

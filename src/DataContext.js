@@ -203,6 +203,7 @@ export function DataProvider({ children: reactChildren }) {
     setMessages([]);
     setThreadReads({});
     setUrgentMemos([]);
+    setTimeChangeProposals([]);
     setArchivedThreads([]);
     setChildren([]);
     setParents([]);
@@ -1083,10 +1084,11 @@ export function DataProvider({ children: reactChildren }) {
 
   async function clearAllData() {
     try {
+      resetLocalState();
+      setApplicationBadgeCountAsync(0).catch(() => {});
       const keys = Object.values(storageKeys);
       await AsyncStorage.multiRemove(keys);
       await AsyncStorage.setItem(storageKeys.seedStatus, 'cleared');
-      resetLocalState();
     } catch (e) {
       console.warn('clearAllData failed', e?.message || e);
     }

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFocusEffect, useRoute } from '@react-navigation/native';
 import { ScreenWrapper } from '../components/ScreenWrapper';
@@ -12,6 +12,7 @@ import Api from '../Api';
 import { USER_ROLES, isBcbaRole, isOfficeAdminRole, normalizeUserRole } from '../core/tenant/models';
 import { THERAPY_ROLE_LABELS } from '../utils/roleTerminology';
 import { childHasParent, findLinkedParentId } from '../utils/directoryLinking';
+import { isAggregateOnlyPhoneProfile, isPhoneViewport as resolvePhoneViewport, shouldUsePhoneSafeSchedule } from '../utils/mobileRoleAccess';
 const { isChildLinkedToTherapist } = require('../features/sessionTracking/utils/dashboardSessionTarget');
 
 function todayStamp(hours = 9, minutes = 0) {
@@ -63,16 +64,44 @@ function buildSessionCards(children) {
         start,
         end,
         status: String(child?.scheduleStatus || child?.status || 'scheduled').toLowerCase(),
+        cancellationReason: String(child?.cancellationReason || '').trim(),
+        canceledAt: String(child?.canceledAt || '').trim(),
+        canceledByName: String(child?.canceledByName || '').trim(),
       };
     })
     .filter((session) => session.start instanceof Date && Number.isFinite(session.start.getTime()) && session.end instanceof Date && Number.isFinite(session.end.getTime()))
     .sort((left, right) => left.start.getTime() - right.start.getTime());
 }
 
+function isChildAssignedToPhoneStaffSchedule(child, user, isBcba) {
+  const userId = String(user?.id || '').trim();
+  const normalizedName = String(user?.name || user?.displayName || user?.email || '').trim().toLowerCase();
+  const entries = [
+    child?.amTherapist,
+    child?.pmTherapist,
+    child?.bcaTherapist,
+    ...(Array.isArray(child?.assignedABA) ? child.assignedABA : []),
+    ...(Array.isArray(child?.assigned_ABA) ? child.assigned_ABA : []),
+  ];
+
+  if (!isBcba && isChildLinkedToTherapist(child, userId)) return true;
+
+  return entries.some((entry) => {
+    if (!entry) return false;
+    if (typeof entry === 'string') {
+      const value = String(entry).trim();
+      return value === userId || (normalizedName && value.toLowerCase() === normalizedName);
+    }
+    if (entry?.id && String(entry.id).trim() === userId) return true;
+    const value = String(entry?.name || entry?.email || '').trim().toLowerCase();
+    return Boolean(normalizedName && value && value === normalizedName);
+  });
+}
+
 export default function ScheduleCalendarScreen() {
   const { user } = useAuth();
   const { children = [], parents = [], therapists = [], setChildren, fetchAndSync } = useData();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const route = useRoute();
 
   useFocusEffect(
@@ -85,6 +114,9 @@ export default function ScheduleCalendarScreen() {
   const isTherapist = role === USER_ROLES.THERAPIST;
   const isParent = role === USER_ROLES.PARENT;
   const isOffice = isOfficeAdminRole(user?.role);
+  const isPhoneWorkspace = Platform.OS !== 'web' && resolvePhoneViewport(width, height);
+  const usePhoneSafeMode = isPhoneWorkspace && shouldUsePhoneSafeSchedule(user?.role);
+  const aggregateOnlyPhoneMode = usePhoneSafeMode && isAggregateOnlyPhoneProfile(user?.role);
   const canManageSchedule = isBcba || isOffice;
   const useCompactSessionLayout = width < 900;
   const requestedChildId = route?.params?.childId ? String(route.params.childId) : '';
@@ -103,6 +135,9 @@ export default function ScheduleCalendarScreen() {
   const [saving, setSaving] = useState(false);
   const [selectedDate, setSelectedDate] = useState(todayStamp(9, 0));
   const [mobileFilterCarouselLocked, setMobileFilterCarouselLocked] = useState(false);
+  const [cancellationSession, setCancellationSession] = useState(null);
+  const [cancellationReason, setCancellationReason] = useState('');
+  const [submittingCancellation, setSubmittingCancellation] = useState(false);
   const linkedParentId = isParent ? (findLinkedParentId(user, parents) || user?.id || null) : null;
   const isWideLayout = width >= 980;
 
@@ -126,7 +161,14 @@ export default function ScheduleCalendarScreen() {
     return (Array.isArray(children) ? children : []).filter((child) => childHasParent(child, linkedParentId));
   }, [children, isParent, linkedParentId]);
 
-  const visibleChildren = isParent ? parentChildren : filteredChildren;
+  const phoneScopedStaffChildren = useMemo(() => {
+    if (!usePhoneSafeMode || aggregateOnlyPhoneMode || isParent) return [];
+    return (Array.isArray(children) ? children : []).filter((child) => isChildAssignedToPhoneStaffSchedule(child, user, isBcba));
+  }, [aggregateOnlyPhoneMode, children, isBcba, isParent, usePhoneSafeMode, user]);
+
+  const visibleChildren = isParent
+    ? parentChildren
+    : (usePhoneSafeMode && !aggregateOnlyPhoneMode ? phoneScopedStaffChildren : filteredChildren);
 
   const sessions = useMemo(() => buildSessionCards(visibleChildren), [visibleChildren]);
   const visibleSessions = useMemo(() => sessions.filter((session) => sameDay(session.start, selectedDate)), [selectedDate, sessions]);
@@ -153,6 +195,94 @@ export default function ScheduleCalendarScreen() {
 
   const calendarDays = useMemo(() => buildCalendarDays(selectedDate), [selectedDate]);
   const monthLabel = useMemo(() => selectedDate.toLocaleDateString([], { month: 'long', year: 'numeric' }), [selectedDate]);
+
+  const aggregateStatusSummary = useMemo(() => sessions.reduce((summary, session) => {
+    const status = String(session?.status || 'scheduled').trim().toLowerCase();
+    summary.total += 1;
+    if (status === 'completed') summary.completed += 1;
+    else if (status === 'canceled') summary.canceled += 1;
+    else summary.scheduled += 1;
+    return summary;
+  }, { total: 0, scheduled: 0, completed: 0, canceled: 0 }), [sessions]);
+
+  const roomSummary = useMemo(() => {
+    const counts = new Map();
+    sessions.forEach((session) => {
+      const key = session.location || 'Room TBD';
+      counts.set(key, (counts.get(key) || 0) + 1);
+    });
+    return Array.from(counts.entries()).map(([label, value]) => ({ label, value }));
+  }, [sessions]);
+
+  if (usePhoneSafeMode) {
+    return (
+      <ScreenWrapper style={styles.screen}>
+        <ScrollView contentContainerStyle={[styles.content, styles.safeContent]} showsVerticalScrollIndicator={false}>
+          <View style={styles.safeIntroCard}>
+            <Text style={styles.groupTitle}>{aggregateOnlyPhoneMode ? 'Phone scheduling stays aggregate-first.' : 'Phone scheduling stays tied to your schedule.'}</Text>
+            <Text style={styles.groupSubtitle}>
+              {aggregateOnlyPhoneMode
+                ? 'This phone view keeps scheduling limited to totals, room queues, and status counts.'
+                : 'This phone view only shows the sessions and work blocks assigned to the signed-in staff member.'}
+            </Text>
+          </View>
+
+          {aggregateOnlyPhoneMode ? (
+            <>
+              <View style={styles.safeMetricRow}>
+                <View style={styles.safeMetricCard}>
+                  <Text style={styles.safeMetricLabel}>Scheduled today</Text>
+                  <Text style={styles.safeMetricValue}>{aggregateStatusSummary.scheduled}</Text>
+                </View>
+                <View style={styles.safeMetricCard}>
+                  <Text style={styles.safeMetricLabel}>Completed</Text>
+                  <Text style={styles.safeMetricValue}>{aggregateStatusSummary.completed}</Text>
+                </View>
+              </View>
+              <View style={styles.safeMetricRow}>
+                <View style={styles.safeMetricCard}>
+                  <Text style={styles.safeMetricLabel}>Canceled</Text>
+                  <Text style={styles.safeMetricValue}>{aggregateStatusSummary.canceled}</Text>
+                </View>
+                <View style={styles.safeMetricCard}>
+                  <Text style={styles.safeMetricLabel}>Rooms active</Text>
+                  <Text style={styles.safeMetricValue}>{roomSummary.length}</Text>
+                </View>
+              </View>
+              <View style={styles.groupCard}>
+                <Text style={styles.groupTitle}>Room queue overview</Text>
+                {roomSummary.length ? roomSummary.map((room) => <Text key={room.label} style={styles.sessionMeta}>{room.label}: {room.value} session{room.value === 1 ? '' : 's'}</Text>) : <Text style={styles.groupSubtitle}>No scheduled rooms are active right now.</Text>}
+              </View>
+            </>
+          ) : (
+            <>
+              <View style={styles.groupCard}>
+                <Text style={styles.groupTitle}>My schedule</Text>
+                <Text style={styles.groupSubtitle}>{monthLabel}</Text>
+                {sessions.length ? sessions.slice(0, 8).map((session) => (
+                  <View key={session.id} style={[styles.sessionCard, styles.sessionCardCompact]}>
+                    <View style={styles.sessionMain}>
+                      <Text style={styles.sessionTitle}>{session.student}</Text>
+                      <Text style={styles.sessionMeta}>{session.session} • {session.location}</Text>
+                      <Text style={styles.sessionMeta}>{session.start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} - {session.end.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</Text>
+                    </View>
+                    <View style={[styles.statusPill, session.status === 'canceled' ? styles.statusCanceled : session.status === 'completed' ? styles.statusCompleted : styles.statusScheduled]}>
+                      <Text style={[styles.statusText, session.status === 'canceled' ? styles.statusTextCanceled : session.status === 'completed' ? styles.statusTextCompleted : styles.statusTextScheduled]}>{session.status.toUpperCase()}</Text>
+                    </View>
+                  </View>
+                )) : <Text style={styles.groupSubtitle}>No scheduled sessions are assigned to your mobile schedule right now.</Text>}
+              </View>
+              <View style={styles.groupCard}>
+                <Text style={styles.groupTitle}>Selected day</Text>
+                <Text style={styles.groupSubtitle}>{selectedDate.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}</Text>
+                {visibleSessions.length ? visibleSessions.map((session) => <Text key={`${session.id}-day`} style={styles.sessionMeta}>{session.student} • {session.session} • {session.location}</Text>) : <Text style={styles.groupSubtitle}>No sessions are scheduled for this date.</Text>}
+              </View>
+            </>
+          )}
+        </ScrollView>
+      </ScreenWrapper>
+    );
+  }
 
   useEffect(() => {
     if (!selectedChildId && visibleChildren[0]?.id) {
@@ -334,6 +464,95 @@ export default function ScheduleCalendarScreen() {
       Alert.alert('Changes approved', `${selectedChild?.name || 'Learner'} schedule changes were approved.`);
     } catch (error) {
       Alert.alert('Approval failed', String(error?.message || error || 'We could not approve these schedule changes.'));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function closeCancellationModal() {
+    if (submittingCancellation) return;
+    setCancellationSession(null);
+    setCancellationReason('');
+  }
+
+  function openCancellationModal(session) {
+    if (!session?.id || !(session.start instanceof Date) || !Number.isFinite(session.start.getTime())) {
+      Alert.alert('Session unavailable', 'This session is missing the details needed to submit a cancellation request.');
+      return;
+    }
+    if (String(session.status || '').trim().toLowerCase() === 'canceled') {
+      Alert.alert('Already canceled', 'This session has already been canceled.');
+      return;
+    }
+
+    setCancellationSession(session);
+    setCancellationReason('');
+  }
+
+  async function submitSessionCancellation() {
+    const session = cancellationSession;
+    if (!session?.id || !(session.start instanceof Date) || !Number.isFinite(session.start.getTime())) {
+      Alert.alert('Session unavailable', 'This session is missing the details needed to submit a cancellation request.');
+      return;
+    }
+
+    const reason = String(cancellationReason || '').trim();
+    if (!reason) {
+      Alert.alert('Add a reason', 'Enter a short reason before sending the cancellation request.');
+      return;
+    }
+
+    const learnerName = session.student || 'this learner';
+    setSubmittingCancellation(true);
+    try {
+      const canceledAt = new Date().toISOString();
+      const result = await Api.updateChildSchedule(session.id, {
+        scheduleStatus: 'canceled',
+        status: 'canceled',
+        cancellationReason: reason,
+        canceledAt,
+        canceledById: String(user?.id || '').trim() || null,
+        canceledByName: String(user?.name || user?.displayName || user?.email || '').trim() || 'Parent',
+        scheduleApproval: null,
+      });
+      if (result?.item) {
+        mergeChildUpdate(result.item);
+      } else {
+        await fetchAndSync?.({ force: true });
+      }
+      closeCancellationModal();
+      Alert.alert('Session canceled', `${learnerName}'s session was canceled and the office was notified.`);
+    } catch (error) {
+      Alert.alert('Cancellation failed', String(error?.message || error || 'We could not cancel the session.'));
+    } finally {
+      setSubmittingCancellation(false);
+    }
+  }
+
+  async function restoreCanceledSession(session) {
+    if (!session?.id) {
+      Alert.alert('Session unavailable', 'This session is missing the details needed to restore it.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const result = await Api.updateChildSchedule(session.id, {
+        scheduleStatus: 'scheduled',
+        status: 'scheduled',
+        cancellationReason: '',
+        canceledAt: null,
+        canceledById: null,
+        canceledByName: null,
+      });
+      if (result?.item) {
+        mergeChildUpdate(result.item);
+      } else {
+        await fetchAndSync?.({ force: true });
+      }
+      Alert.alert('Session restored', `${session.student || 'The learner'} is back on the schedule.`);
+    } catch (error) {
+      Alert.alert('Restore failed', String(error?.message || error || 'We could not restore this session.'));
     } finally {
       setSaving(false);
     }
@@ -522,7 +741,16 @@ export default function ScheduleCalendarScreen() {
               <Text style={styles.groupSubtitle}>{group.value.length} session{group.value.length === 1 ? '' : 's'}</Text>
             ) : null}
             {group.value.map((session) => (
-              <View key={session.id} style={[styles.sessionCard, useCompactSessionLayout ? styles.sessionCardCompact : null]}>
+              <View key={session.id} style={[styles.sessionCard, session.status === 'canceled' && session.cancellationReason ? styles.sessionCardWithPending : null, useCompactSessionLayout ? styles.sessionCardCompact : null]}>
+                {session.status === 'canceled' && session.cancellationReason ? (
+                  <View style={styles.pendingCancellationBanner}>
+                    <MaterialIcons name="schedule" size={14} color="#92400e" />
+                    <Text style={styles.pendingCancellationBannerText}>
+                      Canceled{session.canceledAt ? ` · ${new Date(session.canceledAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}` : ''}
+                      {session.canceledByName ? ` by ${session.canceledByName}` : ''}
+                    </Text>
+                  </View>
+                ) : null}
                 <View style={styles.sessionMain}>
                   <View style={styles.sessionHeaderRow}>
                     <Text style={styles.sessionTitle}>{session.student}</Text>
@@ -539,29 +767,80 @@ export default function ScheduleCalendarScreen() {
                   ) : null}
                   <Text style={styles.sessionMeta}>Location: {session.location}</Text>
                   <Text style={styles.sessionMeta}>Time: {session.start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} - {session.end.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</Text>
+                  {session.status === 'canceled' && session.cancellationReason ? <Text style={styles.sessionMeta}>Reason: {session.cancellationReason}</Text> : null}
                 </View>
-                {useCompactSessionLayout ? (isOffice ? (
+                {useCompactSessionLayout ? (isOffice || isParent ? (
                   <View style={styles.sessionCardActionsCompact}>
-                    <AppIconButton
-                      accessibilityLabel={`Edit session for ${session.student}`}
-                      name="edit"
-                      iconSize={18}
-                      size={36}
-                      style={styles.sessionIconButtonCompact}
-                      onPress={() => openSessionEditor(session)}
-                    />
+                    {isOffice ? (
+                      session.status === 'canceled' ? (
+                        <TouchableOpacity
+                          accessibilityLabel={`Restore session for ${session.student}`}
+                          disabled={saving}
+                          onPress={() => restoreCanceledSession(session)}
+                          style={[styles.restoreSessionButtonCompact, saving ? styles.buttonDisabled : null]}
+                        >
+                          <Text style={styles.restoreSessionButtonText}>Restore</Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <AppIconButton
+                          accessibilityLabel={`Edit session for ${session.student}`}
+                          name="edit"
+                          iconSize={18}
+                          size={36}
+                          style={styles.sessionIconButtonCompact}
+                          onPress={() => openSessionEditor(session)}
+                        />
+                      )
+                    ) : null}
+                    {isParent ? (
+                      <TouchableOpacity
+                        accessibilityLabel={`Request cancellation for ${session.student}`}
+                        disabled={session.status === 'canceled' || session.status === 'completed'}
+                        onPress={() => openCancellationModal(session)}
+                        style={[
+                          styles.parentCancelButtonCompact,
+                          (session.status === 'canceled' || session.status === 'completed') ? styles.buttonDisabled : null,
+                        ]}
+                      >
+                        <Text style={styles.parentCancelButtonText}>{session.status === 'canceled' ? 'Canceled' : 'Cancel'}</Text>
+                      </TouchableOpacity>
+                    ) : null}
                   </View>
                 ) : null) : (
                   <View style={styles.sessionCardActions}>
                     {isOffice ? (
-                      <AppIconButton
-                        accessibilityLabel={`Edit session for ${session.student}`}
-                        name="edit"
-                        iconSize={18}
-                        size={36}
-                        style={styles.sessionIconButton}
-                        onPress={() => openSessionEditor(session)}
-                      />
+                      session.status === 'canceled' ? (
+                        <TouchableOpacity
+                          accessibilityLabel={`Restore session for ${session.student}`}
+                          disabled={saving}
+                          onPress={() => restoreCanceledSession(session)}
+                          style={[styles.restoreSessionButton, saving ? styles.buttonDisabled : null]}
+                        >
+                          <Text style={styles.restoreSessionButtonText}>Restore session</Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <AppIconButton
+                          accessibilityLabel={`Edit session for ${session.student}`}
+                          name="edit"
+                          iconSize={18}
+                          size={36}
+                          style={styles.sessionIconButton}
+                          onPress={() => openSessionEditor(session)}
+                        />
+                      )
+                    ) : null}
+                    {isParent ? (
+                      <TouchableOpacity
+                        accessibilityLabel={`Request cancellation for ${session.student}`}
+                        disabled={session.status === 'canceled' || session.status === 'completed'}
+                        onPress={() => openCancellationModal(session)}
+                        style={[
+                          styles.parentCancelButton,
+                          (session.status === 'canceled' || session.status === 'completed') ? styles.buttonDisabled : null,
+                        ]}
+                      >
+                        <Text style={styles.parentCancelButtonText}>{session.status === 'canceled' ? 'Session canceled' : 'Cancel session'}</Text>
+                      </TouchableOpacity>
                     ) : null}
                     <View style={[styles.statusPill, session.status === 'canceled' ? styles.statusCanceled : session.status === 'completed' ? styles.statusCompleted : styles.statusScheduled]}>
                       <Text style={[styles.statusText, session.status === 'canceled' ? styles.statusTextCanceled : session.status === 'completed' ? styles.statusTextCompleted : styles.statusTextScheduled]}>{session.status.toUpperCase()}</Text>
@@ -576,6 +855,43 @@ export default function ScheduleCalendarScreen() {
           </View>
         </View>
       </ScrollView>
+
+      <Modal visible={Boolean(cancellationSession)} transparent animationType="fade" onRequestClose={closeCancellationModal}>
+        <Pressable style={styles.modalScrim} onPress={closeCancellationModal}>
+          <Pressable style={styles.modalCard} onPress={() => {}}>
+            <Text style={styles.modalTitle}>Request session cancellation</Text>
+            <Text style={styles.modalSubtitle}>
+              {cancellationSession
+                ? `${cancellationSession.student} · ${cancellationSession.session} · ${cancellationSession.start.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}`
+                : ''}
+            </Text>
+            <Text style={styles.fieldLabel}>Reason</Text>
+            <TextInput
+              value={cancellationReason}
+              onChangeText={setCancellationReason}
+              placeholder="Why does this session need to be canceled?"
+              style={[styles.input, styles.reasonInput]}
+              editable={!submittingCancellation}
+              multiline
+              textAlignVertical="top"
+              maxLength={240}
+            />
+            <Text style={styles.reasonHint}>This is stored on the canceled session and included in the office notification.</Text>
+            <View style={styles.actionRow}>
+              <TouchableOpacity
+                style={[styles.primaryButton, styles.destructiveButton, submittingCancellation ? styles.buttonDisabled : null]}
+                onPress={submitSessionCancellation}
+                disabled={submittingCancellation}
+              >
+                <Text style={styles.primaryButtonText}>{submittingCancellation ? 'Sending...' : 'Send cancellation request'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.secondaryButton, submittingCancellation ? styles.buttonDisabled : null]} onPress={closeCancellationModal} disabled={submittingCancellation}>
+                <Text style={styles.secondaryButtonText}>Back</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </ScreenWrapper>
   );
 }
@@ -583,7 +899,13 @@ export default function ScheduleCalendarScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#f8fafc' },
   content: { padding: 16 },
+  safeContent: { paddingBottom: 24 },
   contentCompact: { padding: 8 },
+  safeIntroCard: { borderRadius: 20, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#bfdbfe', padding: 16, marginTop: 8 },
+  safeMetricRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 },
+  safeMetricCard: { width: '48.5%', borderRadius: 18, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e5e7eb', padding: 16 },
+  safeMetricLabel: { color: '#475569', fontWeight: '700', marginBottom: 10 },
+  safeMetricValue: { fontSize: 28, fontWeight: '800', color: '#0f172a' },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 },
   chip: { borderRadius: 999, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#f1f5f9', marginRight: 8, marginBottom: 8 },
   chipActive: { backgroundColor: '#2563eb' },
@@ -596,6 +918,14 @@ const styles = StyleSheet.create({
   headerAssignmentButtonText: { color: '#1d4ed8', fontWeight: '800', marginLeft: 6 },
   headerActionButton: { height: 40, borderRadius: 20, backgroundColor: '#2563eb', paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   headerActionButtonText: { color: '#ffffff', fontWeight: '800', marginLeft: 6 },
+  parentCancelButton: { minHeight: 36, borderRadius: 18, backgroundColor: '#fee2e2', paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  parentCancelButtonCompact: { minHeight: 36, borderRadius: 18, backgroundColor: '#fee2e2', paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
+  parentCancelButtonText: { color: '#b91c1c', fontWeight: '800' },
+  restoreSessionButton: { minHeight: 36, borderRadius: 18, backgroundColor: '#dcfce7', paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  restoreSessionButtonCompact: { minHeight: 36, borderRadius: 18, backgroundColor: '#dcfce7', paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
+  restoreSessionButtonText: { color: '#166534', fontWeight: '800' },
+  pendingCancellationBanner: { position: 'absolute', left: 14, right: 14, top: 12, borderRadius: 12, backgroundColor: '#fef3c7', paddingHorizontal: 10, paddingVertical: 8, flexDirection: 'row', alignItems: 'center' },
+  pendingCancellationBannerText: { marginLeft: 8, color: '#92400e', fontWeight: '700', flex: 1 },
   scheduleWorkspace: { marginTop: 12 },
   scheduleWorkspaceWide: { flexDirection: 'row', alignItems: 'flex-start' },
   calendarCard: { borderRadius: 18, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e5e7eb', padding: 16, marginBottom: 12 },
@@ -621,6 +951,7 @@ const styles = StyleSheet.create({
   actionRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 12 },
   actionRowCentered: { justifyContent: 'center' },
   primaryButton: { borderRadius: 12, backgroundColor: '#2563eb', paddingVertical: 12, paddingHorizontal: 14, marginRight: 10, marginBottom: 10 },
+  destructiveButton: { backgroundColor: '#b91c1c' },
   buttonDisabled: { opacity: 0.65 },
   primaryButtonText: { color: '#ffffff', fontWeight: '800' },
   secondaryButton: { borderRadius: 12, backgroundColor: '#e2e8f0', paddingVertical: 12, paddingHorizontal: 14, marginRight: 10, marginBottom: 10 },
@@ -637,8 +968,11 @@ const styles = StyleSheet.create({
   fieldRow: { flexDirection: 'row', justifyContent: 'space-between' },
   fieldHalf: { width: '48%' },
   input: { minHeight: 46, borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: '#fff', color: '#0f172a' },
+  reasonInput: { minHeight: 112 },
+  reasonHint: { marginTop: 8, color: '#64748b', fontSize: 12 },
   sessionCard: { marginTop: 12, borderRadius: 16, backgroundColor: '#f8fafc', padding: 14, flexDirection: 'row', alignItems: 'center' },
   sessionCardCompact: { alignItems: 'flex-start' },
+  sessionCardWithPending: { paddingTop: 58 },
   sessionMain: { flex: 1 },
   sessionHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sessionMetaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -657,4 +991,8 @@ const styles = StyleSheet.create({
   statusTextScheduled: { color: '#1d4ed8' },
   statusTextCompleted: { color: '#166534' },
   statusTextCanceled: { color: '#b91c1c' },
+  modalScrim: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.45)', alignItems: 'center', justifyContent: 'center', padding: 20 },
+  modalCard: { width: '100%', maxWidth: 460, borderRadius: 20, backgroundColor: '#ffffff', padding: 20, borderWidth: 1, borderColor: '#e5e7eb' },
+  modalTitle: { fontSize: 18, fontWeight: '800', color: '#0f172a' },
+  modalSubtitle: { marginTop: 6, color: '#475569' },
 });

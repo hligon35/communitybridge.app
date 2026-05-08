@@ -28,6 +28,7 @@ loadEnvFile(path.resolve(__dirname, 'env', 'expo.env'));
 
 module.exports = ({ config }) => {
   const extra = { ...(config.extra || {}) };
+  const usesNonExemptEncryption = false;
 
   const keys = [
     // Firebase (public config, required for Auth/Firestore/Functions)
@@ -65,6 +66,13 @@ module.exports = ({ config }) => {
 
   return {
     ...config,
+    ios: {
+      ...(config.ios || {}),
+      config: {
+        ...((config.ios && config.ios.config) || {}),
+        usesNonExemptEncryption,
+      },
+    },
     extra,
   };
 };

@@ -2025,6 +2025,69 @@ function pushPrefAllows(preferences, kind) {
   return true;
 }
 
+function buildScheduleChangePushNotification(change = {}) {
+  const type = safeString(change?.type).trim().toLowerCase();
+  const note = safeString(change?.note).trim();
+
+  if (type === 'cancel' || type === 'canceled' || type === 'cancelled' || note.toLowerCase().includes('cancel')) {
+    return {
+      title: 'Cancellation request',
+      body: 'A child schedule cancellation needs review.',
+      dataKind: 'schedule_cancellation',
+    };
+  }
+
+  const label = type === 'dropoff' ? 'drop-off' : 'pickup';
+  return {
+    title: 'Schedule change request',
+    body: `A ${label} change needs review.`,
+    dataKind: 'schedule_change',
+  };
+}
+
+async function notifyAdminsOfScheduleCancellation(child = {}, { childId, session, cancellationReason, canceledByName, canceledAt } = {}) {
+  try {
+    const adminRows = db.prepare("SELECT id FROM users WHERE lower(role) IN ('admin', 'administrator')").all();
+    const recipientIds = Array.from(new Set(adminRows.map((row) => safeString(row.id).trim()).filter(Boolean)));
+    if (!recipientIds.length) return;
+
+    const tokens = [];
+    recipientIds.forEach((uid) => {
+      const rows = db.prepare('SELECT token, preferences FROM push_tokens WHERE user_id = ? AND enabled = 1').all(uid);
+      rows.forEach((row) => {
+        const token = safeString(row.token).trim();
+        if (!token) return;
+        let preferences = {};
+        try {
+          preferences = row.preferences ? JSON.parse(row.preferences) : {};
+        } catch (_) {
+          preferences = {};
+        }
+        if (!pushPrefAllows(preferences, 'updates')) return;
+        tokens.push(token);
+      });
+    });
+
+    if (!tokens.length) return;
+    const learnerName = safeString(child?.name).trim() || 'A learner';
+    const sessionLabel = safeString(session).trim() || safeString(child?.session).trim() || 'scheduled';
+    const actorLabel = safeString(canceledByName).trim() || 'A parent';
+    const reason = safeString(cancellationReason).trim();
+    await sendExpoPush(tokens, {
+      title: 'Session canceled',
+      body: `${actorLabel} canceled ${learnerName}'s ${sessionLabel} session${reason ? `: ${reason}` : '.'}`,
+      data: {
+        kind: 'schedule_cancellation',
+        childId: safeString(childId).trim() || null,
+        session: sessionLabel || null,
+        canceledAt: safeString(canceledAt).trim() || null,
+      },
+    });
+  } catch (_) {
+    // ignore push failures
+  }
+}
+
 async function sendExpoPush(tokens, { title, body, data } = {}) {
   try {
     if (!Array.isArray(tokens) || !tokens.length) return { ok: true, skipped: true, reason: 'no-tokens' };
@@ -3753,6 +3816,28 @@ app.put('/api/children/:childId/schedule', authMiddleware, requireChildCareWrite
       } : null;
       changedFields.push('scheduleApproval');
     }
+    if (body.scheduleStatus !== undefined || body.status !== undefined) {
+      const nextStatus = safeString(body.scheduleStatus !== undefined ? body.scheduleStatus : body.status).trim().toLowerCase();
+      nextChild.scheduleStatus = nextStatus || null;
+      nextChild.status = nextStatus || null;
+      changedFields.push('scheduleStatus');
+    }
+    if (body.cancellationReason !== undefined) {
+      nextChild.cancellationReason = safeString(body.cancellationReason).trim() || '';
+      changedFields.push('cancellationReason');
+    }
+    if (body.canceledAt !== undefined) {
+      nextChild.canceledAt = body.canceledAt ? safeString(body.canceledAt).trim() : null;
+      changedFields.push('canceledAt');
+    }
+    if (body.canceledById !== undefined) {
+      nextChild.canceledById = body.canceledById ? safeString(body.canceledById).trim() : null;
+      changedFields.push('canceledById');
+    }
+    if (body.canceledByName !== undefined) {
+      nextChild.canceledByName = body.canceledByName ? safeString(body.canceledByName).trim() : null;
+      changedFields.push('canceledByName');
+    }
 
     const now = nowISO();
     const tx = db.transaction(() => {
@@ -3770,6 +3855,16 @@ app.put('/api/children/:childId/schedule', authMiddleware, requireChildCareWrite
       targetId: childId,
       details: { changedFields, session: nextChild.session || '', assignedABA: nextChild.assignedABA || [] },
     });
+
+    if (String(nextChild.scheduleStatus || nextChild.status || '').trim().toLowerCase() === 'canceled' && changedFields.includes('scheduleStatus')) {
+      notifyAdminsOfScheduleCancellation(nextChild, {
+        childId,
+        session: nextChild.session,
+        cancellationReason: nextChild.cancellationReason,
+        canceledByName: nextChild.canceledByName,
+        canceledAt: nextChild.canceledAt,
+      }).catch(() => {});
+    }
 
     return res.json({ ok: true, item: nextChild });
   } catch (e) {
@@ -5792,6 +5887,44 @@ app.post('/api/children/propose-time-change', authMiddleware, (req, res) => {
       null,
       createdAt
     );
+
+  try {
+    const adminRows = db.prepare("SELECT id FROM users WHERE lower(role) IN ('admin', 'administrator')").all();
+    const recipientIds = Array.from(new Set(adminRows.map((row) => safeString(row.id).trim()).filter(Boolean)));
+    if (recipientIds.length) {
+      const notification = buildScheduleChangePushNotification(p);
+      const tokens = [];
+      recipientIds.forEach((uid) => {
+        const rows = db.prepare('SELECT token, preferences FROM push_tokens WHERE user_id = ? AND enabled = 1').all(uid);
+        rows.forEach((row) => {
+          const token = safeString(row.token).trim();
+          if (!token) return;
+          let preferences = {};
+          try {
+            preferences = row.preferences ? JSON.parse(row.preferences) : {};
+          } catch (_) {
+            preferences = {};
+          }
+          if (!pushPrefAllows(preferences, 'updates')) return;
+          tokens.push(token);
+        });
+      });
+
+      sendExpoPush(tokens, {
+        title: notification.title,
+        body: notification.body,
+        data: {
+          kind: notification.dataKind,
+          proposalId: id,
+          childId: p.childId != null ? String(p.childId) : null,
+          type: p.type ? String(p.type).toLowerCase() : null,
+        },
+      }).catch(() => {});
+    }
+  } catch (_) {
+    // ignore push failures
+  }
+
   res.status(201).json({ id, ...p, proposerId: p.proposerId != null ? String(p.proposerId) : (req.user ? String(req.user.id) : null), createdAt });
 });
 

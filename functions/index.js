@@ -43,6 +43,26 @@ function shouldDeleteTokenForExpoError(expoTicket) {
   }
 }
 
+function buildScheduleChangePushNotification(change = {}) {
+  const type = safeString(change?.type).trim().toLowerCase();
+  const note = safeString(change?.note).trim();
+
+  if (type === 'cancel' || type === 'canceled' || type === 'cancelled' || note.toLowerCase().includes('cancel')) {
+    return {
+      title: 'Cancellation request',
+      body: 'A child schedule cancellation needs review.',
+      dataKind: 'schedule_cancellation',
+    };
+  }
+
+  const label = type === 'dropoff' ? 'drop-off' : 'pickup';
+  return {
+    title: 'Schedule change request',
+    body: `A ${label} change needs review.`,
+    dataKind: 'schedule_change',
+  };
+}
+
 async function sendExpoPush(tokens, { title, body, data, kind } = {}) {
   if (!Array.isArray(tokens) || !tokens.length) return { ok: true, skipped: true, reason: 'no-tokens' };
   const unique = Array.from(new Set(tokens.map((t) => safeString(t).trim()))).filter(hasExpoPushToken);
@@ -1563,6 +1583,49 @@ exports.onUrgentMemoCreate = regional.firestore
         title: type === 'admin_memo' ? 'New memo' : 'New alert',
         body: 'Open the app for details.',
         data: { kind: type || 'urgent_memo', memoId: snap.id, childId: memo?.childId || null },
+        kind: 'updates',
+      });
+    } catch (_) {
+      // ignore push failures
+    }
+
+    return null;
+  });
+
+exports.onTimeChangeProposalCreate = regional.firestore
+  .document('timeChangeProposals/{proposalId}')
+  .onCreate(async (snap) => {
+    const proposal = snap.data() || {};
+
+    try {
+      const usersSnap = await admin.firestore().collection('users').where('role', 'in', ['admin', 'administrator']).get();
+      const targetUids = usersSnap.docs.map((d) => d.id).filter(Boolean);
+      if (!targetUids.length) return null;
+
+      const tokens = [];
+      for (const uid of targetUids) {
+        const tSnap = await admin.firestore().collection('pushTokens').where('enabled', '==', true).where('userUid', '==', uid).limit(50).get();
+        tSnap.docs.forEach((d) => {
+          const rec = d.data() || {};
+          const token = safeString(rec.token || d.id).trim();
+          if (!token) return;
+          if (!pushPrefAllows(rec.preferences || {}, 'updates')) return;
+          tokens.push(token);
+        });
+      }
+
+      if (!tokens.length) return null;
+
+      const notification = buildScheduleChangePushNotification(proposal);
+      await sendExpoPush(tokens, {
+        title: notification.title,
+        body: notification.body,
+        data: {
+          kind: notification.dataKind,
+          proposalId: snap.id,
+          childId: proposal?.childId || null,
+          type: safeString(proposal?.type).trim().toLowerCase() || null,
+        },
         kind: 'updates',
       });
     } catch (_) {

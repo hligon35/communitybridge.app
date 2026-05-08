@@ -12,32 +12,57 @@
       "Current demoModeSeed consumes therapists, parents, children, staff, messageThreads, urgentMemos, progressReports, nextSessions, and moodScores directly.",
       "Additional top-level collections are included for backend/mock/API seed expansion so every system can show populated states."
     ],
-    "abaAssignmentRule": "Each ABA tech has exactly one AM learner and one PM learner. Each learner is assigned to exactly one ABA tech for either AM or PM.",
+    "abaAssignmentRule": "Each ABA tech has exactly one AM learner and one PM learner. Each learner has exactly one ABA therapist for AM and one ABA therapist for PM.",
     "abaAssignmentMap": [
       {
         "abaTechId": "aba-101",
         "amChildId": "child-001",
-        "pmChildId": "child-002"
-      },
-      {
-        "abaTechId": "aba-102",
-        "amChildId": "child-003",
-        "pmChildId": "child-004"
-      },
-      {
-        "abaTechId": "aba-103",
-        "amChildId": "child-005",
         "pmChildId": "child-006"
       },
       {
-        "abaTechId": "aba-104",
-        "amChildId": "child-007",
+        "abaTechId": "aba-102",
+        "amChildId": "child-002",
+        "pmChildId": "child-007"
+      },
+      {
+        "abaTechId": "aba-103",
+        "amChildId": "child-003",
         "pmChildId": "child-008"
       },
       {
+        "abaTechId": "aba-104",
+        "amChildId": "child-004",
+        "pmChildId": "child-009"
+      },
+      {
         "abaTechId": "aba-105",
-        "amChildId": "child-009",
+        "amChildId": "child-005",
         "pmChildId": "child-010"
+      },
+      {
+        "abaTechId": "aba-106",
+        "amChildId": "child-006",
+        "pmChildId": "child-001"
+      },
+      {
+        "abaTechId": "aba-107",
+        "amChildId": "child-007",
+        "pmChildId": "child-002"
+      },
+      {
+        "abaTechId": "aba-108",
+        "amChildId": "child-008",
+        "pmChildId": "child-003"
+      },
+      {
+        "abaTechId": "aba-109",
+        "amChildId": "child-009",
+        "pmChildId": "child-004"
+      },
+      {
+        "abaTechId": "aba-110",
+        "amChildId": "child-010",
+        "pmChildId": "child-005"
       }
     ],
     "coverageUpdate": {
@@ -322,6 +347,56 @@
       "role": "therapist",
       "email": "taylor.brooks@example.com",
       "phone": "317-555-4106",
+      "avatar": "",
+      "supervisedBy": "bcba-001",
+      "title": "ABA Therapist"
+    },
+    {
+      "id": "aba-106",
+      "name": "Avery Collins",
+      "role": "therapist",
+      "email": "avery.collins@example.com",
+      "phone": "317-555-4107",
+      "avatar": "",
+      "supervisedBy": "bcba-001",
+      "title": "ABA Therapist"
+    },
+    {
+      "id": "aba-107",
+      "name": "Cameron Price",
+      "role": "therapist",
+      "email": "cameron.price@example.com",
+      "phone": "317-555-4108",
+      "avatar": "",
+      "supervisedBy": "bcba-001",
+      "title": "ABA Therapist"
+    },
+    {
+      "id": "aba-108",
+      "name": "Riley Foster",
+      "role": "therapist",
+      "email": "riley.foster@example.com",
+      "phone": "317-555-4109",
+      "avatar": "",
+      "supervisedBy": "bcba-001",
+      "title": "ABA Therapist"
+    },
+    {
+      "id": "aba-109",
+      "name": "Parker James",
+      "role": "therapist",
+      "email": "parker.james@example.com",
+      "phone": "317-555-4110",
+      "avatar": "",
+      "supervisedBy": "bcba-001",
+      "title": "ABA Therapist"
+    },
+    {
+      "id": "aba-110",
+      "name": "Morgan Lee",
+      "role": "therapist",
+      "email": "morgan.lee@example.com",
+      "phone": "317-555-4111",
       "avatar": "",
       "supervisedBy": "bcba-001",
       "title": "ABA Therapist"
@@ -622,10 +697,11 @@
         }
       ],
       "assignedABA": [
-        "aba-101"
+        "aba-101",
+        "aba-106"
       ],
       "amTherapist": "aba-101",
-      "pmTherapist": "",
+      "pmTherapist": "aba-106",
       "bcaTherapist": "bcba-001",
       "session": "AM",
       "dropoffTimeISO": "2026-04-27T09:00:00",
@@ -683,10 +759,11 @@
         }
       ],
       "assignedABA": [
-        "aba-101"
+        "aba-102",
+        "aba-107"
       ],
-      "amTherapist": "",
-      "pmTherapist": "aba-101",
+      "amTherapist": "aba-102",
+      "pmTherapist": "aba-107",
       "bcaTherapist": "bcba-001",
       "session": "PM",
       "dropoffTimeISO": "2026-04-28T13:00:00",
@@ -730,10 +807,11 @@
         }
       ],
       "assignedABA": [
-        "aba-102"
+        "aba-103",
+        "aba-108"
       ],
-      "amTherapist": "aba-102",
-      "pmTherapist": "",
+      "amTherapist": "aba-103",
+      "pmTherapist": "aba-108",
       "bcaTherapist": "bcba-001",
       "session": "AM",
       "dropoffTimeISO": "2026-04-29T09:00:00",
@@ -783,10 +861,11 @@
         }
       ],
       "assignedABA": [
-        "aba-102"
+        "aba-104",
+        "aba-109"
       ],
-      "amTherapist": "",
-      "pmTherapist": "aba-102",
+      "amTherapist": "aba-104",
+      "pmTherapist": "aba-109",
       "bcaTherapist": "bcba-001",
       "session": "PM",
       "dropoffTimeISO": "2026-04-30T13:00:00",
@@ -832,10 +911,11 @@
         }
       ],
       "assignedABA": [
-        "aba-103"
+        "aba-105",
+        "aba-110"
       ],
-      "amTherapist": "aba-103",
-      "pmTherapist": "",
+      "amTherapist": "aba-105",
+      "pmTherapist": "aba-110",
       "bcaTherapist": "bcba-001",
       "session": "AM",
       "dropoffTimeISO": "2026-05-01T09:00:00",
@@ -885,10 +965,11 @@
         }
       ],
       "assignedABA": [
-        "aba-103"
+        "aba-106",
+        "aba-101"
       ],
-      "amTherapist": "",
-      "pmTherapist": "aba-103",
+      "amTherapist": "aba-106",
+      "pmTherapist": "aba-101",
       "bcaTherapist": "bcba-001",
       "session": "PM",
       "dropoffTimeISO": "2026-04-27T13:00:00",
@@ -932,10 +1013,11 @@
         }
       ],
       "assignedABA": [
-        "aba-104"
+        "aba-107",
+        "aba-102"
       ],
-      "amTherapist": "aba-104",
-      "pmTherapist": "",
+      "amTherapist": "aba-107",
+      "pmTherapist": "aba-102",
       "bcaTherapist": "bcba-001",
       "session": "AM",
       "dropoffTimeISO": "2026-04-28T09:00:00",
@@ -987,10 +1069,11 @@
         }
       ],
       "assignedABA": [
-        "aba-104"
+        "aba-108",
+        "aba-103"
       ],
-      "amTherapist": "",
-      "pmTherapist": "aba-104",
+      "amTherapist": "aba-108",
+      "pmTherapist": "aba-103",
       "bcaTherapist": "bcba-001",
       "session": "PM",
       "dropoffTimeISO": "2026-04-29T13:00:00",
@@ -1034,10 +1117,11 @@
         }
       ],
       "assignedABA": [
-        "aba-105"
+        "aba-109",
+        "aba-104"
       ],
-      "amTherapist": "aba-105",
-      "pmTherapist": "",
+      "amTherapist": "aba-109",
+      "pmTherapist": "aba-104",
       "bcaTherapist": "bcba-001",
       "session": "AM",
       "dropoffTimeISO": "2026-04-30T09:00:00",
@@ -1087,9 +1171,10 @@
         }
       ],
       "assignedABA": [
+        "aba-110",
         "aba-105"
       ],
-      "amTherapist": "",
+      "amTherapist": "aba-110",
       "pmTherapist": "aba-105",
       "bcaTherapist": "bcba-001",
       "session": "PM",

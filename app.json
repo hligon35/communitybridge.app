@@ -7,8 +7,10 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.azlabsllc.communitybridge",
       "googleServicesFile": "./GoogleService-Info.plist",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
       "infoPlist": {
-          "ITSAppUsesNonExemptEncryption": true,
         "NSFaceIDUsageDescription": "CommunityBridge uses Face ID / Touch ID to help you securely sign in on this device.",
         "NSLocationWhenInUseUsageDescription": "CommunityBridge uses your location to support arrival detection and location-based features.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "CommunityBridge uses your location in the background to support arrival detection.",

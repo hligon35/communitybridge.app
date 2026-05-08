@@ -12,6 +12,7 @@ import { navigationRef } from '../navigationRef';
 import { THERAPY_ROLE_LABELS, getDisplayRoleLabel, getWorkspaceLabel } from '../utils/roleTerminology';
 import { humanizeScreenLabel } from '../utils/screenLabels';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { canAccessPhoneRoute, getPhoneAccessProfile, isPhoneViewport as resolvePhoneViewport } from '../utils/mobileRoleAccess';
 
 const checkUpdatesIcon = require('../../assets/icons/checkUpdates.png');
 const BREAK_OPTIONS = [5, 10, 15, 30];
@@ -140,10 +141,8 @@ export default function TabletNavigationShell({ currentRoute, children }) {
   const showQuickAdd = !showAdminWorkspace && isStaff;
   const showBcbaQuickActions = showAdminWorkspace && isBcbaRole(user?.role);
   const showHeaderQuickMenu = showQuickAdd || showBcbaQuickActions;
-  const shortEdge = Math.min(width, height);
-  const longEdge = Math.max(width, height);
   const isPhoneViewport = Platform.OS !== 'ios' || !Platform.isPad
-    ? shortEdge < 600 && longEdge < 1100
+    ? resolvePhoneViewport(width, height)
     : false;
   const showMobileAdminShell = Boolean(showAdminWorkspace && isPhoneViewport);
   const mobileAdminShellValue = useMemo(() => ({
@@ -455,21 +454,41 @@ export default function TabletNavigationShell({ currentRoute, children }) {
 
   const navGroups = useMemo(() => {
     if (showAdminWorkspace) {
+      const phoneProfile = getPhoneAccessProfile(user?.role);
+      const adminItems = showMobileAdminShell
+        ? [
+          { key: 'dashboard', label: 'Dashboard', icon: 'dashboard', target: { root: 'Controls', screen: 'ControlsMain' } },
+          ...((phoneProfile === 'bcba' || phoneProfile === 'office' || phoneProfile === 'admin' || phoneProfile === 'reception') ? [{ key: 'students', label: 'Students', icon: 'school', target: { root: 'Controls', screen: 'StudentDirectory' }, section: ADMIN_SECTION_KEYS.STUDENTS }] : []),
+          ...((phoneProfile === 'bcba' || phoneProfile === 'office' || phoneProfile === 'admin' || phoneProfile === 'reception') ? [{ key: 'staff', label: 'Staff', icon: 'groups', target: { root: 'Controls', screen: 'FacultyDirectory' }, section: ADMIN_SECTION_KEYS.STAFF }] : []),
+          ...((phoneProfile === 'office' || phoneProfile === 'admin' || phoneProfile === 'reception') ? [{ key: 'families', label: 'Families', icon: 'family-restroom', target: { root: 'Controls', screen: 'ParentDirectory' }, section: ADMIN_SECTION_KEYS.STUDENTS }] : []),
+          ...(phoneProfile === 'bcba' ? [{ key: 'reports', label: 'Reports', icon: 'query-stats', target: { root: 'Controls', screen: 'Reports' }, section: ADMIN_SECTION_KEYS.DATA_REPORTS }] : []),
+          ...((phoneProfile === 'bcba' || phoneProfile === 'admin') ? [{ key: 'insights', label: 'Insights', icon: 'insights', target: { root: 'Controls', screen: 'OrganizationInsightsDashboard' } }] : []),
+          ...(phoneProfile === 'bcba' ? [{ key: 'documentation', label: 'Documentation', icon: 'assignment-turned-in', target: { root: 'Controls', screen: 'TherapistDocumentationDashboard' } }] : []),
+          ...((phoneProfile === 'bcba' || phoneProfile === 'office' || phoneProfile === 'admin' || phoneProfile === 'reception') ? [{ key: 'schedule', label: 'Schedule', icon: 'event', target: { root: 'Controls', screen: 'ScheduleCalendar' }, section: ADMIN_SECTION_KEYS.SCHEDULING }] : []),
+          ...((phoneProfile === 'office' || phoneProfile === 'admin') ? [{ key: 'queues', label: 'Queues', icon: 'summarize', target: { root: 'Controls', screen: 'Reports' }, section: ADMIN_SECTION_KEYS.DATA_REPORTS }] : []),
+          ...((phoneProfile === 'office' || phoneProfile === 'admin' || phoneProfile === 'bcba') ? [{ key: 'compliance', label: 'Compliance', icon: 'verified-user', target: { root: 'Controls', screen: 'AdminAlerts' }, section: ADMIN_SECTION_KEYS.COMPLIANCE }] : []),
+          { key: 'communication', label: 'Chats', icon: 'forum', target: { root: 'Chats', screen: 'ChatsList' } },
+          { key: 'settings', label: 'Settings', icon: 'settings', target: { root: 'Settings', screen: 'SettingsMain' } },
+        ]
+        : [
+          { key: 'dashboard', label: 'Dashboard', icon: 'dashboard', target: { root: 'Controls', screen: 'ControlsMain' } },
+          { key: 'students', label: 'Students', icon: 'school', target: { root: 'Controls', screen: 'StudentDirectory' }, section: ADMIN_SECTION_KEYS.STUDENTS },
+          { key: 'staff', label: 'Staff', icon: 'groups', target: { root: 'Controls', screen: 'FacultyDirectory' }, section: ADMIN_SECTION_KEYS.STAFF },
+          { key: 'scheduling', label: 'Scheduling', icon: 'event', target: { root: 'Controls', screen: 'ScheduleCalendar' }, section: ADMIN_SECTION_KEYS.SCHEDULING },
+          { key: 'programs', label: 'Programs & Goals', icon: 'assignment', target: { root: 'Controls', screen: 'ProgramDirectory' }, section: ADMIN_SECTION_KEYS.PROGRAMS_GOALS },
+          { key: 'reports', label: 'Data & Reports', icon: 'query-stats', target: { root: 'Controls', screen: 'Reports' }, section: ADMIN_SECTION_KEYS.DATA_REPORTS },
+          { key: 'billing', label: 'Billing & Authorizations', icon: 'receipt-long', target: { root: 'Controls', screen: 'InsuranceBilling' }, section: ADMIN_SECTION_KEYS.BILLING_AUTHORIZATIONS },
+          { key: 'compliance', label: 'Compliance', icon: 'verified-user', target: { root: 'Controls', screen: 'AdminAlerts' }, section: ADMIN_SECTION_KEYS.COMPLIANCE },
+          { key: 'communication', label: 'Communication', icon: 'forum', target: { root: 'Controls', screen: 'AdminChatMonitor' }, section: ADMIN_SECTION_KEYS.COMMUNICATION },
+          { key: 'settings', label: 'Settings', icon: 'settings', target: { root: 'Controls', screen: 'AdminSettings' }, section: ADMIN_SECTION_KEYS.SETTINGS },
+        ];
+
       return [
         {
           label: 'Admin',
-          items: [
-            { key: 'dashboard', label: 'Dashboard', icon: 'dashboard', target: { root: 'Controls', screen: 'ControlsMain' } },
-            { key: 'students', label: 'Students', icon: 'school', target: { root: 'Controls', screen: 'StudentDirectory' }, section: ADMIN_SECTION_KEYS.STUDENTS },
-            { key: 'staff', label: 'Staff', icon: 'groups', target: { root: 'Controls', screen: 'FacultyDirectory' }, section: ADMIN_SECTION_KEYS.STAFF },
-            { key: 'scheduling', label: 'Scheduling', icon: 'event', target: { root: 'Controls', screen: 'ScheduleCalendar' }, section: ADMIN_SECTION_KEYS.SCHEDULING },
-            { key: 'programs', label: 'Programs & Goals', icon: 'assignment', target: { root: 'Controls', screen: 'ProgramDirectory' }, section: ADMIN_SECTION_KEYS.PROGRAMS_GOALS },
-            { key: 'reports', label: 'Data & Reports', icon: 'query-stats', target: { root: 'Controls', screen: 'Reports' }, section: ADMIN_SECTION_KEYS.DATA_REPORTS },
-            { key: 'billing', label: 'Billing & Authorizations', icon: 'receipt-long', target: { root: 'Controls', screen: 'InsuranceBilling' }, section: ADMIN_SECTION_KEYS.BILLING_AUTHORIZATIONS },
-            { key: 'compliance', label: 'Compliance', icon: 'verified-user', target: { root: 'Controls', screen: 'AdminAlerts' }, section: ADMIN_SECTION_KEYS.COMPLIANCE },
-            { key: 'communication', label: 'Communication', icon: 'forum', target: { root: 'Controls', screen: 'AdminChatMonitor' }, section: ADMIN_SECTION_KEYS.COMMUNICATION },
-            { key: 'settings', label: 'Settings', icon: 'settings', target: { root: 'Controls', screen: 'AdminSettings' }, section: ADMIN_SECTION_KEYS.SETTINGS },
-          ].filter((item) => !item.section || canAccessAdminSection(user?.role, item.section)),
+          items: adminItems
+            .filter((item) => !item.section || canAccessAdminSection(user?.role, item.section))
+            .filter((item) => !showMobileAdminShell || canAccessPhoneRoute(user?.role, item.target.screen || item.target.root)),
         },
       ];
     }
@@ -497,7 +516,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
     ];
 
     return [{ label: workspaceLabel, items: therapistItems }];
-  }, [isParentWorkspace, isStaff, labels.dashboard, showAdminWorkspace, user?.role, workspaceLabel]);
+  }, [isParentWorkspace, labels.dashboard, showAdminWorkspace, showMobileAdminShell, user?.role, workspaceLabel]);
 
   if (!isTabletLayout && !showMobileAdminShell) return children;
 

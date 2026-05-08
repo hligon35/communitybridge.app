@@ -1,9 +1,10 @@
 const { isDemoReviewerUser, isSpecialAccessUser } = require('./authState');
 
 const DEMO_ROLE_IDENTITIES = Object.freeze({
-  admin: { id: 'admin-demo', name: 'Jordan Admin', email: 'admin-demo@communitybridge.app', role: 'admin' },
-  therapist: { id: 'ABA-001', name: 'Daniel Lopez', email: 'daniel.lopez@communitybridge.app', role: 'therapist' },
-  parent: { id: 'PT-001', name: 'Carlos Garcia', email: 'carlos.garcia@communitybridge.app', role: 'parent' },
+  admin: { id: 'user-admin-review', name: 'Linda Carter', email: 'review-admin@communitybridge.app', role: 'admin' },
+  therapist: { id: 'aba-101', name: 'Jordan Ellis', email: 'review-therapist@communitybridge.app', role: 'therapist' },
+  bcba: { id: 'bcba-001', name: 'Dr. Marissa Bennett', email: 'review-bcba@communitybridge.app', role: 'bcba' },
+  parent: { id: 'par-dev-001', name: 'Joshua Simmons', email: 'dev@communitybridge.app', role: 'parent' },
 });
 const isDevRuntime = typeof __DEV__ !== 'undefined' && Boolean(__DEV__);
 
@@ -29,7 +30,7 @@ function getDemoRoleIdentity(role, fallbackUser) {
   if (!base) return fallbackUser || null;
   return {
     ...base,
-    email: base.email || fallbackUser?.email || '',
+    email: fallbackUser?.email || base.email || '',
   };
 }
 

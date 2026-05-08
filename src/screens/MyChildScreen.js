@@ -81,6 +81,14 @@ export default function MyChildScreen() {
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState('');
 
+  function getProposalTypeLabel(type) {
+    const normalized = String(type || '').trim().toLowerCase();
+    if (normalized === 'pickup') return 'Pickup';
+    if (normalized === 'dropoff') return 'Drop-off';
+    if (normalized === 'cancel' || normalized === 'canceled' || normalized === 'cancelled') return 'Cancellation';
+    return 'Schedule';
+  }
+
   async function submitProposal(offsetMillis) {
     try {
       let proposedISO;
@@ -431,7 +439,7 @@ export default function MyChildScreen() {
             if (!combined.length) return <Text style={styles.sectionText}>No pending notifications.</Text>;
             return combined.map((p) => (
               <View key={p.id} style={{ paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' }}>
-                <Text style={{ fontWeight: '700' }}>{p.type === 'pickup' ? 'Pickup' : 'Drop-off'} notification</Text>
+                <Text style={{ fontWeight: '700' }}>{getProposalTypeLabel(p.type)} notification</Text>
                 <Text style={{ color: '#374151' }}>Requested: {formatISO(p.proposedISO)}</Text>
                 <Text style={{ color: '#6b7280', fontSize: 12 }}>{p.note || ''}</Text>
                 <Text style={{ fontSize: 12, color: '#6b7280' }}>By: {p.proposerName || p.proposerId}</Text>

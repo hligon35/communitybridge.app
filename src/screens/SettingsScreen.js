@@ -471,7 +471,7 @@ export default function SettingsScreen({ navigation }) {
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <View style={{ flex: 1, paddingRight: 8 }}>
               <Text style={{ fontSize: 16, fontWeight: '700' }}>Push Notifications</Text>
-              <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>Enable or disable all push notifications.</Text>
+              <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>Enable or disable chat alerts, urgent memos, schedule changes, cancellations, and arrival alerts.</Text>
             </View>
             <ImageToggle value={pushEnabled} onValueChange={togglePush} accessibilityLabel="Push notifications" />
           </View>
@@ -494,7 +494,7 @@ export default function SettingsScreen({ navigation }) {
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <View style={{ flex: 1, paddingRight: 8 }}>
                 <Text style={{ fontSize: 14 }}>Updates & reminders</Text>
-                <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>Reminders for events, schedule changes, and urgent updates.</Text>
+                <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>Urgent memos, schedule changes or cancellations, and arrival detection alerts.</Text>
               </View>
               <ImageToggle value={pushUpdates} onValueChange={setPushUpdates} disabled={!pushEnabled} accessibilityLabel="Updates and reminders" />
             </View>

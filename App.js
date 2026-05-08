@@ -17,6 +17,7 @@ import { logger, setDebugContext } from './src/utils/logger';
 import { registerGlobalDebugHandlers } from './src/utils/registerDebugHandlers';
 import { configureNotificationHandling } from './src/utils/pushNotifications';
 import { navigationRef } from './src/navigationRef';
+import { isPhoneViewport as resolvePhoneViewport } from './src/utils/mobileRoleAccess';
 
 import RoleDashboardScreen from './src/screens/RoleDashboardScreen';
 import InsuranceBillingScreen from './src/screens/InsuranceBillingScreen';
@@ -320,9 +321,17 @@ function MainShell({ currentRoute }) {
   const isTabletLayout = useIsTabletLayout();
   const { width, height } = useWindowDimensions();
   const role = normalizeUserRole(user?.role);
-  const isPhoneAdminViewport = canAccessAdminWorkspace(role) && Math.min(width, height) < 600 && Math.max(width, height) < 1100;
+  const isPhoneViewport = resolvePhoneViewport(width, height);
+  const isPhoneAdminViewport = canAccessAdminWorkspace(role) && isPhoneViewport;
   const isParentWorkspace = !canAccessAdminWorkspace(role) && !isStaffRole(role);
-  const shouldRequireLandscape = !isPhoneAdminViewport && !isParentWorkspace && !isTabletLayout && width < height && Math.max(width, height) >= 640;
+  const shouldRequireLandscape = Boolean(
+    !isPhoneViewport
+    && !isPhoneAdminViewport
+    && !isParentWorkspace
+    && !isTabletLayout
+    && width < height
+    && Math.max(width, height) >= 640
+  );
 
   return (
     <TenantProvider>

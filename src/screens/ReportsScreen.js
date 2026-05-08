@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import AppDropdown from '../components/AppDropdown';
 import * as DocumentPicker from 'expo-document-picker';
 import { ScreenWrapper } from '../components/ScreenWrapper';
@@ -9,6 +9,7 @@ import { USER_ROLES, isBcbaRole, normalizeUserRole } from '../core/tenant/models
 import { useBehaviorSystemReports } from '../features/reporting/hooks/useBehaviorSystemReports';
 import { childHasParent, findLinkedParentId } from '../utils/directoryLinking';
 import { getWorkspaceLabel } from '../utils/roleTerminology';
+import { getPhoneAccessProfile, isAggregateOnlyPhoneProfile, isPhoneViewport as resolvePhoneViewport, shouldUsePhoneSafeReports } from '../utils/mobileRoleAccess';
 import * as Api from '../Api';
 const { isChildLinkedToTherapist } = require('../features/sessionTracking/utils/dashboardSessionTarget');
 const { getEffectiveChatIdentity } = require('../utils/demoIdentity');
@@ -146,17 +147,30 @@ function HeaderReportFilters({
   );
 }
 
+function SafeMetricCard({ title, value, detail }) {
+  return (
+    <View style={styles.summaryCard}>
+      <Text style={styles.summaryCardTitle}>{title}</Text>
+      <Text style={styles.safeMetricValue}>{value}</Text>
+      <Text style={styles.summaryCardValue}>{detail}</Text>
+    </View>
+  );
+}
+
 export default function ReportsScreen({ route }) {
   const { user } = useAuth();
   const workspaceLabel = getWorkspaceLabel(user?.role);
   const { children = [], parents = [], urgentMemos = [], messages = [], activeSeedPreset = '', seededExportJobs = [] } = useData();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const role = String(user?.role || '').trim().toLowerCase();
   const isBcba = isBcbaRole(user?.role);
   const isParent = role.includes('parent');
   const isWideLayout = width >= 900;
+  const isPhoneWorkspace = Platform.OS !== 'web' && resolvePhoneViewport(width, height);
   const isThreeCardLayout = width >= 720;
   const showHeaderFilters = width >= 900;
+  const phoneAccessProfile = getPhoneAccessProfile(user?.role);
+  const usePhoneSafeReports = isPhoneWorkspace && shouldUsePhoneSafeReports(user?.role);
   const [mobileFilterCarouselLocked, setMobileFilterCarouselLocked] = useState(false);
   const reportChildren = useMemo(() => findReportChildren(user, children, parents), [user, children, parents]);
   const requestedChildId = String(route?.params?.childId || '').trim();
@@ -254,6 +268,20 @@ export default function ReportsScreen({ route }) {
     when: message?.createdAt ? new Date(message.createdAt).toLocaleString() : 'Recently',
   })), [messages]);
 
+  const transferSummary = useMemo(() => {
+    const items = Array.isArray(jobs) ? jobs : [];
+    return items.reduce((summary, job) => {
+      const status = String(job?.status || '').trim().toLowerCase();
+      if (status === 'ready' || status === 'completed') summary.ready += 1;
+      else if (status === 'queued' || status === 'pending' || status === 'processing') summary.pending += 1;
+      else if (status) summary.other += 1;
+      return summary;
+    }, { ready: 0, pending: 0, other: 0 });
+  }, [jobs]);
+
+  const totalBehaviorSignals = useMemo(() => (childReports.behaviorTrends || []).reduce((sum, item) => sum + Number(item?.value || 0), 0), [childReports.behaviorTrends]);
+  const totalProgramSessions = useMemo(() => (childReports.programMastery || []).reduce((sum, item) => sum + Number(item?.sessions || 0), 0), [childReports.programMastery]);
+
   if (isParent) {
     return (
       <ScreenWrapper>
@@ -262,6 +290,73 @@ export default function ReportsScreen({ route }) {
           <Text style={styles.parentBlockedTitle}>Reports are not available on the parent path.</Text>
           <Text style={styles.parentBlockedText}>Use Dashboard, Chats, My Child, Calendar, and Billing & Insurance from the parent portal instead.</Text>
         </View>
+      </ScreenWrapper>
+    );
+  }
+
+  if (usePhoneSafeReports) {
+    const aggregateOnly = isAggregateOnlyPhoneProfile(user?.role);
+    const safeTitle = aggregateOnly ? 'Phone reporting stays aggregate-first.' : 'Phone reporting stays summary-first.';
+    const safeBody = aggregateOnly
+      ? 'This view keeps queues, utilization, and organization-wide totals on phone without exposing detailed learner report drill-downs.'
+      : 'This view keeps mobile reporting limited to masked or roll-up summaries. Use tablet or desktop for detailed chart drill-downs.';
+
+    return (
+      <ScreenWrapper style={styles.container}>
+        <ScrollView contentContainerStyle={[styles.content, styles.contentWide]} showsVerticalScrollIndicator={false}>
+          <View style={styles.safeIntroCard}>
+            <Text style={styles.parentBlockedEyebrow}>{workspaceLabel}</Text>
+            <Text style={styles.parentBlockedTitle}>{safeTitle}</Text>
+            <Text style={styles.parentBlockedText}>{safeBody}</Text>
+          </View>
+
+          <View style={[styles.summaryRow, isThreeCardLayout ? styles.summaryRowWide : null]}>
+            <SafeMetricCard
+              title={aggregateOnly ? 'Active learners' : (phoneAccessProfile === 'bcba' ? 'Reviewed learners' : 'Assigned learners')}
+              value={`${reportChildren.length}`}
+              detail={aggregateOnly ? 'Visible only as an organization total on phone.' : 'Limited to your mobile-safe reporting scope.'}
+            />
+            <SafeMetricCard
+              title="Session summaries"
+              value={`${schoolWide.totalSessions || activeSessionSummaries.length}`}
+              detail="Roll-up documentation count across the visible mobile scope."
+            />
+            <SafeMetricCard
+              title={aggregateOnly ? 'Transfer queue' : 'Behavior signals'}
+              value={aggregateOnly ? `${transferSummary.pending}` : `${totalBehaviorSignals}`}
+              detail={aggregateOnly ? `${transferSummary.ready} ready for handoff` : `${totalProgramSessions} program data points logged`}
+            />
+          </View>
+
+          {aggregateOnly ? (
+            <>
+              <SectionCard title="Attendance and utilization overview">
+                <Text style={styles.rowText}>Present: {childReports.attendanceSummary.present}</Text>
+                <Text style={styles.rowText}>Absent: {childReports.attendanceSummary.absent}</Text>
+                <Text style={styles.rowText}>Tardy: {childReports.attendanceSummary.tardy}</Text>
+                <Text style={styles.utilizationIntro}>Utilization lanes stay visible on phone because they are aggregate and queue-oriented.</Text>
+                <UtilizationMeters items={(schoolWide.parentEngagement || []).map((item) => ({ label: item.label, value: item.value }))} />
+              </SectionCard>
+              <SectionCard title="Recent transfer jobs">
+                {jobsError ? <Text style={styles.rowText}>{jobsError}</Text> : null}
+                {jobs.length ? jobs.slice(0, 6).map((job) => <Text key={job.id} style={styles.rowText}>{job.title || 'Transfer'} • {String(job.status || 'ready').toUpperCase()}</Text>) : <Text style={styles.rowText}>No transfer jobs have been created yet.</Text>}
+              </SectionCard>
+            </>
+          ) : (
+            <>
+              <SectionCard title={phoneAccessProfile === 'bcba' ? 'Clinical trend summary' : 'My trend summary'}>
+                <MiniBars items={(childReports.programMastery || []).slice(0, 5).map((item) => ({ label: item.program, value: item.sessions }))} color="#16a34a" />
+              </SectionCard>
+              <SectionCard title="Behavior trend summary">
+                <MiniBars items={(childReports.behaviorTrends || []).slice(0, 5)} color="#dc2626" />
+              </SectionCard>
+              <SectionCard title="Recent transfer jobs">
+                {jobsError ? <Text style={styles.rowText}>{jobsError}</Text> : null}
+                {jobs.length ? jobs.slice(0, 4).map((job) => <Text key={job.id} style={styles.rowText}>{job.title || 'Transfer'} • {String(job.status || 'ready').toUpperCase()}</Text>) : <Text style={styles.rowText}>No transfer jobs have been created yet.</Text>}
+              </SectionCard>
+            </>
+          )}
+        </ScrollView>
       </ScreenWrapper>
     );
   }
@@ -560,10 +655,12 @@ const styles = StyleSheet.create({
   summaryCard: { width: '100%', borderRadius: 18, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e5e7eb', padding: 16, marginBottom: 10 },
   summaryCardWide: { flex: 1, marginHorizontal: 6, minHeight: 144, minWidth: 0 },
   summaryCardTitle: { fontSize: 16, fontWeight: '800', color: '#0f172a', marginBottom: 10 },
+  safeMetricValue: { fontSize: 28, fontWeight: '800', color: '#0f172a', marginBottom: 8 },
   summaryCardValue: { color: '#475569', lineHeight: 20, marginBottom: 6 },
   card: { marginTop: 12, borderRadius: 18, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e5e7eb', padding: 16 },
   cardTitle: { fontSize: 16, fontWeight: '800', color: '#0f172a', marginBottom: 12 },
   rowText: { color: '#475569', lineHeight: 20, marginBottom: 8 },
+  safeIntroCard: { borderRadius: 22, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#bfdbfe', padding: 18, marginTop: 10 },
   utilizationIntro: { color: '#64748b', lineHeight: 20, marginBottom: 14 },
   utilizationRow: { marginBottom: 14 },
   utilizationHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Image, Linking, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View, useWindowDimensions } from 'react-native';
+import { Alert, Image, Linking, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import AppDropdown from '../components/AppDropdown';
@@ -11,6 +11,7 @@ import { isBcbaRole, isOfficeAdminRole } from '../core/tenant/models';
 import { avatarSourceFor, formatIdForDisplay } from '../utils/idVisibility';
 import { maskEmailDisplay, maskPhoneDisplay } from '../utils/inputFormat';
 import { getDisplayRoleLabel } from '../utils/roleTerminology';
+import { getPhoneAccessProfile, isPhoneViewport as resolvePhoneViewport } from '../utils/mobileRoleAccess';
 import DateField from '../components/DateField';
 import * as Api from '../Api';
 
@@ -52,11 +53,15 @@ function InlineFilterDropdown({ label, value, options = [], selectedValue, onSel
 
 export default function FacultyDirectoryScreen() {
   const navigation = useNavigation();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const { user } = useAuth();
   const { therapists = [], children = [], fetchAndSync, sendAdminMemo } = useData();
   const isBcba = isBcbaRole(user?.role);
   const isOffice = isOfficeAdminRole(user?.role);
+  const phoneAccessProfile = getPhoneAccessProfile(user?.role);
+  const usePhoneSafeDirectory = Platform.OS !== 'web'
+    && resolvePhoneViewport(width, height)
+    && ['bcba', 'office', 'reception', 'admin'].includes(phoneAccessProfile);
   const [workspaceMap, setWorkspaceMap] = useState({});
   const [query, setQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
@@ -204,6 +209,75 @@ export default function FacultyDirectoryScreen() {
     if (!documents.length) return { label: 'Review Documents', color: '#f59e0b', bg: '#fef3c7' };
     return { label: 'Compliant', color: '#16a34a', bg: '#dcfce7' };
   }, [credentials.certificationExpiration, documents.length, selectedStaff]);
+  const phoneRoleSummary = useMemo(() => roster.reduce((summary, staff) => {
+    const normalizedRole = String(staff?.rawRole || '').toLowerCase();
+    if (normalizedRole.includes('bcba')) summary.bcba += 1;
+    else if (normalizedRole.includes('admin') || normalizedRole.includes('office') || normalizedRole.includes('reception')) summary.admin += 1;
+    else summary.rbt += 1;
+    return summary;
+  }, { bcba: 0, rbt: 0, admin: 0 }), [roster]);
+  const phoneComplianceSummary = useMemo(() => roster.reduce((summary, staff) => {
+    const workspace = staff?.workspace || {};
+    const hasCertification = Boolean(String(workspace?.credentials?.certificationExpiration || '').trim());
+    const hasDocuments = Array.isArray(workspace?.documents) && workspace.documents.length > 0;
+    if (hasCertification && hasDocuments) summary.ready += 1;
+    else summary.review += 1;
+    return summary;
+  }, { ready: 0, review: 0 }), [roster]);
+
+  if (usePhoneSafeDirectory) {
+    return (
+      <ScreenWrapper style={styles.container}>
+        <ScrollView contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>
+          <View style={[styles.summaryCard, styles.summaryCardLeft, { width: '100%', marginBottom: 12 }]}> 
+            <Text style={styles.summaryCardLabel}>Phone staff access stays roster-safe.</Text>
+            <Text style={styles.summaryCardDetail}>This phone view keeps staff access limited to roster, role, caseload, and credential-status summaries without exposing direct contact actions.</Text>
+          </View>
+
+          <View style={styles.summaryCardsRow}>
+            <View style={[styles.summaryCard, styles.summaryCardLeft]}>
+              <Text style={styles.summaryCardLabel}>Visible staff</Text>
+              <Text style={styles.summaryCardValue}>{roster.length}</Text>
+              <Text style={styles.summaryCardDetail}>Current roster in phone-safe scope.</Text>
+            </View>
+            <View style={[styles.summaryCard, styles.summaryCardRight]}>
+              <Text style={styles.summaryCardLabel}>Credential ready</Text>
+              <Text style={styles.summaryCardValue}>{phoneComplianceSummary.ready}</Text>
+              <Text style={styles.summaryCardDetail}>{phoneComplianceSummary.review} need review</Text>
+            </View>
+          </View>
+
+          <View style={styles.summaryCardsRow}>
+            <View style={[styles.summaryCard, styles.summaryCardLeft]}>
+              <Text style={styles.summaryCardLabel}>BCBA</Text>
+              <Text style={styles.summaryCardValue}>{phoneRoleSummary.bcba}</Text>
+              <Text style={styles.summaryCardDetail}>Clinical oversight staff in view.</Text>
+            </View>
+            <View style={[styles.summaryCard, styles.summaryCardRight]}>
+              <Text style={styles.summaryCardLabel}>RBT / ABA</Text>
+              <Text style={styles.summaryCardValue}>{phoneRoleSummary.rbt}</Text>
+              <Text style={styles.summaryCardDetail}>Direct service staff in view.</Text>
+            </View>
+          </View>
+
+          <Text style={styles.sectionTitle}>Roster summary</Text>
+          {roster.length ? roster.slice(0, 8).map((staff) => {
+            const workspace = staff?.workspace || {};
+            const hasCertification = Boolean(String(workspace?.credentials?.certificationExpiration || '').trim());
+            const hasDocuments = Array.isArray(workspace?.documents) && workspace.documents.length > 0;
+            const rosterStatus = hasCertification && hasDocuments ? 'Compliant' : 'Needs review';
+            return (
+              <View key={staff.id} style={styles.assignmentCard}>
+                <Text style={styles.assignmentTitle}>{staff.name || 'Staff'}</Text>
+                <Text style={styles.assignmentMeta}>{staff.displayRole || 'Staff'} • {staff.caseload.length} learner{staff.caseload.length === 1 ? '' : 's'}</Text>
+                <Text style={styles.detailText}>{rosterStatus} • {hasDocuments ? 'Documents on file' : 'Documents missing'}</Text>
+              </View>
+            );
+          }) : <Text style={styles.detailText}>No staff records are visible right now.</Text>}
+        </ScrollView>
+      </ScreenWrapper>
+    );
+  }
 
   function renderTabContent() {
     if (!selectedStaff) return <Text style={styles.empty}>Select a staff member to view details.</Text>;
@@ -460,15 +534,7 @@ export default function FacultyDirectoryScreen() {
     <ScreenWrapper
       style={styles.screen}
       mobileHeaderBelow={mobileHeaderFilters}
-      bannerRight={isOffice ? (
-        <AppIconButton
-          accessibilityLabel="Add staff"
-          name="add"
-          iconSize={22}
-          style={styles.bannerAddButton}
-          onPress={() => showAction('Add staff', 'Staff creation stays in the office identity workflow and can be connected here.')}
-        />
-      ) : null}
+      bannerRight={null}
     >
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {loadError ? <Text style={styles.errorText}>{loadError}</Text> : null}

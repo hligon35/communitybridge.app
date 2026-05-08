@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Image, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { MaterialIcons } from '@expo/vector-icons';
 import { ScreenWrapper } from '../components/ScreenWrapper';
@@ -11,6 +11,7 @@ import { USER_ROLES, normalizeUserRole } from '../core/tenant/models';
 import { avatarSourceFor } from '../utils/idVisibility';
 import { THERAPY_ROLE_LABELS } from '../utils/roleTerminology';
 import useIsTabletLayout from '../hooks/useIsTabletLayout';
+import { isPhoneViewport as resolvePhoneViewport, shouldHideTapToolsOnPhone } from '../utils/mobileRoleAccess';
 const { logPress } = require('../utils/logger');
 const { isSpecialAccessUser } = require('../utils/authState');
 const { getEffectiveChatIdentity } = require('../utils/demoIdentity');
@@ -97,10 +98,12 @@ export default function RoleDashboardScreen({ navigation }) {
   const { children = [], urgentMemos = [], directoryLoading = false, directoryError = '', fetchAndSync, activeSeedPreset = '', seededItemsNeededByChild = {} } = useData();
   const tenant = useTenant();
   const isTabletLayout = useIsTabletLayout();
+  const { width, height } = useWindowDimensions();
   const role = normalizeUserRole(user?.role || USER_ROLES.PARENT);
   const effectiveUser = useMemo(() => getEffectiveChatIdentity(user), [user]);
   const allowSpecialAccessFallback = isSpecialAccessUser(user?.email);
   const isTherapist = role === USER_ROLES.THERAPIST;
+  const isPhoneWorkspace = Platform.OS !== 'web' && resolvePhoneViewport(width, height);
   const labels = tenant?.labels || {};
   const dashboardPreset = tenant?.dashboardPreset || {};
   const childProfileMode = tenant?.childProfileMode || {};
@@ -283,6 +286,16 @@ export default function RoleDashboardScreen({ navigation }) {
         ? () => navigation.navigate('TherapistItemsNeeded', { childId: firstRelevantChild?.id || null })
         : undefined,
     },
+    reports: {
+      key: 'reports',
+      title: 'Reports',
+      value: isTherapist ? `${relevantChildren.length} learners` : 'Open reports',
+      hint: isTherapist
+        ? 'View mobile-safe trend and program summaries for your assigned learners.'
+        : 'Open reports and progress summaries.',
+      imageSource: progressReportIcon,
+      onPress: () => navigation.navigate('Reports'),
+    },
     'care-team': {
       key: 'care-team',
       title: labels.careTeam || 'My Care Team',
@@ -326,7 +339,7 @@ export default function RoleDashboardScreen({ navigation }) {
     ? activePreset
     : ['next-session', 'mood-score', 'progress-report', 'items-needed', 'care-team', 'billing', 'resources'];
   const orderedPresetKeys = isTherapist
-    ? ['session-tracker', 'summary-review', 'next-session', 'items-needed', ...presetKeys.filter((key) => !['session-tracker', 'summary-review', 'reports', 'next-session', 'items-needed'].includes(key))]
+    ? ['session-tracker', 'summary-review', 'next-session', 'reports', ...presetKeys.filter((key) => !['session-tracker', 'summary-review', 'reports', 'next-session', 'items-needed'].includes(key))]
     : presetKeys;
   const featureFlags = tenant?.featureFlags || {};
   const cardFlagGates = {
@@ -337,7 +350,9 @@ export default function RoleDashboardScreen({ navigation }) {
     .filter((card) => {
       if (!card) return false;
       if (!isTherapist && card.key === 'reports') return false;
-      if (isTherapist && (card.key === 'progress-report' || card.key === 'mood-score' || card.key === 'care-team' || card.key === 'resources' || card.key === 'reports')) return false;
+      if (isTherapist && (card.key === 'progress-report' || card.key === 'mood-score' || card.key === 'care-team' || card.key === 'resources' || card.key === 'items-needed')) return false;
+      if (isTherapist && card.key === 'reports' && !isPhoneWorkspace) return false;
+      if (isTherapist && isPhoneWorkspace && shouldHideTapToolsOnPhone(user?.role) && (card.key === 'session-tracker' || card.key === 'summary-review')) return false;
       const gate = cardFlagGates[card.key];
       return gate ? gate() : true;
     });

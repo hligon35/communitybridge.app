@@ -7,7 +7,6 @@
     "bundleIdentifier": "com.azlabs.communitybridge",
     "buildNumber": "1.0.10",
     "infoPlist": {
-      "ITSAppUsesNonExemptEncryption": false,
       "NSFaceIDUsageDescription": "CommunityBridge uses Face ID / Touch ID to help you securely sign in on this device.",
       "NSLocationWhenInUseUsageDescription": "CommunityBridge uses your location to support arrival detection and location-based features.",
       "NSCameraUsageDescription": "CommunityBridge needs camera access to let you capture photos for posts and messages.",

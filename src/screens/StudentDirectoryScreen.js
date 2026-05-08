@@ -12,6 +12,7 @@ import { isAdminRole, isBcbaRole, isOfficeAdminRole, normalizeUserRole, USER_ROL
 import { avatarSourceFor } from '../utils/idVisibility';
 import { THERAPY_ROLE_LABELS, getDisplayRoleLabel } from '../utils/roleTerminology';
 import { maskPhoneDisplay } from '../utils/inputFormat';
+import { getPhoneAccessProfile, isPhoneViewport as resolvePhoneViewport } from '../utils/mobileRoleAccess';
 import * as Api from '../Api';
 
 const GUARDIAN_RELATIONSHIP_OPTIONS = [
@@ -41,6 +42,11 @@ function splitStudentName(name) {
     firstName: parts[0] || 'Student',
     lastName: parts.slice(1).join(' '),
   };
+}
+
+function formatMaskedLearnerName(name) {
+  const { firstName, lastName } = splitStudentName(name);
+  return lastName ? `${firstName} ${lastName.charAt(0).toUpperCase()}.` : firstName;
 }
 
 function formatSummaryTimestamp(value) {
@@ -258,12 +264,16 @@ function normalizeInlineParents(selectedChild, parents) {
 
 export default function StudentDirectoryScreen() {
   const navigation = useNavigation();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const { user } = useAuth();
   const { children = [], parents = [], therapists = [], fetchAndSync, activeSeedPreset = '', seededAttendanceHistoryByChild = {}, seededPickupQueueByChild = {} } = useData();
   const { currentOrganization, currentProgram, currentCampus } = useTenant() || {};
   const isBcba = isBcbaRole(user?.role);
   const isOffice = isOfficeAdminRole(user?.role);
+  const phoneAccessProfile = getPhoneAccessProfile(user?.role);
+  const usePhoneSafeDirectory = Platform.OS !== 'web'
+    && resolvePhoneViewport(width, height)
+    && ['bcba', 'office', 'reception', 'admin'].includes(phoneAccessProfile);
   const canOpenRelatedChats = isAdminRole(user?.role) || isOffice || isBcba;
   const normalizedRole = normalizeUserRole(user?.role);
   const isScopedAdmin = isOffice && normalizedRole !== USER_ROLES.ORG_ADMIN && normalizedRole !== USER_ROLES.SUPER_ADMIN;
@@ -367,6 +377,33 @@ export default function StudentDirectoryScreen() {
     };
   }, [selectedChild, therapists]);
   const attendanceTrendItems = useMemo(() => buildAttendanceTrendItems(attendanceHistory, 5), [attendanceHistory]);
+  const phoneAttendanceSummary = useMemo(() => filteredChildren.reduce((summary, child) => {
+    const status = String(child?.attendanceStatus || child?.scheduleStatus || child?.status || 'scheduled').trim().toLowerCase();
+    summary.total += 1;
+    if (status === 'present' || status === 'completed') summary.present += 1;
+    else if (status === 'absent' || status === 'canceled') summary.absent += 1;
+    else if (status === 'tardy' || status === 'late') summary.tardy += 1;
+    else summary.scheduled += 1;
+    return summary;
+  }, { total: 0, present: 0, absent: 0, tardy: 0, scheduled: 0 }), [filteredChildren]);
+  const phoneRoomSummary = useMemo(() => {
+    const counts = new Map();
+    filteredChildren.forEach((child) => {
+      const room = String(child?.room || 'Unassigned').trim() || 'Unassigned';
+      counts.set(room, (counts.get(room) || 0) + 1);
+    });
+    return Array.from(counts.entries())
+      .map(([label, count]) => ({ label, count }))
+      .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label))
+      .slice(0, 6);
+  }, [filteredChildren]);
+  const phoneMaskedRoster = useMemo(() => filteredChildren.slice(0, 8).map((child) => ({
+    id: child?.id || child?.name,
+    name: formatMaskedLearnerName(child?.name),
+    room: String(child?.room || 'Unassigned').trim() || 'Unassigned',
+    attendance: resolveAttendanceSummary(child),
+    mood: resolveMoodSummary(child),
+  })), [filteredChildren]);
 
   useEffect(() => {
     let cancelled = false;
@@ -424,8 +461,70 @@ export default function StudentDirectoryScreen() {
     });
   }, [isOffice, navigation]);
 
-  function openAction(title, message) {
-    Alert.alert(title, message);
+  if (usePhoneSafeDirectory) {
+    const aggregateOnly = phoneAccessProfile !== 'bcba';
+
+    return (
+      <ScreenWrapper style={styles.container}>
+        <ScrollView contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>
+          <View style={[styles.summaryCard, styles.summaryCardFull, { marginBottom: 12 }]}> 
+            <Text style={styles.summaryCardLabel}>{aggregateOnly ? 'Phone student access stays aggregate-first.' : 'Phone student access stays masked and summary-first.'}</Text>
+            <Text style={styles.summaryCardDetail}>
+              {aggregateOnly
+                ? 'This phone view keeps learner access limited to room totals, attendance rollups, and operational status summaries.'
+                : 'This phone view keeps learner access limited to masked roster summaries, attendance status, and recent mood signals.'}
+            </Text>
+          </View>
+
+          <View style={styles.summaryCardsRow}>
+            <View style={[styles.summaryCard, styles.summaryCardLeft]}>
+              <Text style={styles.summaryCardLabel}>Visible learners</Text>
+              <Text style={styles.summaryCardValue}>{phoneAttendanceSummary.total}</Text>
+              <Text style={styles.summaryCardDetail}>Shown only within this phone-safe scope.</Text>
+            </View>
+            <View style={[styles.summaryCard, styles.summaryCardRight]}>
+              <Text style={styles.summaryCardLabel}>Rooms active</Text>
+              <Text style={styles.summaryCardValue}>{phoneRoomSummary.length}</Text>
+              <Text style={styles.summaryCardDetail}>Current room coverage on phone.</Text>
+            </View>
+          </View>
+
+          <View style={styles.summaryCardsRow}>
+            <View style={[styles.summaryCard, styles.summaryCardLeft]}>
+              <Text style={styles.summaryCardLabel}>Present / completed</Text>
+              <Text style={styles.summaryCardValue}>{phoneAttendanceSummary.present}</Text>
+              <Text style={styles.summaryCardDetail}>Attendance roll-up across the visible mobile roster.</Text>
+            </View>
+            <View style={[styles.summaryCard, styles.summaryCardRight]}>
+              <Text style={styles.summaryCardLabel}>Absent / canceled</Text>
+              <Text style={styles.summaryCardValue}>{phoneAttendanceSummary.absent}</Text>
+              <Text style={styles.summaryCardDetail}>Operational exceptions needing follow-up.</Text>
+            </View>
+          </View>
+
+          <Text style={styles.sectionTitle}>Room overview</Text>
+          {phoneRoomSummary.length ? phoneRoomSummary.map((room) => (
+            <View key={room.label} style={styles.assignmentCard}>
+              <Text style={styles.assignmentTitle}>{room.label}</Text>
+              <Text style={styles.assignmentMeta}>{room.count} learner{room.count === 1 ? '' : 's'} in current scope</Text>
+            </View>
+          )) : <Text style={styles.detailText}>No learner room assignments are visible right now.</Text>}
+
+          {!aggregateOnly ? (
+            <>
+              <Text style={styles.sectionTitle}>Masked learner roster</Text>
+              {phoneMaskedRoster.length ? phoneMaskedRoster.map((child) => (
+                <View key={child.id} style={styles.assignmentCard}>
+                  <Text style={styles.assignmentTitle}>{child.name}</Text>
+                  <Text style={styles.assignmentMeta}>{child.room} • {child.attendance.value}</Text>
+                  <Text style={styles.detailText}>{child.mood.value} • {child.mood.detail}</Text>
+                </View>
+              )) : <Text style={styles.detailText}>No learners are visible in this mobile summary.</Text>}
+            </>
+          ) : null}
+        </ScrollView>
+      </ScreenWrapper>
+    );
   }
 
   function openPhone(phone) {
@@ -716,9 +815,6 @@ export default function StudentDirectoryScreen() {
       <>
         <Text style={styles.sectionTitle}>Documents</Text>
         <Text style={styles.detailText}>{isOffice ? 'Office can upload student records and supporting documentation here.' : 'BCBA can review office-uploaded documentation here.'}</Text>
-        <TouchableOpacity style={styles.secondaryButton} onPress={() => openAction('Documents', 'Document upload routing can be connected to the existing admin document flows next.')}>
-          <Text style={styles.secondaryButtonText}>{isOffice ? 'Upload Document' : 'View Documents'}</Text>
-        </TouchableOpacity>
       </>
     );
   }
@@ -826,12 +922,6 @@ export default function StudentDirectoryScreen() {
                   </View>
                   {isOffice ? (
                     <View style={styles.profileHeaderActions}>
-                      <AppIconButton
-                        accessibilityLabel="Edit student info"
-                        name="edit"
-                        style={styles.profileHeaderIconButton}
-                        onPress={() => openAction('Edit student info', 'Student editing can continue through the student profile workspace.')}
-                      />
                       <AppIconButton
                         accessibilityLabel={`Assign BCBA / ${THERAPY_ROLE_LABELS.therapist}`}
                         name="person-add-alt-1"

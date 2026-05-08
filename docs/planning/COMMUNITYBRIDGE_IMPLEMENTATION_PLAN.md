@@ -121,6 +121,31 @@ This plan maps the attached CommunityBridge edits document onto the current Budd
 
 ## Remaining Work
 
+### Mobile role access redesign
+
+- Phone-specific role and data policy is approved in `docs/planning/MOBILE_ROLE_ACCESS_POLICY.md` and is the source of truth for Step 2 and Step 3.
+- Keep communications available on phone for all roles while moving non-parent staff and admin phone access to masked, aggregate-first views.
+- Implement ABA phone as a caseload workspace, BCBA phone as masked summaries plus dashboards and insights, and office or admin phone as strictly aggregate and queue based.
+- Limit staff phone scheduling to the signed-in user's own scheduled sessions and work schedule.
+- Keep ABA tap and session tools tablet-only.
+- Use the approved policy as the gate for route blocking, phone dashboard design, and field-level masking work.
+
+#### Current phone status
+
+- Parent: implemented for dashboard, chats, My Child, care team, schedule, billing summary, and parent-safe reports.
+- Therapist / ABA: implemented for dashboard, chats, items needed, assigned-schedule view, and phone-safe reports. Tap Tracker, Tap Logs, Session Report, and full child detail remain tablet-only or blocked.
+- BCBA: implemented for masked dashboard access, chats, phone-safe reports, phone-safe schedule, documentation dashboard, insights, and compliance.
+- Office: implemented for aggregate dashboard access, chats, student summary, staff summary, family summary, queue-oriented reports, aggregate schedule, and compliance.
+- Reception: implemented for aggregate dashboard access, chats, student summary, staff summary, family summary, and aggregate schedule. Reception still stays narrower than office and admin on phone.
+- Admin: implemented for aggregate dashboard access, chats, student summary, staff summary, family summary, queue-oriented reports, aggregate schedule, insights, and compliance.
+
+#### Remaining mobile follow-through
+
+- Disallowed phone routes currently rely on `ScreenWrapper` fallback messaging rather than dedicated mobile-safe replacements where no phone module exists yet.
+- Field-level masking is covered in the dedicated phone-safe reports and schedule views, but future allowed phone modules should continue moving from route blocking to explicit masked view-models.
+- Continue validating real-device role switching and entry flows so phone users always land on an allowed root workspace after role changes.
+- Remaining blocked-by-design phone routes are still `ParentDetail`, `ChildDetail`, `FacultyDetail`, `InsuranceBilling` detail views for staff or admin, `TapTracker`, `TapLogs`, `SummaryReview`, `AdminChatMonitor`, `AdminSettings`, `ProgramDirectory`, `ImportCenter`, `ExportData`, `CampusDirectory`, `ProgramDocuments`, and `CampusDocuments`.
+
 ### Admin redesign follow-through
 
 - Expand admin hub cards into deeper destination screens for:
