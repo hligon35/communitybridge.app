@@ -16,7 +16,7 @@ import DevRoleSwitcher from './src/components/DevRoleSwitcher';
 import { logger, setDebugContext } from './src/utils/logger';
 import { registerGlobalDebugHandlers } from './src/utils/registerDebugHandlers';
 import { configureNotificationHandling } from './src/utils/pushNotifications';
-import { navigationRef } from './src/navigationRef';
+import { navigationRef, resetToLogin } from './src/navigationRef';
 import { isPhoneViewport as resolvePhoneViewport } from './src/utils/mobileRoleAccess';
 
 import RoleDashboardScreen from './src/screens/RoleDashboardScreen';
@@ -593,6 +593,47 @@ function AppNavigator() {
           globalThis.removeEventListener('online', onlineHandler);
         }
       } catch (_) { /* ignore */ }
+    };
+  }, [auth?.token, auth?.needsMfa, auth?.passwordSetupRequired]);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return undefined;
+
+    let active = true;
+    let subscription = null;
+    let Notifications = null;
+    try {
+      Notifications = require('expo-notifications');
+    } catch (_) {
+      Notifications = null;
+    }
+    if (!Notifications) return undefined;
+
+    const handleResponse = (response) => {
+      const data = response?.notification?.request?.content?.data || response?.request?.content?.data || {};
+      const kind = String(data?.kind || '').trim().toLowerCase();
+      if (!data?.memoId && kind !== 'admin_memo' && kind !== 'urgent_memo') return;
+      if (!navigationRef?.isReady?.()) return;
+      if (!auth?.token || auth?.needsMfa || auth?.passwordSetupRequired) {
+        resetToLogin();
+      }
+    };
+
+    Notifications.getLastNotificationResponseAsync?.()
+      ?.then((response) => {
+        if (!active || !response) return;
+        handleResponse(response);
+        Notifications.clearLastNotificationResponseAsync?.().catch(() => {});
+      })
+      .catch(() => {});
+
+    subscription = Notifications.addNotificationResponseReceivedListener?.((response) => {
+      handleResponse(response);
+    });
+
+    return () => {
+      active = false;
+      subscription?.remove?.();
     };
   }, [auth?.token, auth?.needsMfa, auth?.passwordSetupRequired]);
 

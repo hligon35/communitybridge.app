@@ -17,11 +17,12 @@ export default function UrgentMemoOverlay() {
       if (!user || needsMfa) return;
       try {
         let list = urgentMemos;
-        // Only show broadcast-style urgent memos in this overlay.
+        // Show user-facing urgent memos and announcements immediately after login.
         list = list.filter((m) => {
           const t = (m && m.type) ? String(m.type).toLowerCase() : 'urgent_memo';
-          return t === 'urgent_memo' || (!m.type && (m.title || m.body));
+          return t === 'urgent_memo' || t === 'admin_memo' || (!m.type && (m.title || m.body));
         });
+        list = list.sort((left, right) => new Date(right?.createdAt || right?.date || 0).getTime() - new Date(left?.createdAt || left?.date || 0).getTime());
         setMemos(list);
         const seenKey = `urgentSeen_${user.id}`;
         const seenRaw = await AsyncStorage.getItem(seenKey);
@@ -82,9 +83,9 @@ export default function UrgentMemoOverlay() {
             <ScrollView style={{ marginTop: 12 }}>
               {memos.map((m) => (
                 <View key={m.id} style={{ marginBottom: 12 }}>
-                  <Text style={{ fontWeight: '700' }}>{m.title}</Text>
-                  <Text>{m.body}</Text>
-                  <Text style={{ fontSize: 12, color: '#666' }}>{m.date}</Text>
+                  <Text style={{ fontWeight: '700' }}>{m.subject || m.title}</Text>
+                  <Text>{m.body || m.note}</Text>
+                  <Text style={{ fontSize: 12, color: '#666' }}>{m.date || m.createdAt}</Text>
                 </View>
               ))}
             </ScrollView>

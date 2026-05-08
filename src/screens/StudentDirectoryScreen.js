@@ -64,6 +64,81 @@ function titleCaseWords(value) {
     .join(' ');
 }
 
+function normalizeArrivalStatus(value) {
+  const raw = String(value || '').trim().toLowerCase();
+  if (raw === 'approaching' || raw === 'arrived' || raw === 'exited') return raw;
+  return '';
+}
+
+function getArrivalStatusMeta(status) {
+  if (status === 'arrived') {
+    return {
+      label: 'Arrived',
+      backgroundColor: '#dcfce7',
+      borderColor: '#86efac',
+      textColor: '#166534',
+    };
+  }
+  if (status === 'approaching') {
+    return {
+      label: 'Approaching',
+      backgroundColor: '#dbeafe',
+      borderColor: '#93c5fd',
+      textColor: '#1d4ed8',
+    };
+  }
+  if (status === 'exited') {
+    return {
+      label: 'Left Zone',
+      backgroundColor: '#fee2e2',
+      borderColor: '#fca5a5',
+      textColor: '#b91c1c',
+    };
+  }
+  return null;
+}
+
+function getArrivalSortStamp(item) {
+  const candidate = item?.lastSeenAt || item?.updatedAt || item?.createdAt || item?.date || '';
+  const parsed = Date.parse(String(candidate || ''));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function buildArrivalStatusByChild(urgentMemos = []) {
+  return (Array.isArray(urgentMemos) ? urgentMemos : []).reduce((acc, memo) => {
+    if (String(memo?.type || '').trim().toLowerCase() !== 'arrival_alert') return acc;
+    const childId = String(memo?.childId || '').trim();
+    const arrivalStatus = normalizeArrivalStatus(memo?.arrivalStatus || memo?.status);
+    if (!childId || !arrivalStatus) return acc;
+    const nextStamp = getArrivalSortStamp(memo);
+    const prev = acc[childId];
+    if (!prev || nextStamp >= prev.sortStamp) {
+      acc[childId] = {
+        status: arrivalStatus,
+        updatedAt: memo?.lastSeenAt || memo?.updatedAt || memo?.createdAt || memo?.date || '',
+        sortStamp: nextStamp,
+      };
+    }
+    return acc;
+  }, {});
+}
+
+function ArrivalStatusBadge({ status, compact = false }) {
+  const meta = getArrivalStatusMeta(status);
+  if (!meta) return null;
+  return (
+    <View
+      style={[
+        styles.arrivalBadge,
+        compact ? styles.arrivalBadgeCompact : null,
+        { backgroundColor: meta.backgroundColor, borderColor: meta.borderColor },
+      ]}
+    >
+      <Text style={[styles.arrivalBadgeText, compact ? styles.arrivalBadgeTextCompact : null, { color: meta.textColor }]}>{meta.label}</Text>
+    </View>
+  );
+}
+
 function resolveLatestMoodEntry(child) {
   const latestEntry = child?.latestMoodEntry;
   if (Array.isArray(latestEntry) && latestEntry.length && latestEntry[0] && typeof latestEntry[0] === 'object') return latestEntry[0];
@@ -266,7 +341,7 @@ export default function StudentDirectoryScreen() {
   const navigation = useNavigation();
   const { width, height } = useWindowDimensions();
   const { user } = useAuth();
-  const { children = [], parents = [], therapists = [], fetchAndSync, activeSeedPreset = '', seededAttendanceHistoryByChild = {}, seededPickupQueueByChild = {} } = useData();
+  const { children = [], parents = [], therapists = [], urgentMemos = [], fetchAndSync, activeSeedPreset = '', seededAttendanceHistoryByChild = {}, seededPickupQueueByChild = {} } = useData();
   const { currentOrganization, currentProgram, currentCampus } = useTenant() || {};
   const isBcba = isBcbaRole(user?.role);
   const isOffice = isOfficeAdminRole(user?.role);
@@ -324,10 +399,20 @@ export default function StudentDirectoryScreen() {
   const sortDropdownValue = sortKey === 'name' ? '' : (sortChoices.find((option) => option.value === sortKey)?.label || '');
   const useMobileHeaderFilters = width < 900;
   const useRosterCarousel = width < 900;
+  const arrivalStatusByChild = useMemo(() => buildArrivalStatusByChild(urgentMemos), [urgentMemos]);
 
   const filteredChildren = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     return [...(children || [])]
+      .map((child) => {
+        const arrivalState = arrivalStatusByChild[String(child?.id || '').trim()];
+        if (!arrivalState) return child;
+        return {
+          ...child,
+          arrivalStatus: String(child?.arrivalStatus || arrivalState.status || '').trim(),
+          latestArrivalAt: child?.latestArrivalAt || arrivalState.updatedAt || '',
+        };
+      })
       .filter((child) => {
         if (roomFilter !== 'all' && String(child?.room || '') !== roomFilter) return false;
         if (!normalized) return true;
@@ -339,7 +424,7 @@ export default function StudentDirectoryScreen() {
         if (sortKey === 'age') return Number(left?.age || 0) - Number(right?.age || 0);
         return String(left?.name || '').localeCompare(String(right?.name || ''));
       });
-  }, [children, query, roomFilter, sortKey]);
+  }, [arrivalStatusByChild, children, query, roomFilter, sortKey]);
   useEffect(() => {
     if (!filteredChildren.length) {
       setSelectedChildId(null);
@@ -888,6 +973,7 @@ export default function StudentDirectoryScreen() {
                     <View style={styles.rosterCarouselTextWrap}>
                       <Text style={styles.rosterCarouselFirstName} numberOfLines={1}>{firstName}</Text>
                       <Text style={styles.rosterCarouselLastName} numberOfLines={1}>{lastName}</Text>
+                      <ArrivalStatusBadge status={child?.arrivalStatus} compact />
                     </View>
                   </TouchableOpacity>
                 );
@@ -905,6 +991,7 @@ export default function StudentDirectoryScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={styles.rosterName}>{child.name}</Text>
                     <Text style={styles.rosterMeta}>Room {child.room || 'Unassigned'} • Age {child.age || 'N/A'}</Text>
+                    <ArrivalStatusBadge status={child?.arrivalStatus} />
                   </View>
                 </TouchableOpacity>
               ))}
@@ -919,6 +1006,7 @@ export default function StudentDirectoryScreen() {
                   <View style={{ flex: 1, marginLeft: 12 }}>
                     <Text style={styles.profileName}>{selectedChild.name}</Text>
                     <Text style={styles.profileMeta}>Room {selectedChild.room || 'Unassigned'} • {selectedChild.session || 'Session unassigned'}</Text>
+                    <ArrivalStatusBadge status={selectedChild?.arrivalStatus} />
                   </View>
                   {isOffice ? (
                     <View style={styles.profileHeaderActions}>
@@ -1085,6 +1173,22 @@ const styles = StyleSheet.create({
   rosterMeta: { marginTop: 4, color: '#64748b', fontSize: 12 },
   rosterCarouselFirstName: { fontWeight: '800', color: '#0f172a', textAlign: 'center' },
   rosterCarouselLastName: { marginTop: 2, color: '#64748b', fontSize: 12, fontWeight: '700', textAlign: 'center', minHeight: 16 },
+  arrivalBadge: {
+    alignSelf: 'flex-start',
+    marginTop: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  arrivalBadgeCompact: {
+    alignSelf: 'center',
+    marginTop: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  arrivalBadgeText: { fontSize: 11, fontWeight: '800' },
+  arrivalBadgeTextCompact: { fontSize: 10 },
   personRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
   parentRow: { justifyContent: 'space-between' },
   smallAvatar: { width: 46, height: 46, borderRadius: 20, backgroundColor: '#e2e8f0' },

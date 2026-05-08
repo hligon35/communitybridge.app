@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Image, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { MaterialIcons } from '@expo/vector-icons';
+import AnnouncementFeed from '../components/AnnouncementFeed';
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import TenantSwitcher from '../components/TenantSwitcher';
 import { useAuth } from '../AuthContext';
@@ -440,6 +441,8 @@ export default function RoleDashboardScreen({ navigation }) {
         </View>
 
         <TenantSwitcher />
+
+        <AnnouncementFeed items={urgentMemos} />
 
         {!isTherapist ? <View style={[styles.grid, isTherapist ? styles.gridTherapist : null]}>
           {dashboardCards.map((card) => {

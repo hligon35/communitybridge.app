@@ -355,6 +355,10 @@ export default function ScheduleCalendarScreen() {
     }
     const nextStart = parseDraftTime(draftStart, selectedDate);
     const nextEnd = parseDraftTime(draftEnd, selectedDate);
+    if (nextStart.getTime() >= nextEnd.getTime()) {
+      Alert.alert('Invalid time range', 'Session end time must be later than the start time.');
+      return;
+    }
     const scheduleApproval = {
       status: 'pending',
       submittedAt: new Date().toISOString(),
@@ -381,7 +385,7 @@ export default function ScheduleCalendarScreen() {
       setEditorMode('');
       Alert.alert('Session saved', `${selectedChild?.name || 'Learner'} now has an updated ${draftSession} session pending office approval.`);
     } catch (error) {
-      Alert.alert('Session not saved', String(error?.message || error || 'We could not save this session update.'));
+      Alert.alert(error?.httpStatus === 409 ? 'Scheduling conflict' : 'Session not saved', String(error?.message || error || 'We could not save this session update.'));
     } finally {
       setSaving(false);
     }
@@ -430,7 +434,7 @@ export default function ScheduleCalendarScreen() {
       setEditorMode('');
       Alert.alert('ABA tech assigned', `${assignedStaff.name || 'Selected staff'} was assigned to ${selectedChild?.name || 'the learner'} for the ${draftSession} session pending office approval.`);
     } catch (error) {
-      Alert.alert('Assignment not saved', String(error?.message || error || 'We could not save this assignment.'));
+      Alert.alert(error?.httpStatus === 409 ? 'Scheduling conflict' : 'Assignment not saved', String(error?.message || error || 'We could not save this assignment.'));
     } finally {
       setSaving(false);
     }

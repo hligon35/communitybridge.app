@@ -3725,6 +3725,46 @@ app.put('/api/children/attendance', authMiddleware, requireChildCareWriteAccess,
   }
 });
 
+function parseScheduleIso(value) {
+  const raw = safeString(value).trim();
+  if (!raw) return null;
+  const parsed = new Date(raw);
+  return Number.isFinite(parsed.getTime()) ? parsed : null;
+}
+
+function normalizeScheduleSession(childLike, startDate) {
+  const session = safeString(childLike?.session).trim().toUpperCase();
+  if (session === 'AM' || session === 'PM') return session;
+  return startDate && startDate.getHours() >= 12 ? 'PM' : 'AM';
+}
+
+function getScheduleTherapistForSession(childLike, sessionKey) {
+  const sessionSpecific = sessionKey === 'PM' ? childLike?.pmTherapist : childLike?.amTherapist;
+  if (sessionSpecific) return sessionSpecific;
+  const fallbackAssigned = Array.isArray(childLike?.assignedABA) && childLike.assignedABA.length
+    ? childLike.assignedABA[0]
+    : Array.isArray(childLike?.assigned_ABA) && childLike.assigned_ABA.length
+      ? childLike.assigned_ABA[0]
+      : childLike?.bcaTherapist;
+  return fallbackAssigned || null;
+}
+
+function toTherapistIdentity(entry) {
+  if (!entry) return { id: '', label: '' };
+  if (typeof entry === 'string') {
+    const trimmed = safeString(entry).trim();
+    return { id: trimmed, label: trimmed };
+  }
+  const id = safeString(entry.id || entry.uid).trim();
+  const label = safeString(entry.name || entry.email || id).trim();
+  return { id, label };
+}
+
+function formatConflictTimeRange(startDate, endDate) {
+  if (!(startDate instanceof Date) || !(endDate instanceof Date)) return 'the requested time';
+  return `${startDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} - ${endDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+}
+
 app.put('/api/children/:childId/schedule', authMiddleware, requireChildCareWriteAccess, (req, res) => {
   try {
     const childId = safeString(req.params && req.params.childId).trim();
@@ -3837,6 +3877,48 @@ app.put('/api/children/:childId/schedule', authMiddleware, requireChildCareWrite
     if (body.canceledByName !== undefined) {
       nextChild.canceledByName = body.canceledByName ? safeString(body.canceledByName).trim() : null;
       changedFields.push('canceledByName');
+    }
+
+    const nextStart = parseScheduleIso(nextChild.dropoffTimeISO);
+    const nextEnd = parseScheduleIso(nextChild.pickupTimeISO);
+    if (nextStart && nextEnd && nextStart.getTime() >= nextEnd.getTime()) {
+      return res.status(400).json({ ok: false, error: 'Session end time must be later than the start time.' });
+    }
+
+    if (nextStart && nextEnd) {
+      const nextSession = normalizeScheduleSession(nextChild, nextStart);
+      const assignedTherapist = toTherapistIdentity(getScheduleTherapistForSession(nextChild, nextSession));
+      if (assignedTherapist.id) {
+        const allRows = db.prepare('SELECT id, data_json FROM directory_children WHERE id <> ?').all(childId);
+        const conflictingChild = allRows
+          .map((entry) => ({ id: safeString(entry?.id).trim(), item: safeJsonParse(String(entry?.data_json || ''), null) }))
+          .filter((entry) => entry.item && typeof entry.item === 'object')
+          .find((entry) => {
+            const candidate = entry.item;
+            const candidateStatus = safeString(candidate.scheduleStatus || candidate.status).trim().toLowerCase();
+            if (candidateStatus === 'canceled') return false;
+            const candidateStart = parseScheduleIso(candidate.dropoffTimeISO);
+            const candidateEnd = parseScheduleIso(candidate.pickupTimeISO);
+            if (!candidateStart || !candidateEnd) return false;
+            if (candidateStart.getTime() >= candidateEnd.getTime()) return false;
+            const candidateSession = normalizeScheduleSession(candidate, candidateStart);
+            const candidateTherapist = toTherapistIdentity(getScheduleTherapistForSession(candidate, candidateSession));
+            if (!candidateTherapist.id || candidateTherapist.id !== assignedTherapist.id) return false;
+            return nextStart.getTime() < candidateEnd.getTime() && nextEnd.getTime() > candidateStart.getTime();
+          });
+
+        if (conflictingChild?.item) {
+          const conflictingStart = parseScheduleIso(conflictingChild.item.dropoffTimeISO);
+          const conflictingEnd = parseScheduleIso(conflictingChild.item.pickupTimeISO);
+          const therapistLabel = assignedTherapist.label || 'The selected therapist';
+          const learnerLabel = safeString(conflictingChild.item.name).trim() || 'another learner';
+          return res.status(409).json({
+            ok: false,
+            code: 'BB_SCHEDULE_CONFLICT',
+            error: `${therapistLabel} is already booked with ${learnerLabel} during ${formatConflictTimeRange(conflictingStart, conflictingEnd)}.`,
+          });
+        }
+      }
     }
 
     const now = nowISO();
@@ -5690,6 +5772,30 @@ app.get('/api/urgent-memos', authMiddleware, (req, res) => {
   }));
 });
 
+function buildUrgentMemoPushContent(memoObj) {
+  const type = safeString(memoObj?.type).trim().toLowerCase();
+  if (type === 'admin_memo') {
+    const title = safeString(memoObj?.subject || memoObj?.title).trim() || 'New announcement';
+    const body = safeString(memoObj?.body || memoObj?.note).trim() || 'Open the app to review the announcement.';
+    return {
+      title: title.slice(0, 60),
+      body: body.slice(0, 110),
+    };
+  }
+  if (type === 'urgent_memo') {
+    const title = safeString(memoObj?.title || memoObj?.subject).trim() || 'Urgent memo';
+    const body = safeString(memoObj?.body || memoObj?.note).trim() || 'Open the app for details.';
+    return {
+      title: title.slice(0, 60),
+      body: body.slice(0, 110),
+    };
+  }
+  return {
+    title: 'New alert',
+    body: 'Open the app for details.',
+  };
+}
+
 app.post('/api/urgent-memos', authMiddleware, (req, res) => {
   const payload = (req.body && typeof req.body === 'object') ? req.body : {};
   const id = payload.id ? String(payload.id) : nanoId();
@@ -5708,11 +5814,12 @@ app.post('/api/urgent-memos', authMiddleware, (req, res) => {
       ? getAdminUserIds()
       : normalizeRecipients(memoObj.recipients);
     const tokens = getPushTokensForUsers(recipientIds, { kind: 'updates' });
+    const pushContent = buildUrgentMemoPushContent(memoObj);
     setTimeout(() => {
       sendExpoPush(tokens, {
-        title: memoObj.type === 'admin_memo' ? 'New memo' : 'New alert',
-        body: 'Open the app for details.',
-        data: { kind: memoObj.type || 'urgent_memo', memoId: id, childId: memoObj.childId || null },
+        title: pushContent.title,
+        body: pushContent.body,
+        data: { kind: memoObj.type || 'urgent_memo', memoId: id, childId: memoObj.childId || null, openTo: 'login' },
       }).catch(() => {});
     }, 0);
   } catch (_) {
@@ -5755,6 +5862,52 @@ app.post('/api/urgent-memos/read', authMiddleware, (req, res) => {
   res.json({ ok: true, updatedAt: t });
 });
 
+function normalizeArrivalEventType(value) {
+  const raw = safeLower(value);
+  if (raw === 'approaching' || raw === 'arrived' || raw === 'heartbeat' || raw === 'exit') return raw;
+  return 'arrived';
+}
+
+function buildArrivalAlertId(payload, actorId) {
+  const sessionKey = safeString(payload && payload.sessionKey).trim();
+  if (sessionKey) return `arrival:${sessionKey}`;
+  const childId = safeString(payload && payload.childId).trim();
+  const eventId = safeString(payload && payload.eventId).trim();
+  const shiftId = safeString(payload && payload.shiftId).trim();
+  const when = safeString(payload && (payload.sessionStart || payload.when)).trim();
+  return ['arrival', actorId, childId || shiftId, eventId, when].filter(Boolean).join(':');
+}
+
+function buildArrivalAlertCopy({ actorRole, actorName, parentName, therapistName, childName, arrivalStatus }) {
+  if (arrivalStatus === 'approaching') {
+    if (actorRole === 'parent' && childName) {
+      return {
+        title: `${childName} nearby`,
+        body: `${childName} and ${parentName || actorName || 'their parent'} are nearby.`,
+      };
+    }
+    if (actorRole === 'therapist') {
+      return {
+        title: childName ? `${childName} session nearby` : 'Therapist nearby',
+        body: `${therapistName || actorName || 'Assigned ABA staff'} is nearby.`,
+      };
+    }
+    return { title: 'Arrival nearby', body: 'A scheduled arrival is nearby.' };
+  }
+
+  if (arrivalStatus === 'exited') {
+    return {
+      title: childName ? `${childName} left arrival zone` : 'Arrival zone exited',
+      body: childName ? `${childName} left the arrival zone.` : 'The scheduled arrival left the arrival zone.',
+    };
+  }
+
+  return {
+    title: childName ? `${childName} near site` : 'Near site',
+    body: 'Near site, prepare immediate roster adjustment.',
+  };
+}
+
 // Arrival pings (stores basic history)
 app.post('/api/arrival/ping', authMiddleware, (req, res) => {
   const payload = req.body || {};
@@ -5775,74 +5928,154 @@ app.post('/api/arrival/ping', authMiddleware, (req, res) => {
       createdAt
     );
 
-  // Generate an admin-facing arrival alert (deduped) when a parent/therapist arrives.
-  // Client already enforces schedule window and drop-zone check; the server stores a single alert
-  // per user/child/shift within a short window to avoid spamming.
+  // Keep one mutable arrival alert per session scope so repeat heartbeats only refresh lastSeenAt.
   try {
     const r = String(actorRole || '').trim().toLowerCase();
     if (r === 'parent' || r === 'therapist') {
+      const actorName = safeString((req.user && req.user.name) || payload.actorName).trim();
       const childId = payload.childId != null ? String(payload.childId) : null;
       const shiftId = payload.shiftId != null ? String(payload.shiftId) : null;
-      const withinMins = 10;
-
-      const recent = db.prepare(`
-        SELECT id FROM urgent_memos
-        WHERE type = 'arrival_alert'
-          AND proposer_id = ?
-          AND (child_id IS ? OR child_id = ?)
-          AND (json_extract(meta_json, '$.shiftId') IS ? OR json_extract(meta_json, '$.shiftId') = ?)
-          AND datetime(created_at) > datetime('now', ?)
-        LIMIT 1
-      `).get(
+      const eventType = normalizeArrivalEventType(payload.eventType);
+      const arrivalStatus = eventType === 'heartbeat' ? 'arrived' : (eventType === 'exit' ? 'exited' : eventType);
+      const alertId = buildArrivalAlertId(payload, actorId);
+      const existing = db.prepare('SELECT * FROM urgent_memos WHERE id = ?').get(alertId);
+      const existingMeta = safeJsonParse(existing?.meta_json, {}) || {};
+      const existingMemo = safeJsonParse(existing?.memo_json, {}) || {};
+      const previousArrivalStatus = safeLower(existingMeta.arrivalStatus || existingMemo.arrivalStatus);
+      const incomingRecipients = normalizeRecipients(payload.recipientIds || payload.recipients || []);
+      const visibleRecipients = Array.from(new Set([
+        ...normalizeRecipients(existingMemo.recipients || existingMemo.recipientIds || []),
+        ...((arrivalStatus === 'arrived' || arrivalStatus === 'exited') ? incomingRecipients : []),
+      ].filter(Boolean)));
+      const { title, body } = buildArrivalAlertCopy({
+        actorRole: r,
+        actorName,
+        parentName: safeString(payload.parentName).trim(),
+        therapistName: safeString(payload.therapistName).trim(),
+        childName: safeString(payload.childName).trim(),
+        arrivalStatus,
+      });
+      const t = nowISO();
+      const workflowStatus = eventType === 'heartbeat'
+        ? (safeString(existing?.status || existingMemo.status).trim() || 'pending')
+        : 'pending';
+      const ackValue = eventType === 'heartbeat' && existing ? Number(existing.ack || 0) : 0;
+      const meta = {
+        ...(existingMeta && typeof existingMeta === 'object' ? existingMeta : {}),
+        sessionKey: safeString(payload.sessionKey).trim() || alertId,
+        sessionStart: payload.sessionStart ? String(payload.sessionStart) : (payload.when ? String(payload.when) : null),
         actorId,
-        childId, childId,
-        shiftId, shiftId,
-        `-${withinMins} minutes`
-      );
+        actorRole: r,
+        actorName: actorName || null,
+        parentName: payload.parentName ? String(payload.parentName) : null,
+        therapistName: payload.therapistName ? String(payload.therapistName) : null,
+        childName: payload.childName ? String(payload.childName) : null,
+        childId,
+        shiftId,
+        eventId: payload.eventId ? String(payload.eventId) : null,
+        arrivalStatus,
+        eventType,
+        heartbeatMinute: payload.heartbeatMinute != null ? Number(payload.heartbeatMinute) : null,
+        lat: Number.isFinite(Number(payload.lat)) ? Number(payload.lat) : null,
+        lng: Number.isFinite(Number(payload.lng)) ? Number(payload.lng) : null,
+        distanceMiles: payload.distanceMiles != null ? Number(payload.distanceMiles) : null,
+        dropZoneMiles: payload.dropZoneMiles != null ? Number(payload.dropZoneMiles) : null,
+        arrivalRadiusMiles: payload.arrivalRadiusMiles != null ? Number(payload.arrivalRadiusMiles) : null,
+        approachingRadiusMiles: payload.approachingRadiusMiles != null ? Number(payload.approachingRadiusMiles) : null,
+        minutesUntilStart: payload.minutesUntilStart != null ? Number(payload.minutesUntilStart) : null,
+        lastSeenAt: t,
+        detectedAt: payload.detectedAt ? String(payload.detectedAt) : t,
+      };
+      const createdAtMemo = existing?.created_at || existingMemo.createdAt || t;
+      const memoObj = {
+        ...(existingMemo && typeof existingMemo === 'object' ? existingMemo : {}),
+        id: alertId,
+        type: 'arrival_alert',
+        childId,
+        childName: meta.childName,
+        title,
+        body,
+        note: '',
+        status: workflowStatus,
+        arrivalStatus,
+        eventType,
+        proposerId: actorId,
+        actorRole: r,
+        actorName: actorName || null,
+        parentName: meta.parentName,
+        therapistName: meta.therapistName,
+        recipientIds: visibleRecipients,
+        recipients: visibleRecipients,
+        lastSeenAt: t,
+        sessionKey: meta.sessionKey,
+        sessionStart: meta.sessionStart,
+        shiftId,
+        eventId: meta.eventId,
+        distanceMiles: meta.distanceMiles,
+        arrivalRadiusMiles: meta.arrivalRadiusMiles,
+        approachingRadiusMiles: meta.approachingRadiusMiles,
+        heartbeatMinute: meta.heartbeatMinute,
+        createdAt: createdAtMemo,
+        updatedAt: t,
+        date: createdAtMemo,
+      };
 
-      if (!recent) {
-        const alertId = nanoId();
-        const t = nowISO();
-        const meta = {
-          lat: Number.isFinite(Number(payload.lat)) ? Number(payload.lat) : null,
-          lng: Number.isFinite(Number(payload.lng)) ? Number(payload.lng) : null,
-          distanceMiles: payload.distanceMiles != null ? Number(payload.distanceMiles) : null,
-          dropZoneMiles: payload.dropZoneMiles != null ? Number(payload.dropZoneMiles) : null,
-          eventId: payload.eventId ? String(payload.eventId) : null,
-          shiftId: shiftId,
-          when: payload.when ? String(payload.when) : null,
-        };
-        const title = r === 'therapist' ? 'Therapist Arrival' : 'Parent Arrival';
-        const note = ''; // UI can derive display copy
+      if (existing) {
         db.prepare(`
-          INSERT INTO urgent_memos (
-            id, type, status, proposer_id, actor_role, child_id, title, body, note, meta_json, ack, created_at, updated_at
-          ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+          UPDATE urgent_memos
+          SET type = ?, status = ?, proposer_id = ?, actor_role = ?, child_id = ?, title = ?, body = ?, note = ?, meta_json = ?, memo_json = ?, responded_at = ?, ack = ?, updated_at = ?
+          WHERE id = ?
         `).run(
-          alertId,
           'arrival_alert',
-          'pending',
+          workflowStatus,
           actorId,
           r,
           childId,
           title,
+          body,
           '',
-          note,
           JSON.stringify(meta),
-          0,
+          JSON.stringify(memoObj),
+          eventType === 'heartbeat' ? existing.responded_at || null : null,
+          ackValue,
           t,
+          alertId
+        );
+      } else {
+        db.prepare(`
+          INSERT INTO urgent_memos (
+            id, type, status, proposer_id, actor_role, child_id, title, body, note, meta_json, memo_json, responded_at, ack, created_at, updated_at
+          ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        `).run(
+          alertId,
+          'arrival_alert',
+          workflowStatus,
+          actorId,
+          r,
+          childId,
+          title,
+          body,
+          '',
+          JSON.stringify(meta),
+          JSON.stringify(memoObj),
+          null,
+          ackValue,
+          createdAtMemo,
           t
         );
+      }
 
-        // Push notify admins
+      const shouldNotify = arrivalStatus === 'arrived' && previousArrivalStatus !== 'arrived';
+      if (shouldNotify) {
         try {
           const adminIds = getAdminUserIds();
-          const tokens = getPushTokensForUsers(adminIds, { kind: 'updates' });
+          const recipientIds = Array.from(new Set([...adminIds, ...visibleRecipients].filter(Boolean)));
+          const tokens = getPushTokensForUsers(recipientIds, { kind: 'updates' });
           setTimeout(() => {
             sendExpoPush(tokens, {
               title,
-              body: 'Arrival detected. Open Alerts.',
-              data: { kind: 'arrival_alert', memoId: alertId, actorId, actorRole: r, childId },
+              body,
+              data: { kind: 'arrival_alert', memoId: alertId, actorId, actorRole: r, childId, arrivalStatus },
             }).catch(() => {});
           }, 0);
         } catch (_) {

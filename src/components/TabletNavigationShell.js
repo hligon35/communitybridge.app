@@ -18,6 +18,12 @@ const checkUpdatesIcon = require('../../assets/icons/checkUpdates.png');
 const BREAK_OPTIONS = [5, 10, 15, 30];
 const MOBILE_BOTTOM_MENU_HEIGHT = 36;
 
+function formatOperationalTime(value) {
+  const parsed = value ? new Date(value) : new Date();
+  if (!Number.isFinite(parsed.getTime())) return 'now';
+  return parsed.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
 export const MobileAdminShellContext = createContext({
   showMobileAdminShell: false,
   openMobileNav: () => {},
@@ -90,7 +96,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
-  const { children: directoryChildren = [], therapists = [], createStaffLog } = useData();
+  const { children: directoryChildren = [], therapists = [], urgentMemos = [], createStaffLog } = useData();
   const tenant = useTenant();
   const labels = tenant?.labels || {};
   const [collapsed, setCollapsed] = useState(false);
@@ -105,6 +111,9 @@ export default function TabletNavigationShell({ currentRoute, children }) {
   const [breakEndsAt, setBreakEndsAt] = useState(null);
   const [breakDurationMinutes, setBreakDurationMinutes] = useState(0);
   const [breakNow, setBreakNow] = useState(Date.now());
+  const [clockConfirmOpen, setClockConfirmOpen] = useState(false);
+  const [clockPromptAt, setClockPromptAt] = useState(null);
+  const [clockActionSaving, setClockActionSaving] = useState(false);
   const breakNotificationIdsRef = useRef([]);
   const isStaff = isStaffRole(user?.role);
   const showAdminWorkspace = canAccessAdminWorkspace(user?.role);
@@ -285,6 +294,39 @@ export default function TabletNavigationShell({ currentRoute, children }) {
     setBreakPickerOpen(true);
   }
 
+  function handleClockPress() {
+    if (clockActionSaving) return;
+    setClockPromptAt(new Date().toISOString());
+    setClockConfirmOpen(true);
+  }
+
+  async function submitClockAction() {
+    const eventAt = clockPromptAt || new Date().toISOString();
+    const actionLabel = nextClockAction === 'in' ? 'Clock In' : 'Clock Out';
+    const staffName = String(user?.name || user?.displayName || user?.email || '').trim() || preferredUserName;
+    setClockActionSaving(true);
+    try {
+      const created = await createStaffLog?.({
+        type: 'clock_event',
+        title: `${actionLabel} · ${staffName}`,
+        body: `${staffName} clocked ${nextClockAction} at ${formatOperationalTime(eventAt)}.`,
+        recipients: quickLogRecipients,
+        staffId: String(user?.id || '').trim() || null,
+        staffName,
+        staffRole: String(user?.role || '').trim() || null,
+        clockStatus: nextClockAction,
+        eventAt,
+      });
+      if (!created) throw new Error('The clock event could not be saved.');
+      setClockConfirmOpen(false);
+      setClockPromptAt(null);
+    } catch (error) {
+      Alert.alert('Clock update failed', String(error?.message || error || 'The clock event could not be saved.'));
+    } finally {
+      setClockActionSaving(false);
+    }
+  }
+
   function renderBreakModals() {
     return (
       <>
@@ -319,6 +361,22 @@ export default function TabletNavigationShell({ currentRoute, children }) {
             </TouchableOpacity>
           </TouchableOpacity>
         </Modal>
+        <Modal visible={clockConfirmOpen} transparent animationType="fade" onRequestClose={() => !clockActionSaving && setClockConfirmOpen(false)}>
+          <TouchableOpacity style={styles.breakModalBackdrop} activeOpacity={1} onPress={() => !clockActionSaving && setClockConfirmOpen(false)}>
+            <TouchableOpacity activeOpacity={1} style={styles.breakModalCard} onPress={() => {}}>
+              <Text style={styles.breakModalTitle}>{clockButtonLabel}</Text>
+              <Text style={styles.breakModalSubtitle}>{`${clockButtonLabel} at ${formatOperationalTime(clockPromptAt)}?`}</Text>
+              <View style={styles.breakConfirmActions}>
+                <TouchableOpacity style={styles.breakConfirmSecondaryButton} onPress={() => setClockConfirmOpen(false)} disabled={clockActionSaving}>
+                  <Text style={styles.breakConfirmSecondaryText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.breakConfirmPrimaryButton} onPress={submitClockAction} disabled={clockActionSaving}>
+                  <Text style={styles.breakConfirmPrimaryText}>{clockActionSaving ? 'Saving...' : 'Confirm'}</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
       </>
     );
   }
@@ -347,6 +405,19 @@ export default function TabletNavigationShell({ currentRoute, children }) {
         name: staff.name || `${staff.firstName || ''} ${staff.lastName || ''}`.trim() || staff.email || 'Staff',
       }));
   }, [therapists, user?.id]);
+
+  const latestClockEvent = useMemo(() => {
+    const currentUserId = String(user?.id || '').trim();
+    if (!currentUserId) return null;
+    return (Array.isArray(urgentMemos) ? urgentMemos : [])
+      .filter((item) => String(item?.type || '').trim().toLowerCase() === 'clock_event')
+      .filter((item) => String(item?.staffId || item?.proposerId || '').trim() === currentUserId)
+      .sort((left, right) => new Date(right?.eventAt || right?.createdAt || 0).getTime() - new Date(left?.eventAt || left?.createdAt || 0).getTime())[0] || null;
+  }, [urgentMemos, user?.id]);
+
+  const isClockedIn = String(latestClockEvent?.clockStatus || '').trim().toLowerCase() === 'in';
+  const nextClockAction = isClockedIn ? 'out' : 'in';
+  const clockButtonLabel = isClockedIn ? 'Clock Out' : 'Clock In';
 
   const quickMenuWidth = useMemo(() => {
     const drawerWidth = collapsed ? 92 : 280;
@@ -579,6 +650,13 @@ export default function TabletNavigationShell({ currentRoute, children }) {
                 <ScrollView style={styles.mobileNavScroll} contentContainerStyle={styles.mobileNavScrollContent} showsVerticalScrollIndicator>
                   {renderNavItems(false, () => setMobileNavOpen(false), true)}
                   <View style={styles.mobileFooterSection}>
+                    {isStaff ? (
+                      <TouchableOpacity style={[styles.mobileBreakButton, isClockedIn ? styles.mobileClockButtonActive : null]} onPress={handleClockPress}>
+                        <MaterialIcons name={isClockedIn ? 'logout' : 'login'} size={20} color="#0f172a" />
+                        <Text style={styles.mobileBreakText}>{clockButtonLabel}</Text>
+                        {latestClockEvent?.eventAt ? <Text style={styles.mobileClockMetaText}>{formatOperationalTime(latestClockEvent.eventAt)}</Text> : null}
+                      </TouchableOpacity>
+                    ) : null}
                     <TouchableOpacity style={[styles.mobileBreakButton, breakEndsAt ? styles.mobileBreakButtonActive : null]} onPress={handleBreakPress}>
                       <MaterialIcons name="free-breakfast" size={20} color="#0f172a" />
                       <Text style={styles.mobileBreakText}>Break</Text>
@@ -676,6 +754,13 @@ export default function TabletNavigationShell({ currentRoute, children }) {
             </View>
           ) : null}
           <View style={styles.drawerUtilitySection}>
+            {isStaff ? (
+              <TouchableOpacity style={[styles.drawerUtilityButton, isClockedIn ? styles.drawerClockButtonActive : null]} onPress={handleClockPress}>
+                <MaterialIcons name={isClockedIn ? 'logout' : 'login'} size={20} color="#f8fafc" />
+                {!collapsed ? <Text style={styles.drawerUtilityText}>{clockButtonLabel}</Text> : null}
+                {!collapsed && latestClockEvent?.eventAt ? <Text style={styles.drawerUtilityTimerText}>{formatOperationalTime(latestClockEvent.eventAt)}</Text> : null}
+              </TouchableOpacity>
+            ) : null}
             <TouchableOpacity style={[styles.drawerUtilityButton, breakEndsAt ? styles.drawerUtilityButtonActive : null]} onPress={handleBreakPress}>
               <MaterialIcons name="free-breakfast" size={20} color="#f8fafc" />
               {!collapsed ? <Text style={styles.drawerUtilityText}>Break</Text> : null}
@@ -766,6 +851,7 @@ const styles = StyleSheet.create({
   drawerQuickMenu: { position: 'absolute', top: 48, left: 0, borderRadius: 14, borderWidth: 1, borderColor: '#dbe4f0', backgroundColor: '#ffffff', paddingVertical: 8, shadowColor: '#0f172a', shadowOpacity: 0.12, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 8, zIndex: 10 },
   drawerUtilitySection: { marginTop: 'auto' },
   drawerUtilityButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 14, backgroundColor: '#1e293b', marginBottom: 8 },
+  drawerClockButtonActive: { backgroundColor: '#166534' },
   drawerUtilityButtonActive: { backgroundColor: '#1e40af' },
   drawerUtilityButtonDisabled: { opacity: 0.72 },
   drawerUtilityIcon: { width: 20, height: 20 },
@@ -821,8 +907,10 @@ const styles = StyleSheet.create({
   },
   mobileFooterSection: { marginTop: 'auto' },
   mobileBreakButton: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 12, borderWidth: 1, borderColor: '#dbe2ea', backgroundColor: '#ffffff', marginTop: 10 },
+  mobileClockButtonActive: { backgroundColor: '#ecfdf5', borderColor: '#86efac' },
   mobileBreakButtonActive: { backgroundColor: '#eff6ff', borderColor: '#93c5fd' },
   mobileBreakText: { color: '#0f172a', fontWeight: '700', marginLeft: 10 },
+  mobileClockMetaText: { color: '#0f172a', fontWeight: '800', marginLeft: 'auto' },
   mobileBreakTimerText: { color: '#0f172a', fontWeight: '800', marginLeft: 'auto' },
   mobileUtilitySection: { marginTop: 6, paddingTop: 8, paddingBottom: 6, borderTopWidth: 1, borderTopColor: '#dbe2ea' },
   mobileUtilityButton: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 12, backgroundColor: '#eff6ff', marginBottom: 10 },

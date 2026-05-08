@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import AnnouncementFeed from '../components/AnnouncementFeed';
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { useAuth } from '../AuthContext';
 import { useData } from '../DataContext';
@@ -181,6 +182,7 @@ export default function AdminControlsScreen() {
   return (
     <ScreenWrapper style={styles.container} bannerShowBack={false}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <AnnouncementFeed items={urgentMemos} />
         <View style={styles.tileRow}>
           <View style={[
             styles.tileWrap,

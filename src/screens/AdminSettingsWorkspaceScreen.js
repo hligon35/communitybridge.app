@@ -193,7 +193,7 @@ export default function AdminSettingsWorkspaceScreen() {
           </View>
           <AddressAutocompleteField label="Organization address" value={form.address} onChangeText={(value) => updateField('address', value)} placeholder="123 Main St, City, ST 00000" />
           <View style={styles.editorGrid}>
-            <Field label="Arrival drop zone radius (miles)" value={form.dropZoneMiles} onChangeText={(value) => updateField('dropZoneMiles', value)} placeholder="0.5" keyboardType="decimal-pad" autoCapitalize="none" />
+            <Field label="Arrival action radius (miles)" value={form.dropZoneMiles} onChangeText={(value) => updateField('dropZoneMiles', value)} placeholder="0.25" keyboardType="decimal-pad" autoCapitalize="none" />
             <View style={styles.switchCard}>
               <Text style={styles.fieldLabel}>Arrival check-in enabled</Text>
               <Text style={styles.switchText}>Allow organization-level arrival detection and check-in prompts.</Text>

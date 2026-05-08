@@ -1,11 +1,39 @@
 import React, { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { useAuth } from '../AuthContext';
 import { useData } from '../DataContext';
+import Api from '../Api';
 import { isBcbaRole, isOfficeAdminRole } from '../core/tenant/models';
 import { THERAPY_ROLE_LABELS } from '../utils/roleTerminology';
+
+const IMAGE_PICKER_MEDIA_TYPES = ImagePicker.MediaTypeOptions?.Images ?? ImagePicker.MediaType?.Images;
+
+function formatActivityTimestamp(value) {
+  const parsed = value ? new Date(value) : null;
+  if (!(parsed instanceof Date) || !Number.isFinite(parsed.getTime())) return 'Recently updated';
+  return parsed.toLocaleString();
+}
+
+function getStaffActivityMeta(item) {
+  const type = String(item?.type || '').trim().toLowerCase();
+  const actor = String(item?.staffName || item?.proposerName || item?.title || 'Staff').trim();
+  if (type === 'clock_event') {
+    const status = String(item?.clockStatus || '').trim().toLowerCase() === 'out' ? 'Clocked out' : 'Clocked in';
+    return {
+      title: `${actor} · ${status}`,
+      body: item?.body || `${actor} ${status.toLowerCase()}.`,
+      stamp: formatActivityTimestamp(item?.eventAt || item?.createdAt),
+    };
+  }
+  return {
+    title: item?.title || actor,
+    body: item?.body || 'Operational activity recorded.',
+    stamp: formatActivityTimestamp(item?.createdAt),
+  };
+}
 
 function buildThreads(messages = []) {
   const map = new Map();
@@ -30,6 +58,7 @@ export default function AdminChatMonitorScreen() {
   const [announcementAudience, setAnnouncementAudience] = useState('staff');
   const [announcementSubject, setAnnouncementSubject] = useState('');
   const [announcementBody, setAnnouncementBody] = useState('');
+  const [announcementImage, setAnnouncementImage] = useState('');
   const [sendingAnnouncement, setSendingAnnouncement] = useState(false);
 
   const threads = useMemo(() => buildThreads(messages), [messages]);
@@ -47,6 +76,12 @@ export default function AdminChatMonitorScreen() {
     return (Array.isArray(urgentMemos) ? urgentMemos : [])
       .filter((item) => String(item?.type || '').toLowerCase() === 'admin_memo')
       .slice(0, 5);
+  }, [urgentMemos]);
+  const staffActivity = useMemo(() => {
+    return (Array.isArray(urgentMemos) ? urgentMemos : [])
+      .filter((item) => ['clock_event', 'quick_note', 'incident_log', 'unexpected_data'].includes(String(item?.type || '').trim().toLowerCase()))
+      .sort((left, right) => new Date(right?.eventAt || right?.createdAt || 0).getTime() - new Date(left?.eventAt || left?.createdAt || 0).getTime())
+      .slice(0, 20);
   }, [urgentMemos]);
 
   const announcementRecipients = useMemo(() => {
@@ -75,13 +110,40 @@ export default function AdminChatMonitorScreen() {
         recipients: announcementRecipients,
         subject: trimmedSubject,
         body: trimmedBody,
+        image: announcementImage || null,
       });
       if (created?.id) {
         setAnnouncementSubject('');
         setAnnouncementBody('');
+        setAnnouncementImage('');
       }
     } finally {
       setSendingAnnouncement(false);
+    }
+  }
+
+  async function pickAnnouncementImage() {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (permission?.status !== 'granted') {
+        Alert.alert('Permission required', 'Allow photo library access to attach an announcement image.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: IMAGE_PICKER_MEDIA_TYPES, quality: 0.72 });
+      if (result?.canceled) return;
+      const asset = result?.assets?.[0];
+      const uri = String(asset?.uri || '').trim();
+      if (!uri) return;
+      const fileName = uri.split('/').pop() || `announcement-${Date.now()}.jpg`;
+      const mimeType = String(asset?.mimeType || '').trim() || 'image/jpeg';
+      const formData = new FormData();
+      formData.append('file', { uri, name: fileName, type: mimeType });
+      const uploaded = await Api.uploadMedia(formData);
+      const nextUrl = String(uploaded?.url || '').trim();
+      if (!nextUrl) throw new Error('The image upload did not return a URL.');
+      setAnnouncementImage(nextUrl);
+    } catch (error) {
+      Alert.alert('Upload failed', String(error?.message || error || 'The image could not be uploaded.'));
     }
   }
 
@@ -92,6 +154,7 @@ export default function AdminChatMonitorScreen() {
           <View style={styles.tabRow}>
             {[
               { key: 'inbox', label: 'Inbox' },
+              { key: 'activity', label: 'Staff Activity' },
               { key: 'broadcast', label: 'Broadcast Center' },
               { key: 'threads', label: 'Conversation Threads' },
               { key: 'attachments', label: 'Attachments' },
@@ -138,6 +201,17 @@ export default function AdminChatMonitorScreen() {
                 </ScrollView>
                 <TextInput value={announcementSubject} onChangeText={setAnnouncementSubject} placeholder="Announcement subject" style={styles.input} />
                 <TextInput value={announcementBody} onChangeText={setAnnouncementBody} placeholder="Write the announcement" multiline style={[styles.input, styles.multilineInput]} />
+                {announcementImage ? <Image source={{ uri: announcementImage }} style={styles.announcementImagePreview} resizeMode="cover" /> : null}
+                <View style={styles.announcementActionRow}>
+                  <TouchableOpacity style={styles.secondaryActionButton} onPress={pickAnnouncementImage} disabled={sendingAnnouncement}>
+                    <Text style={styles.secondaryActionText}>{announcementImage ? 'Replace image' : 'Add image'}</Text>
+                  </TouchableOpacity>
+                  {announcementImage ? (
+                    <TouchableOpacity style={styles.secondaryActionButton} onPress={() => setAnnouncementImage('')} disabled={sendingAnnouncement}>
+                      <Text style={styles.secondaryActionText}>Remove image</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
                 <Text style={styles.rowText}>Recipients: {announcementRecipients.length}</Text>
                 <TouchableOpacity style={[styles.primaryButton, sendingAnnouncement ? styles.primaryButtonDisabled : null]} disabled={sendingAnnouncement || !announcementRecipients.length || (!announcementSubject.trim() && !announcementBody.trim())} onPress={submitAnnouncement}><Text style={styles.primaryButtonText}>{sendingAnnouncement ? 'Sending...' : 'Send Announcement'}</Text></TouchableOpacity>
               </>
@@ -153,6 +227,23 @@ export default function AdminChatMonitorScreen() {
                 ))}
               </View>
             ) : null}
+          </View>
+        ) : null}
+
+        {tab === 'activity' ? (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Staff activity</Text>
+            <Text style={styles.rowText}>Clock-ins, clock-outs, and quick operational logs land here for office review without changing the underlying staff workflow.</Text>
+            {staffActivity.length ? staffActivity.map((item) => {
+              const meta = getStaffActivityMeta(item);
+              return (
+                <View key={item.id} style={styles.threadRow}>
+                  <Text style={styles.threadTitle}>{meta.title}</Text>
+                  <Text style={styles.rowText}>{meta.body}</Text>
+                  <Text style={styles.activityStamp}>{meta.stamp}</Text>
+                </View>
+              );
+            }) : <Text style={styles.rowText}>No staff activity has been recorded yet.</Text>}
           </View>
         ) : null}
 
@@ -211,11 +302,16 @@ const styles = StyleSheet.create({
   primaryButtonDisabled: { opacity: 0.6 },
   primaryButtonText: { color: '#ffffff', fontWeight: '800' },
   multilineInput: { minHeight: 110, textAlignVertical: 'top' },
+  announcementImagePreview: { marginTop: 12, width: '100%', height: 132, borderRadius: 14, backgroundColor: '#e2e8f0' },
+  announcementActionRow: { flexDirection: 'row', alignItems: 'center', marginTop: 10, marginBottom: 4 },
+  secondaryActionButton: { marginRight: 10, paddingVertical: 9, paddingHorizontal: 12, borderRadius: 10, backgroundColor: '#eff6ff' },
+  secondaryActionText: { color: '#1d4ed8', fontWeight: '700' },
   broadcastHistoryWrap: { marginTop: 14, borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 12 },
   broadcastHistoryRow: { marginBottom: 10 },
   sectionLabel: { fontWeight: '800', color: '#0f172a', marginBottom: 8 },
   threadRow: { paddingVertical: 10, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
   threadTitle: { fontWeight: '800', color: '#0f172a' },
+  activityStamp: { color: '#94a3b8', fontSize: 12 },
   attachmentsRow: { flexDirection: 'row', justifyContent: 'space-between' },
   attachmentCard: { width: '32%', borderRadius: 16, backgroundColor: '#f8fafc', padding: 14 },
 });

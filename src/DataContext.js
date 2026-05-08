@@ -964,7 +964,7 @@ export function DataProvider({ children: reactChildren }) {
   }
 
   // Send a general admin memo to multiple recipients
-  async function sendAdminMemo({ recipients = [], subject = '', body = '', childId = null } = {}) {
+  async function sendAdminMemo({ recipients = [], subject = '', body = '', childId = null, ...extra } = {}) {
     try {
       const temp = {
         id: `urgent-${Date.now()}`,
@@ -974,8 +974,10 @@ export function DataProvider({ children: reactChildren }) {
         childId: childId || null,
         recipients: Array.isArray(recipients) ? recipients : [],
         proposerId: user?.id,
+        proposerName: String(user?.name || user?.displayName || user?.email || '').trim() || 'Office',
         status: 'sent',
         createdAt: new Date().toISOString(),
+        ...extra,
       };
       // Optimistically add to local urgent memos so admins can see it immediately
       setUrgentMemos((s) => [temp, ...(s || [])]);
@@ -1001,7 +1003,7 @@ export function DataProvider({ children: reactChildren }) {
     }
   }
 
-  async function createStaffLog({ type = '', title = '', body = '', childId = null, recipients = [] } = {}) {
+  async function createStaffLog({ type = '', title = '', body = '', childId = null, recipients = [], ...extra } = {}) {
     try {
       const normalizedType = String(type || '').trim().toLowerCase() || 'quick_note';
       const temp = {
@@ -1012,8 +1014,10 @@ export function DataProvider({ children: reactChildren }) {
         childId: childId || null,
         recipients: Array.isArray(recipients) ? recipients : [],
         proposerId: user?.id,
+        proposerName: String(user?.name || user?.displayName || user?.email || '').trim() || 'Staff',
         status: 'pending',
         createdAt: new Date().toISOString(),
+        ...extra,
       };
       setUrgentMemos((s) => [temp, ...(s || [])]);
 
