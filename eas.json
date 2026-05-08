@@ -30,7 +30,8 @@
         "SENTRY_ORG": "azlabsllc",
         "SENTRY_PROJECT": "communitybridge",
         "SENTRY_ALLOW_FAILURE": "true",
-        "EXPO_PUBLIC_API_BASE_URL": "https://communitybridge.app"
+        "EXPO_PUBLIC_API_BASE_URL": "https://communitybridge.app",
+        "EXPO_PUBLIC_ENABLE_DEV_SWITCHER": "1"
       },
       "channel": "internal"
     },
@@ -61,7 +62,9 @@
         "SENTRY_ORG": "azlabsllc",
         "SENTRY_PROJECT": "communitybridge",
         "SENTRY_ALLOW_FAILURE": "true",
-        "EXPO_PUBLIC_API_BASE_URL": "https://communitybridge.app"
+        "EXPO_PUBLIC_API_BASE_URL": "https://communitybridge.app",
+        "EXPO_PUBLIC_ENABLE_DEV_SWITCHER": "0",
+        "EXPO_PUBLIC_ENABLE_APP_CHECK": "1"
       },
       "channel": "testflight-internal"
     },
@@ -91,7 +94,8 @@
         "SENTRY_ORG": "azlabsllc",
         "SENTRY_PROJECT": "communitybridge",
         "SENTRY_ALLOW_FAILURE": "true",
-        "EXPO_PUBLIC_API_BASE_URL": "https://communitybridge.app"
+        "EXPO_PUBLIC_API_BASE_URL": "https://communitybridge.app",
+        "EXPO_PUBLIC_ENABLE_DEV_SWITCHER": "1"
       },
       "channel": "development"
     },
@@ -121,7 +125,9 @@
         "SENTRY_ORG": "azlabsllc",
         "SENTRY_PROJECT": "communitybridge",
         "SENTRY_ALLOW_FAILURE": "true",
-        "EXPO_PUBLIC_API_BASE_URL": "https://communitybridge.app"
+        "EXPO_PUBLIC_API_BASE_URL": "https://communitybridge.app",
+        "EXPO_PUBLIC_ENABLE_DEV_SWITCHER": "0",
+        "EXPO_PUBLIC_ENABLE_APP_CHECK": "1"
       },
       "channel": "preview"
     },
@@ -151,7 +157,9 @@
         "SENTRY_ORG": "azlabsllc",
         "SENTRY_PROJECT": "communitybridge",
         "SENTRY_ALLOW_FAILURE": "true",
-        "EXPO_PUBLIC_API_BASE_URL": "https://communitybridge.app"
+        "EXPO_PUBLIC_API_BASE_URL": "https://communitybridge.app",
+        "EXPO_PUBLIC_ENABLE_DEV_SWITCHER": "0",
+        "EXPO_PUBLIC_ENABLE_APP_CHECK": "1"
       },
       "channel": "production"
     }
@@ -165,8 +173,7 @@
     },
     "testflight-internal": {
       "ios": {
-        "ascAppId": "6762587863",
-        "appleId": "ligon88harold@gmail.com"
+        "ascAppId": "6762587863"
       }
     },
     "preview": {
@@ -181,8 +188,7 @@
         "track": "production"
       },
       "ios": {
-        "ascAppId": "6762587863",
-        "appleId": "ligon88harold@gmail.com"
+        "ascAppId": "6762587863"
       }
     }
   }

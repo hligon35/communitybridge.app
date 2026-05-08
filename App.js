@@ -402,7 +402,9 @@ function MainRoutes() {
       : 'Home';
 
   return (
-    <RootStack.Navigator key={`workspace:${role || 'parent'}:${initialWorkspace}`} screenOptions={{ headerShown: false }} initialRouteName={initialWorkspace}>
+    // Keep the RootStack mounted across role/workspace updates. Forcing a new key
+    // here remounts MainShell and replays the initial dashboard/data bootstrap.
+    <RootStack.Navigator screenOptions={{ headerShown: false }} initialRouteName={initialWorkspace}>
       {screens.map(s => (
         <RootStack.Screen key={s.name} name={s.name} component={s.component} />
       ))}

@@ -350,36 +350,19 @@ export function DataProvider({ children: reactChildren }) {
 
   useEffect(() => {
     if (!storageReady) return;
-    AsyncStorage.removeItem(storageKeys.posts).catch(() => {});
-  }, [posts, storageKeys.posts, storageReady]);
-  useEffect(() => {
-    if (!storageReady) return;
-    AsyncStorage.removeItem(storageKeys.parents).catch(() => {});
-  }, [parents, storageKeys.parents, storageReady]);
-  useEffect(() => {
-    if (!storageReady) return;
-    AsyncStorage.removeItem(storageKeys.therapists).catch(() => {});
-  }, [therapists, storageKeys.therapists, storageReady]);
-  useEffect(() => {
-    if (!storageReady) return;
-    AsyncStorage.removeItem(storageKeys.messages).catch(() => {});
-  }, [messages, storageKeys.messages, storageReady]);
-  useEffect(() => {
-    if (!storageReady) return;
-    AsyncStorage.removeItem(storageKeys.threadReads).catch(() => {});
-  }, [threadReads, storageKeys.threadReads, storageReady]);
-  useEffect(() => {
-    if (!storageReady) return;
-    AsyncStorage.removeItem(storageKeys.archivedThreads).catch(() => {});
-  }, [archivedThreads, storageKeys.archivedThreads, storageReady]);
-  useEffect(() => {
-    if (!storageReady) return;
-    AsyncStorage.removeItem(storageKeys.children).catch(() => {});
-  }, [children, storageKeys.children, storageReady]);
-  useEffect(() => {
-    if (!storageReady) return;
-    AsyncStorage.removeItem(storageKeys.memos).catch(() => {});
-  }, [urgentMemos, storageKeys.memos, storageReady]);
+    AsyncStorage.multiRemove(sensitiveStorageKeys).catch(() => {});
+  }, [
+    archivedThreads,
+    children,
+    messages,
+    parents,
+    posts,
+    sensitiveStorageKeys,
+    storageReady,
+    therapists,
+    threadReads,
+    urgentMemos,
+  ]);
 
   // Persist blocked user ids
   useEffect(() => {
@@ -470,41 +453,50 @@ export function DataProvider({ children: reactChildren }) {
     }
 
     const run = (async () => {
-      try {
-        const remotePosts = await Api.getPosts();
-        if (Array.isArray(remotePosts)) {
-          const norm = remotePosts.map((p) => {
-            const out = { ...(p || {}) };
-            if (out.text && !out.body) out.body = out.text;
-            if (out.author && typeof out.author === 'string') out.author = { id: null, name: out.author, avatar: null };
-            if (!Array.isArray(out.comments)) out.comments = [];
-            if (typeof out.likes !== 'number') out.likes = Number(out.likes) || 0;
-            if (!out.createdAt) out.createdAt = new Date().toISOString();
-            return out;
-          });
-          setPosts(norm);
-        }
-      } catch (e) {
-        console.warn('getPosts failed', e.message);
-        await maybeRefreshMfaOnPermissionDenied(e);
+      const normalizeRemotePosts = (remotePosts) => remotePosts.map((p) => {
+        const out = { ...(p || {}) };
+        if (out.text && !out.body) out.body = out.text;
+        if (out.author && typeof out.author === 'string') out.author = { id: null, name: out.author, avatar: null };
+        if (!Array.isArray(out.comments)) out.comments = [];
+        if (typeof out.likes !== 'number') out.likes = Number(out.likes) || 0;
+        if (!out.createdAt) out.createdAt = new Date().toISOString();
+        return out;
+      });
+
+      const [postsResult, messagesResult, memosResult, proposalsResult] = await Promise.allSettled([
+        Api.getPosts(),
+        Api.getMessages(),
+        Api.getUrgentMemos(),
+        Api.getTimeChangeProposals(),
+      ]);
+
+      if (postsResult.status === 'fulfilled') {
+        if (Array.isArray(postsResult.value)) setPosts(normalizeRemotePosts(postsResult.value));
+      } else {
+        console.warn('getPosts failed', postsResult.reason?.message || postsResult.reason);
+        await maybeRefreshMfaOnPermissionDenied(postsResult.reason);
       }
-      try {
-        const remoteMessages = await Api.getMessages();
-        if (Array.isArray(remoteMessages)) setMessages(remoteMessages);
-      } catch (e) { console.warn('getMessages failed', e.message); }
-      try {
-        const memos = await Api.getUrgentMemos();
+
+      if (messagesResult.status === 'fulfilled') {
+        if (Array.isArray(messagesResult.value)) setMessages(messagesResult.value);
+      } else {
+        console.warn('getMessages failed', messagesResult.reason?.message || messagesResult.reason);
+      }
+
+      if (memosResult.status === 'fulfilled') {
+        const memos = memosResult.value;
         setUrgentMemos(Array.isArray(memos) ? memos : (memos?.memos || []));
-      } catch (e) {
-        console.warn('getUrgentMemos failed', e.message);
-        await maybeRefreshMfaOnPermissionDenied(e);
+      } else {
+        console.warn('getUrgentMemos failed', memosResult.reason?.message || memosResult.reason);
+        await maybeRefreshMfaOnPermissionDenied(memosResult.reason);
       }
-      try {
-        const proposals = await Api.getTimeChangeProposals();
+
+      if (proposalsResult.status === 'fulfilled') {
+        const proposals = proposalsResult.value;
         setTimeChangeProposals(Array.isArray(proposals) ? proposals : (proposals?.proposals || []));
-      } catch (e) {
-        console.warn('getTimeChangeProposals failed', e.message);
-        await maybeRefreshMfaOnPermissionDenied(e);
+      } else {
+        console.warn('getTimeChangeProposals failed', proposalsResult.reason?.message || proposalsResult.reason);
+        await maybeRefreshMfaOnPermissionDenied(proposalsResult.reason);
       }
 
       // Directory sync. Admins can read/seed the full directory; non-admins use /api/directory/me.
