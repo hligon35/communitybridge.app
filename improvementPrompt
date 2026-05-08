@@ -1,0 +1,494 @@
+```md
+# CommunityBridge Behavior Tracking Research and Feature Spec Plan
+
+## Objective
+Produce a concrete, implementation-ready feature spec for behavior tracking in the `CommunityBridge` app, grounded in:
+1. The existing code and data structures in the selected GitHub repo: `hligon35/CommunityBridge`
+2. Any relevant internal documents available through enabled connectors
+3. High-quality external sources validating ABA measurement standards
+
+## Enabled Connectors
+- github
+- google_drive
+
+## Hard Constraints
+- Inspect **only** the GitHub repo `hligon35/CommunityBridge`
+- Do **not** use or compare against any other GitHub repos
+- After covering enabled connectors, use additional web research
+- Prefer primary sources, peer-reviewed papers, clinical guidance, and English-language sources
+- Output must be in **English**
+- Output must be an **expository report** with an **executive summary** at the top
+- Include **repo file citations** with path/line references
+- Include **external citations** for ABA standards and implementation guidance
+- Include **tables** for schema, behavior fields, and roadmap
+- Include **Mermaid diagrams** where helpful
+- Include **example Firestore documents**
+- Include **sample UI mock text**
+
+## Research Goals
+The research must answer these questions:
+
+1. What learner, session, goal, behavior, and role-related models already exist in CommunityBridge?
+2. What behavior-related UI, domain logic, and persistence patterns already exist in the repo?
+3. What ABA measurement standards should govern the design?
+4. What Firestore schema best supports behavior tracking, BCBA review, therapist capture, IOA, fidelity, graphing, reporting, and offline sync?
+5. What screens and workflows should exist for BCBA and therapist roles?
+6. What implementation notes are required for privacy, security, offline behavior, validation, and Firestore performance?
+7. What is the best phased v1 roadmap with effort estimates and acceptance criteria?
+
+## Required Discovery Sequence
+
+### Phase A: Connector Discovery
+1. Confirm available connectors and use both:
+   - github
+   - google_drive
+2. Search GitHub first for:
+   - learner models
+   - session models
+   - goal schemas
+   - therapy or ABA-related entities
+   - behavior note models
+   - role definitions
+   - Firestore or backend data access patterns
+   - offline persistence logic
+   - graphing/reporting code
+   - relevant UI screens/components
+3. Search Google Drive for:
+   - product specs
+   - feature docs
+   - ABA notes
+   - therapy workflows
+   - behavior tracking docs
+   - scheduling/session documentation
+   - privacy/security docs if present
+
+### Phase B: Repo Deep Dive
+Extract and summarize:
+- Existing domain models
+- Existing Firestore collections/documents if present
+- Session lifecycle
+- Learner-to-therapist relationships
+- Goal/program structures
+- Notes or behavior logging flows
+- Therapy-related UI
+- Offline sync patterns
+- Current authentication + role gating
+- Graphing/report export code if any
+
+### Phase C: External Validation
+Validate the behavior tracking design using web sources covering:
+- frequency / count
+- rate
+- duration
+- latency
+- whole interval
+- partial interval
+- momentary time sampling
+- ABC data
+- percent correct
+- task analysis / step-level recording
+- prompt levels
+- intensity definitions
+- interobserver agreement (IOA)
+- treatment integrity / procedural fidelity
+- graphing and decision support norms where available
+
+## Expected Deliverable Structure
+
+### Executive Summary
+Provide:
+- what already exists in CommunityBridge
+- the biggest product gaps
+- the proposed architecture
+- the recommended v1 scope
+- key implementation risks
+
+### Existing State Analysis
+Summarize current repo findings:
+- models
+- screens
+- roles
+- data flow
+- gaps relative to ABA-grade behavior tracking
+
+### Proposed Firestore Schema
+Must include:
+- collection/table name
+- field name
+- type
+- required/optional
+- description
+- indexing notes
+- security rule notes
+- sample document
+- relationships to other collections
+
+The schema should likely cover, at minimum:
+- organizations
+- users
+- learners
+- staffAssignments
+- therapySessions
+- behaviorTargets
+- sessionMeasurements
+- measurementEvents
+- abcObservations
+- intervalSeries
+- taskAnalysisTrials
+- phaseChanges
+- bcbaReviews
+- ioaSessions
+- ioaObservations
+- fidelityChecklists
+- fidelityScores
+- deviceSyncState
+- exports
+- auditLogs
+
+### Exact Data Fields by Behavior Type
+For each behavior type, define exact fields:
+
+#### Frequency / Count
+Include fields such as:
+- targetId
+- sessionId
+- learnerId
+- observerId
+- deviceId
+- recordedAt
+- behaviorTopography
+- countIncrement
+- cumulativeCount
+- contextTags
+- promptLevel
+- intensity
+- note
+
+#### Rate
+Include fields such as:
+- count
+- observationStart
+- observationEnd
+- durationSeconds
+- ratePerMinute or ratePerHour
+- denominatorType
+- derivedFromCountEventIds
+
+#### Duration
+Include fields such as:
+- startTime
+- stopTime
+- totalDurationSeconds
+- pauseSegments if needed
+- timerSource
+- interrupted
+- contextTags
+
+#### Latency
+Include fields such as:
+- antecedentOrInstructionTime
+- responseStartTime
+- latencyMs or latencySeconds
+- trialId
+- promptBeforeResponse
+- responseOutcome
+
+#### Whole Interval
+Include fields such as:
+- seriesStart
+- intervalLengthSeconds
+- intervalIndex
+- observedWholeInterval
+- observerId
+
+#### Partial Interval
+Include fields such as:
+- seriesStart
+- intervalLengthSeconds
+- intervalIndex
+- occurredAtAnyPoint
+- observerId
+
+#### Momentary Time Sampling
+Include fields such as:
+- probeTime
+- observedAtProbe
+- scheduledProbeIndex
+
+#### ABC
+Include fields such as:
+- antecedentType
+- antecedentFreeText
+- behaviorTopography
+- consequenceType
+- consequenceFreeText
+- hypothesizedFunction
+- settingEvents
+- intensity
+- injuryRisk
+- durationIfKnown
+- linkedSessionEventIds
+
+#### Percent Correct
+Include fields such as:
+- opportunityCount
+- correctCount
+- incorrectCount
+- percentCorrect
+- independenceLevel
+- promptLevelDistribution
+
+#### Task Analysis
+Include fields such as:
+- taskId
+- stepResults[]
+- stepIndex
+- stepStatus
+- promptLevelByStep
+- totalSteps
+- completedSteps
+- percentIndependent
+- masteryRuleSnapshot
+
+For all behavior types, define shared metadata:
+- orgId
+- learnerId
+- sessionId
+- targetId
+- observerId
+- bcbaOwnerId
+- recordedAt
+- createdAt
+- updatedAt
+- source
+- deviceId
+- offlineCreated
+- syncStatus
+- signature
+- timezone
+- locationOptional
+- contextTags
+- note
+- confidenceOptional
+- measurementProtocolVersion
+
+### BCBA Screens and Workflows
+Define screens with:
+- purpose
+- key UI elements
+- input fields
+- states
+- interactions
+- data written/read
+- success conditions
+
+Required BCBA screens:
+1. Target Builder
+2. Caseload Dashboard
+3. Review Queue
+4. Phase-Change Tool
+5. IOA Tool
+6. Fidelity Tool
+7. Graph and Reporting View
+8. Parent-Safe Summary View
+
+Each screen should include a wireframe-style text layout.
+
+Also include Mermaid for:
+- entity relationships
+- BCBA screen flow
+
+### Therapist Screens and Workflows
+Define screens with:
+- purpose
+- key UI controls
+- fast interactions
+- offline behavior
+- signature flow
+- error handling
+
+Required therapist screens:
+1. Session Start Checklist
+2. Fast Capture Pad
+3. ABC Quick Entry
+4. Interval Capture Mode
+5. Task Analysis Mode
+6. Session Close Checklist
+7. Offline Sync Status
+8. Parallel Observer Mode
+
+Also include Mermaid for therapist flow.
+
+### Graphing and Reporting Requirements
+Specify:
+- graph type per measure
+- aggregation rules
+- when to display raw vs aggregated data
+- smoothing rules and when not to smooth
+- baseline vs intervention overlays
+- phase line rendering
+- confidence/quality indicators
+- missing-data indicators
+- report export formats
+- parent-safe summary rules
+- BCBA detail report rules
+
+Examples:
+- frequency: line/bar by session/day
+- rate: line chart normalized by observation time
+- duration: line or box plot summary if needed
+- latency: trend line across trials/sessions
+- interval: percent intervals chart
+- abc: categorical breakdown and event table
+- percent correct: trend line with mastery threshold
+- task analysis: step heatmap / stacked completion
+
+### Implementation Notes
+Cover:
+- offline-first patterns
+- optimistic updates
+- event sourcing vs summary docs
+- validation strategy
+- Firestore batched writes / transactions
+- conflict resolution
+- deduplication for offline replay
+- data retention / archival
+- sensitive data handling
+- encryption expectations
+- role-based access control
+- least-privilege data reads
+- multi-tenant org partitioning
+- performance considerations
+- indexing strategy
+- pagination strategy
+- denormalization strategy
+- export jobs
+
+### Roadmap
+Provide a prioritized v1 roadmap with:
+- milestone
+- feature
+- rationale
+- dependencies
+- engineering effort (low / medium / high)
+- acceptance criteria
+
+The roadmap should likely include:
+1. Core target schema + session measurement backbone
+2. Therapist fast capture UX
+3. BCBA review dashboard + graphs
+4. IOA + fidelity tools
+5. Reporting + exports
+6. Parent-safe summaries
+7. Advanced analytics / phase-change tooling
+
+## Required Tables
+Include at least these tables:
+
+### Table: Firestore Schema
+Columns:
+- Collection
+- Field
+- Type
+- Required
+- Description
+- Index Notes
+- Security Notes
+
+### Table: Behavior Measure Fields
+Columns:
+- Measure Type
+- Field
+- Type
+- Example
+- Why Needed
+
+### Table: Roadmap
+Columns:
+- Milestone
+- Scope
+- Priority
+- Effort
+- Dependencies
+- Acceptance Criteria
+
+## Required Mermaid Diagrams
+
+### Entity Relationships
+Use Mermaid ER diagram to show:
+- learner
+- session
+- target
+- measurement
+- review
+- ioa
+- fidelity
+- export
+
+### Screen Flows
+Use Mermaid flowcharts for:
+- BCBA workflow
+- Therapist workflow
+- Offline sync lifecycle
+
+## Sample UI Mock Text
+Include sample text for:
+- target builder labels
+- session start checklist copy
+- fast capture buttons
+- review queue empty state
+- sync conflict banner
+- parent-safe summary copy
+
+## Example Firestore Documents
+Provide JSON-like examples for:
+- learner
+- therapySession
+- behaviorTarget
+- sessionMeasurement
+- abcObservation
+- intervalSeries
+- taskAnalysisTrial
+- bcbaReview
+- ioaSession
+- fidelityScore
+
+## Quality Bar
+The final output must be:
+- analytical
+- concrete
+- implementation-ready
+- clearly scoped
+- technically rigorous
+- clinically aligned with ABA measurement norms
+- heavily cited
+- explicit about uncertainty where evidence is incomplete
+
+## Citation Rules
+- Cite repo findings with file path and line references
+- Cite external claims with high-quality sources
+- Prefer official/primary/peer-reviewed sources when possible
+- Avoid unsupported assumptions
+
+## Deliverable Title
+Use a title similar to:
+`Behavior Tracking Feature Specification for CommunityBridge`
+
+## Final Deliverable Checklist
+- [ ] Executive summary included
+- [ ] Enabled connectors covered: github, google_drive
+- [ ] Only repo used on GitHub: hligon35/CommunityBridge
+- [ ] Existing repo schemas extracted
+- [ ] ABA standards validated externally
+- [ ] Firestore schema tables included
+- [ ] Behavior type field tables included
+- [ ] BCBA workflows defined
+- [ ] Therapist workflows defined
+- [ ] Mermaid diagrams included
+- [ ] Graphing/reporting requirements included
+- [ ] Privacy/security/offline/performance notes included
+- [ ] v1 roadmap with effort and acceptance criteria included
+- [ ] Example Firestore documents included
+- [ ] Sample UI text included
+- [ ] All material in English
+```
