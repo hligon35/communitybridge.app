@@ -117,6 +117,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
   const breakNotificationIdsRef = useRef([]);
   const isStaff = isStaffRole(user?.role);
   const showAdminWorkspace = canAccessAdminWorkspace(user?.role);
+  const canUseClockButton = isStaff || showAdminWorkspace;
   const isParentWorkspace = !showAdminWorkspace && !isStaff;
   const workspaceLabel = getWorkspaceLabel(user?.role);
   const screenTitleMap = {
@@ -650,7 +651,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
                 <ScrollView style={styles.mobileNavScroll} contentContainerStyle={styles.mobileNavScrollContent} showsVerticalScrollIndicator>
                   {renderNavItems(false, () => setMobileNavOpen(false), true)}
                   <View style={styles.mobileFooterSection}>
-                    {isStaff ? (
+                    {canUseClockButton ? (
                       <TouchableOpacity style={[styles.mobileBreakButton, isClockedIn ? styles.mobileClockButtonActive : null]} onPress={handleClockPress}>
                         <MaterialIcons name={isClockedIn ? 'logout' : 'login'} size={20} color="#0f172a" />
                         <Text style={styles.mobileBreakText}>{clockButtonLabel}</Text>
@@ -754,7 +755,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
             </View>
           ) : null}
           <View style={styles.drawerUtilitySection}>
-            {isStaff ? (
+            {canUseClockButton ? (
               <TouchableOpacity style={[styles.drawerUtilityButton, isClockedIn ? styles.drawerClockButtonActive : null]} onPress={handleClockPress}>
                 <MaterialIcons name={isClockedIn ? 'logout' : 'login'} size={20} color="#f8fafc" />
                 {!collapsed ? <Text style={styles.drawerUtilityText}>{clockButtonLabel}</Text> : null}
