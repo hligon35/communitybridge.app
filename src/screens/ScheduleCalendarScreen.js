@@ -620,6 +620,7 @@ export default function ScheduleCalendarScreen() {
       </TouchableOpacity>
     </View>
   ) : null;
+  const scheduleHeaderActions = isPhoneWorkspace ? null : headerActions;
   const useMobileHeaderFilters = !isTherapist && !isParent && width < 900 && !useAdminDropdownShellLayout;
   const mobileHeaderFilters = useMobileHeaderFilters ? <View style={styles.mobileHeaderFilterRow}>{headerFocusMode}</View> : null;
 
@@ -627,7 +628,7 @@ export default function ScheduleCalendarScreen() {
     <ScreenWrapper
       style={styles.screen}
       bannerLeft={useMobileHeaderFilters ? null : headerFocusMode}
-      bannerRight={headerActions}
+      bannerRight={scheduleHeaderActions}
       mobileHeaderBelow={mobileHeaderFilters}
       mobileHeaderBelowScrollEnabled={!mobileFilterCarouselLocked}
     >

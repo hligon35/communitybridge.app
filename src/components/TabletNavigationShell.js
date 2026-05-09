@@ -15,12 +15,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { canAccessPhoneRoute, getPhoneAccessProfile, isPhoneViewport as resolvePhoneViewport } from '../utils/mobileRoleAccess';
 
 const checkUpdatesIcon = require('../../assets/icons/checkUpdates.png');
-const BREAK_OPTIONS = [5, 10, 15, 30];
+const BREAK_OPTIONS = [5, 7, 10, 30];
 const MOBILE_BOTTOM_MENU_HEIGHT = 36;
 const DRAWER_COLLAPSED_WIDTH = 92;
 const DRAWER_EXPANDED_MIN_WIDTH = 216;
-const DRAWER_EXPANDED_MAX_WIDTH = 240;
-const DRAWER_EXPANDED_WIDTH = 232;
+const DRAWER_EXPANDED_MAX_WIDTH = 242;
+const DRAWER_EXPANDED_WIDTH = 234;
 
 function formatOperationalTime(value) {
   const parsed = value ? new Date(value) : new Date();
@@ -118,6 +118,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
   const [updateBusy, setUpdateBusy] = useState(false);
   const [breakPickerOpen, setBreakPickerOpen] = useState(false);
   const [breakEndConfirmOpen, setBreakEndConfirmOpen] = useState(false);
+  const [breakCompletedOverlayOpen, setBreakCompletedOverlayOpen] = useState(false);
   const [breakEndsAt, setBreakEndsAt] = useState(null);
   const [breakDurationMinutes, setBreakDurationMinutes] = useState(0);
   const [breakNow, setBreakNow] = useState(Date.now());
@@ -126,6 +127,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
   const [clockPromptAt, setClockPromptAt] = useState(null);
   const [clockActionSaving, setClockActionSaving] = useState(false);
   const breakNotificationIdsRef = useRef([]);
+  const breakCompletionHandledRef = useRef(false);
   const isStaff = isStaffRole(user?.role);
   const showAdminWorkspace = canAccessAdminWorkspace(user?.role);
   const canUseClockButton = isStaff || showAdminWorkspace;
@@ -210,6 +212,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
   useEffect(() => {
     if (!breakEndsAt) return undefined;
     setBreakNow(Date.now());
+    breakCompletionHandledRef.current = false;
     const timerId = setInterval(() => {
       setBreakNow(Date.now());
     }, 1000);
@@ -219,8 +222,9 @@ export default function TabletNavigationShell({ currentRoute, children }) {
   useEffect(() => {
     if (!breakEndsAt) return;
     if (breakNow < breakEndsAt) return;
-    setBreakEndsAt(null);
-    setBreakDurationMinutes(0);
+    if (breakCompletionHandledRef.current) return;
+    breakCompletionHandledRef.current = true;
+    finishBreak({ minutes: breakDurationMinutes, notifyInApp: true });
   }, [breakEndsAt, breakNow]);
 
   useEffect(() => {
@@ -229,9 +233,10 @@ export default function TabletNavigationShell({ currentRoute, children }) {
     const subscription = Notifications.addNotificationReceivedListener((event) => {
       const data = event?.request?.content?.data || {};
       if (data?.type !== 'break-end') return;
+      breakCompletionHandledRef.current = true;
       setBreakEndsAt(null);
       setBreakDurationMinutes(0);
-      Alert.alert('Break complete', `Your ${data?.minutes || 0}-minute break has ended.`);
+      setBreakCompletedOverlayOpen(true);
     });
     return () => {
       subscription?.remove?.();
@@ -249,12 +254,36 @@ export default function TabletNavigationShell({ currentRoute, children }) {
     await Promise.all(ids.map((id) => Notifications.cancelScheduledNotificationAsync(id).catch(() => {})));
   }
 
+  async function presentBreakCompletionNotification(minutes) {
+    const Notifications = getNotificationsModule();
+    if (!Notifications || typeof Notifications.presentNotificationAsync !== 'function') return;
+    await Notifications.presentNotificationAsync({
+      title: 'Break complete',
+      body: `Your ${minutes || 0}-minute break is over.`,
+      sound: 'default',
+      channelId: 'default',
+      data: { type: 'break-end', minutes },
+    }).catch(() => {});
+  }
+
+  async function finishBreak({ minutes = breakDurationMinutes, notifyInApp = false } = {}) {
+    setBreakEndsAt(null);
+    setBreakDurationMinutes(0);
+    setBreakNow(Date.now());
+    setBreakCompletedOverlayOpen(true);
+    await cancelBreakNotifications();
+    if (notifyInApp) {
+      await presentBreakCompletionNotification(minutes);
+    }
+  }
+
   async function startBreak(minutes) {
     const durationMinutes = Number(minutes);
     if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) return;
 
     const endAt = Date.now() + (durationMinutes * 60 * 1000);
     setBreakPickerOpen(false);
+    setBreakCompletedOverlayOpen(false);
     setBreakDurationMinutes(durationMinutes);
     setBreakEndsAt(endAt);
     setBreakNow(Date.now());
@@ -297,10 +326,17 @@ export default function TabletNavigationShell({ currentRoute, children }) {
   async function endBreakEarly() {
     setBreakEndConfirmOpen(false);
     setBreakPickerOpen(false);
+    setBreakCompletedOverlayOpen(false);
     setBreakEndsAt(null);
     setBreakDurationMinutes(0);
     setBreakNow(Date.now());
+    breakCompletionHandledRef.current = false;
     await cancelBreakNotifications();
+  }
+
+  function dismissBreakCompletedOverlay() {
+    setBreakCompletedOverlayOpen(false);
+    breakCompletionHandledRef.current = false;
   }
 
   function handleBreakPress() {
@@ -375,6 +411,19 @@ export default function TabletNavigationShell({ currentRoute, children }) {
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.breakConfirmPrimaryButton} onPress={endBreakEarly}>
                   <Text style={styles.breakConfirmPrimaryText}>Confirm</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
+        <Modal visible={breakCompletedOverlayOpen} transparent animationType="fade" onRequestClose={dismissBreakCompletedOverlay}>
+          <TouchableOpacity style={styles.breakModalBackdrop} activeOpacity={1} onPress={dismissBreakCompletedOverlay}>
+            <TouchableOpacity activeOpacity={1} style={styles.breakModalCard} onPress={() => {}}>
+              <Text style={styles.breakModalTitle}>Break complete</Text>
+              <Text style={styles.breakModalSubtitle}>Your break timer has ended.</Text>
+              <View style={styles.breakConfirmActions}>
+                <TouchableOpacity style={styles.breakConfirmPrimaryButton} onPress={dismissBreakCompletedOverlay}>
+                  <Text style={styles.breakConfirmPrimaryText}>End break</Text>
                 </TouchableOpacity>
               </View>
             </TouchableOpacity>
@@ -548,13 +597,13 @@ export default function TabletNavigationShell({ currentRoute, children }) {
       const adminItems = showMobileAdminShell
         ? [
           { key: 'dashboard', label: 'Dashboard', icon: 'dashboard', target: { root: 'Controls', screen: 'ControlsMain' } },
+          ...((phoneProfile === 'bcba' || phoneProfile === 'office' || phoneProfile === 'admin' || phoneProfile === 'reception') ? [{ key: 'schedule', label: 'Scheduling', icon: 'event', target: { root: 'Controls', screen: 'ScheduleCalendar' }, section: ADMIN_SECTION_KEYS.SCHEDULING }] : []),
           ...((phoneProfile === 'bcba' || phoneProfile === 'office' || phoneProfile === 'admin' || phoneProfile === 'reception') ? [{ key: 'students', label: 'Students', icon: 'school', target: { root: 'Controls', screen: 'StudentDirectory' }, section: ADMIN_SECTION_KEYS.STUDENTS }] : []),
           ...((phoneProfile === 'bcba' || phoneProfile === 'office' || phoneProfile === 'admin' || phoneProfile === 'reception') ? [{ key: 'staff', label: 'Staff', icon: 'groups', target: { root: 'Controls', screen: 'FacultyDirectory' }, section: ADMIN_SECTION_KEYS.STAFF }] : []),
           ...((phoneProfile === 'office' || phoneProfile === 'admin' || phoneProfile === 'reception') ? [{ key: 'families', label: 'Families', icon: 'family-restroom', target: { root: 'Controls', screen: 'ParentDirectory' }, section: ADMIN_SECTION_KEYS.STUDENTS }] : []),
           ...(phoneProfile === 'bcba' ? [{ key: 'reports', label: 'Reports', icon: 'query-stats', target: { root: 'Controls', screen: 'Reports' }, section: ADMIN_SECTION_KEYS.DATA_REPORTS }] : []),
           ...((phoneProfile === 'bcba' || phoneProfile === 'admin') ? [{ key: 'insights', label: 'Insights', icon: 'insights', target: { root: 'Controls', screen: 'OrganizationInsightsDashboard' } }] : []),
           ...(phoneProfile === 'bcba' ? [{ key: 'documentation', label: 'Documentation', icon: 'assignment-turned-in', target: { root: 'Controls', screen: 'TherapistDocumentationDashboard' } }] : []),
-          ...((phoneProfile === 'bcba' || phoneProfile === 'office' || phoneProfile === 'admin' || phoneProfile === 'reception') ? [{ key: 'schedule', label: 'Schedule', icon: 'event', target: { root: 'Controls', screen: 'ScheduleCalendar' }, section: ADMIN_SECTION_KEYS.SCHEDULING }] : []),
           ...((phoneProfile === 'office' || phoneProfile === 'admin') ? [{ key: 'queues', label: 'Queues', icon: 'summarize', target: { root: 'Controls', screen: 'Reports' }, section: ADMIN_SECTION_KEYS.DATA_REPORTS }] : []),
           ...((phoneProfile === 'office' || phoneProfile === 'admin' || phoneProfile === 'bcba') ? [{ key: 'compliance', label: 'Compliance', icon: 'verified-user', target: { root: 'Controls', screen: 'AdminAlerts' }, section: ADMIN_SECTION_KEYS.COMPLIANCE }] : []),
           { key: 'communication', label: 'Chats', icon: 'forum', target: { root: 'Chats', screen: 'ChatsList' } },
@@ -709,6 +758,15 @@ export default function TabletNavigationShell({ currentRoute, children }) {
               <MaterialIcons name={mobileNavOpen ? 'close' : 'menu'} size={22} color="#ffffff" />
             </TouchableOpacity>
           </View>
+          {breakEndsAt && breakNow < breakEndsAt ? (
+            <View style={[styles.breakOverlayWrap, styles.mobileBreakOverlayWrap, { bottom: Math.max(insets.bottom, 0) + MOBILE_BOTTOM_MENU_HEIGHT + 12 }]}> 
+              <TouchableOpacity style={styles.breakOverlayButton} onPress={() => setBreakEndConfirmOpen(true)}>
+                <MaterialIcons name="free-breakfast" size={18} color="#ffffff" />
+                <Text style={styles.breakOverlayText}>End break</Text>
+                <Text style={styles.breakOverlayTimerText}>{formatBreakCountdown(breakEndsAt, breakNow)}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
           {renderBreakModals()}
         </View>
       </MobileAdminShellContext.Provider>
@@ -813,6 +871,16 @@ export default function TabletNavigationShell({ currentRoute, children }) {
           </View>
         </ScrollView>
 
+          {breakEndsAt && breakNow < breakEndsAt ? (
+            <View style={[styles.breakOverlayWrap, { right: 24, bottom: Math.max(insets.bottom, 12) + 24 }]}> 
+              <TouchableOpacity style={styles.breakOverlayButton} onPress={() => setBreakEndConfirmOpen(true)}>
+                <MaterialIcons name="free-breakfast" size={18} color="#ffffff" />
+                <Text style={styles.breakOverlayText}>End break</Text>
+                <Text style={styles.breakOverlayTimerText}>{formatBreakCountdown(breakEndsAt, breakNow)}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+
           <View style={[styles.contentWrap, { paddingTop: 12, paddingBottom: Math.max(insets.bottom, 12) }]}>
             {renderBreakModals()}
             <Modal visible={!!quickLogDraft} transparent animationType="fade" onRequestClose={() => !quickLogSaving && setQuickLogDraft(null)}>
@@ -891,7 +959,7 @@ const styles = StyleSheet.create({
   drawerUtilityIconDisabled: { opacity: 0.5 },
   drawerUtilityText: { color: '#e2e8f0', fontWeight: '700', marginLeft: 10 },
   drawerUtilityMetaWrap: { flexDirection: 'row', alignItems: 'center', marginLeft: 'auto' },
-  drawerUtilityDivider: { width: 2, height: 24, backgroundColor: 'rgba(226, 232, 240, 0.3)', marginRight: 6 },
+  drawerUtilityDivider: { width: 2, height: 24, backgroundColor: 'rgba(226, 232, 240, 0.3)', marginRight: 3, marginLeft: 3 },
   drawerUtilityTimerText: { color: '#f8fafc', fontWeight: '800' },
   logoutButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 14, backgroundColor: '#1e293b' },
   logoutText: { color: '#fecaca', fontWeight: '700', marginLeft: 10 },
@@ -925,9 +993,8 @@ const styles = StyleSheet.create({
   mobileNavScroll: { flex: 1 },
   mobileNavScrollContent: { flexGrow: 1, paddingBottom: 0 },
   mobileBottomMenuShell: {
-    backgroundColor: '#ffffff',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#e2e8f0',
+    backgroundColor: '#1d4ed8',
+    borderTopWidth: 0,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: MOBILE_BOTTOM_MENU_HEIGHT,
@@ -946,7 +1013,7 @@ const styles = StyleSheet.create({
   mobileBreakButtonActive: { backgroundColor: '#eff6ff', borderColor: '#93c5fd' },
   mobileBreakText: { color: '#0f172a', fontWeight: '700', marginLeft: 10 },
   mobileClockMetaText: { color: '#0f172a', fontWeight: '800', marginLeft: 'auto' },
-  mobileBreakTimerText: { color: '#0f172a', fontWeight: '800', marginLeft: 'auto' },
+  mobileBreakTimerText: { color: '#0f172a', fontWeight: '800', marginLeft: 'auto', marginRight: -12 },
   mobileUtilitySection: { marginTop: 6, paddingTop: 8, paddingBottom: 6, borderTopWidth: 1, borderTopColor: '#dbe2ea' },
   mobileUtilityButton: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 12, backgroundColor: '#eff6ff', marginBottom: 10 },
   mobileUtilityButtonDisabled: { opacity: 0.72 },
@@ -966,6 +1033,11 @@ const styles = StyleSheet.create({
   breakConfirmSecondaryText: { color: '#0f172a', fontWeight: '700' },
   breakConfirmPrimaryButton: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10, backgroundColor: '#2563eb' },
   breakConfirmPrimaryText: { color: '#ffffff', fontWeight: '700' },
+  breakOverlayWrap: { position: 'absolute', zIndex: 30 },
+  mobileBreakOverlayWrap: { left: 12, right: 12 },
+  breakOverlayButton: { minHeight: 48, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#1d4ed8', flexDirection: 'row', alignItems: 'center', shadowColor: '#0f172a', shadowOpacity: 0.16, shadowRadius: 10, shadowOffset: { width: 0, height: 6 }, elevation: 8 },
+  breakOverlayText: { color: '#ffffff', fontWeight: '800', marginLeft: 10 },
+  breakOverlayTimerText: { color: '#dbeafe', fontWeight: '800', marginLeft: 'auto' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.45)', justifyContent: 'center', padding: 24 },
   modalCard: { borderRadius: 20, backgroundColor: '#ffffff', padding: 18 },
   modalTitle: { fontSize: 18, fontWeight: '800', color: '#0f172a' },

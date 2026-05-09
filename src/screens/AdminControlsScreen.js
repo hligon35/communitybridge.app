@@ -32,6 +32,23 @@ function formatBehaviorIncidentLabel(label) {
   return String(label || '').trim() || 'Incident';
 }
 
+function buildEmptyStaffUtilizationItems() {
+  return ['Staff 1', 'Staff 2', 'Staff 3', 'Staff 4', 'Staff 5'].map((label) => ({ label, value: 0 }));
+}
+
+function buildStaffUtilizationItems(therapists, children) {
+  const staffItems = (therapists || []).slice(0, 5).map((staff) => {
+    const count = (children || []).filter((child) => [child?.amTherapist, child?.pmTherapist, child?.bcaTherapist].some((entry) => {
+      if (!entry) return false;
+      if (typeof entry === 'string') return entry === staff?.id;
+      return entry?.id === staff?.id;
+    })).length;
+    return { label: formatStaffUtilizationLabel(staff), value: count };
+  });
+
+  return staffItems.length ? staffItems : buildEmptyStaffUtilizationItems();
+}
+
 function Tile({ label, value, hint, accent = '#2563eb', compact = false }) {
   return (
     <View style={[styles.tile, compact ? styles.tileCompact : null]}>
@@ -50,7 +67,7 @@ function TrendCard({ title, items, accent = '#2563eb', horizontalInset = 26 }) {
   const chartHeight = 150;
   const topPadding = 12;
   const plotHeight = 92;
-  const yAxisWidth = 28;
+  const yAxisWidth = 24;
   const effectiveChartWidth = Math.max(chartWidth, 240);
   const plotWidth = Math.max(0, effectiveChartWidth - yAxisWidth - (horizontalInset * 2));
   const step = (items?.length || 1) > 1 ? plotWidth / ((items.length || 1) - 1) : 0;
@@ -98,7 +115,7 @@ function TrendCard({ title, items, accent = '#2563eb', horizontalInset = 26 }) {
           }) : null}
           {hasItems ? points.map((point) => (
             <View key={point.key} style={[styles.linePointColumn, { left: point.x - 26, top: 0 }]}> 
-              <View style={[styles.linePointValueWrap, { top: Math.max(0, point.y - 4) }]}>
+              <View style={[styles.linePointValueWrap, { top: Math.max(0, point.y - 8) }]}>
                 <Text style={styles.linePointValue}>{point.value}</Text>
               </View>
               <View style={[styles.linePoint, { top: point.y - 11, borderColor: accent }]}>
@@ -125,14 +142,7 @@ export default function AdminControlsScreen() {
 
   const summary = useMemo(() => {
     if (activeSeedPreset === 'screenshot' && seededDashboardMetrics && typeof seededDashboardMetrics === 'object' && Object.keys(seededDashboardMetrics).length) {
-      const staffUtilization = (therapists || []).slice(0, 5).map((staff) => {
-        const count = (children || []).filter((child) => [child?.amTherapist, child?.pmTherapist, child?.bcaTherapist].some((entry) => {
-          if (!entry) return false;
-          if (typeof entry === 'string') return entry === staff?.id;
-          return entry?.id === staff?.id;
-        })).length;
-        return { label: formatStaffUtilizationLabel(staff), value: count };
-      });
+      const staffUtilization = buildStaffUtilizationItems(therapists, children);
       return {
         sessionsToday: Number(seededDashboardMetrics?.sessionsToday || 0),
         cancellations: Number(seededDashboardMetrics?.cancellationsToday || 0),
@@ -155,14 +165,7 @@ export default function AdminControlsScreen() {
     const overdueNotes = (children || []).filter((child) => !child?.carePlan || !String(child.carePlan).trim()).length;
     const attendanceTrend = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((label, index) => ({ label, value: Math.max(1, sessionsToday - Math.min(index, 4)) }));
     const behaviorTrend = ['Task Ref', 'Elop Att', 'Aggr', 'Non Comp'].map((label, index) => ({ label, value: Math.max(0, incidents - index) }));
-    const staffUtilization = (therapists || []).slice(0, 5).map((staff) => {
-      const count = (children || []).filter((child) => [child?.amTherapist, child?.pmTherapist, child?.bcaTherapist].some((entry) => {
-        if (!entry) return false;
-        if (typeof entry === 'string') return entry === staff?.id;
-        return entry?.id === staff?.id;
-      })).length;
-      return { label: formatStaffUtilizationLabel(staff), value: count };
-    });
+    const staffUtilization = buildStaffUtilizationItems(therapists, children);
     return { sessionsToday, cancellations, incidents, overdueNotes, attendanceTrend, behaviorTrend, staffUtilization };
   }, [activeSeedPreset, children, seededDashboardMetrics, therapists, urgentMemos]);
 
