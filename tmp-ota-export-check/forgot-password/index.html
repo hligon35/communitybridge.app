@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/png" href="/icon.png" sizes="any" />
+    <link rel="apple-touch-icon" href="/icon.png" />
+    <title>CommunityBridge – Forgot Password</title>
+    <meta name="robots" content="noindex" />
+    <style>
+      :root { --bg:#ffffff; --card:#ffffff; --text:#111827; --muted:#6b7280; --line:#e5e7eb; --primary:#2563eb; --subtle:#f8fafc; --danger:#991b1b; --success:#166534; }
+      *{box-sizing:border-box}
+      body{margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:42px 18px; font-family:ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; background:var(--bg); color:var(--text)}
+      a{color:inherit}
+      .wrap{max-width:520px; width:100%}
+      .logo{display:flex; justify-content:center; margin-bottom:14px}
+      .logo a{display:inline-flex; text-decoration:none}
+      .logo img{width:min(320px, 100%); height:auto; display:block}
+      .card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px}
+      h1{margin:0 0 8px; font-size:26px; text-align:center}
+      p{margin:0 0 14px; color:var(--muted); line-height:1.5}
+      label{display:block; font-size:12px; color:var(--muted); margin:10px 0 6px}
+      input{width:100%; padding:10px 12px; border-radius:10px; border:1px solid #ccc; background:#fff; color:var(--text); outline:none}
+      input:focus{border-color:rgba(37,99,235,.55)}
+      .row{display:flex; gap:10px; flex-wrap:wrap; margin-top:16px}
+      .btn{display:inline-flex; align-items:center; justify-content:center; padding:10px 14px; border-radius:10px; border:1px solid var(--line); text-decoration:none; background:var(--subtle); color:var(--text); cursor:pointer; font-weight:800}
+      .btnPrimary{background:var(--primary); border-color:var(--primary); color:#fff}
+      .msg{margin-top:10px; font-size:13px; color:var(--muted)}
+      .msg.err{color:var(--danger)}
+      .msg.ok{color:var(--success)}
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="logo">
+        <a href="/" aria-label="CommunityBridge home">
+          <img src="/icon.png" alt="CommunityBridge" />
+        </a>
+      </div>
+      <div class="card">
+        <h1>Forgot Password</h1>
+        <p>Enter the email address on your account. If it exists, CommunityBridge will send a reset link.</p>
+        <form id="form">
+          <label for="email">Email</label>
+          <input id="email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" required />
+          <div class="row">
+            <button class="btn btnPrimary" type="submit">Send reset link</button>
+            <a class="btn" href="/dashboard">Back to login</a>
+          </div>
+          <div id="msg" class="msg"></div>
+        </form>
+      </div>
+    </div>
+
+    <script type="module">
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
+      import { getAuth, sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+
+      const emailEl = document.getElementById('email');
+      const msgEl = document.getElementById('msg');
+
+      function setMsg(text, isErr = false) {
+        msgEl.textContent = text || '';
+        msgEl.className = isErr ? 'msg err' : (text ? 'msg ok' : 'msg');
+      }
+
+      async function loadFirebaseConfig() {
+        const response = await fetch('/__/firebase/init.json', { cache: 'no-store' });
+        if (!response.ok) throw new Error('Firebase init config is unavailable.');
+        const json = await response.json();
+        if (!json || !json.apiKey || !json.projectId || !json.appId) {
+          throw new Error('Firebase init config is incomplete.');
+        }
+        return json;
+      }
+
+      let auth = null;
+      async function ensureAuth() {
+        if (auth) return auth;
+        const app = initializeApp(await loadFirebaseConfig());
+        auth = getAuth(app);
+        return auth;
+      }
+
+      try {
+        const presetEmail = new URLSearchParams(window.location.search || '').get('email');
+        if (presetEmail) emailEl.value = String(presetEmail || '').trim();
+      } catch (_) {
+        // ignore
+      }
+
+      document.getElementById('form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        setMsg('');
+        const email = String(emailEl.value || '').trim().toLowerCase();
+        if (!/^\S+@\S+\.[^\s@]+$/.test(email)) {
+          setMsg('Please enter a valid email address.', true);
+          return;
+        }
+
+        const submitButton = event.submitter;
+        if (submitButton) submitButton.disabled = true;
+        try {
+          const currentAuth = await ensureAuth();
+          await sendPasswordResetEmail(currentAuth, email);
+          setMsg('If an account exists, a reset link has been sent.');
+        } catch (error) {
+          setMsg(error?.message || 'Unable to send reset email right now.', true);
+        } finally {
+          if (submitButton) submitButton.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>

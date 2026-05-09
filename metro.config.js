@@ -5,12 +5,28 @@ const { resolve: metroResolve } = require('metro-resolver');
 
 const config = getSentryExpoConfig(__dirname);
 
+function escapeForRegExp(value) {
+	return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function buildIgnoredDirPattern(dirPath) {
+	return new RegExp(`^${escapeForRegExp(path.resolve(dirPath))}(?:[\\\\/].*)?$`);
+}
+
+config.resolver = config.resolver || {};
+config.resolver.blockList = [
+	buildIgnoredDirPattern(path.join(__dirname, 'public', '_expo')),
+	buildIgnoredDirPattern(path.join(__dirname, 'public', 'assets')),
+	buildIgnoredDirPattern(path.join(__dirname, 'public', 'dashboard', 'assets')),
+	buildIgnoredDirPattern(path.join(__dirname, 'web-dist')),
+	buildIgnoredDirPattern(path.join(__dirname, 'dist', 'assets')),
+];
+
 // Firebase Auth fix (Expo SDK 54 / Metro):
 // Ensure package `exports` resolution includes the `react-native` condition so
 // `@firebase/auth` resolves to its RN build (which calls registerAuth(...)).
 // Without this, some production bundles can throw:
 //   "Component auth has not been registered yet"
-config.resolver = config.resolver || {};
 config.resolver.unstable_enablePackageExports = true;
 
 const existingConditions = Array.isArray(config.resolver.unstable_conditionNames)

@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /dashboard/
+Disallow: /__/
+
+Sitemap: https://communitybridge.app/sitemap.xml

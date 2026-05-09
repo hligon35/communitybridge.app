@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Image, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 
 function formatAnnouncementStamp(value) {
   const parsed = value ? new Date(value) : null;
@@ -19,7 +20,7 @@ function getAnnouncementImage(item) {
   return match ? String(match).trim() : '';
 }
 
-function normalizeAnnouncements(items = []) {
+export function normalizeAnnouncements(items = []) {
   return (Array.isArray(items) ? items : [])
     .filter((item) => String(item?.type || '').trim().toLowerCase() === 'admin_memo')
     .sort((left, right) => new Date(right?.createdAt || right?.date || 0).getTime() - new Date(left?.createdAt || left?.date || 0).getTime())
@@ -33,11 +34,16 @@ function normalizeAnnouncements(items = []) {
     }));
 }
 
-export default function AnnouncementFeed({ items = [], emptyLabel = 'No announcements at the moment' }) {
+export default function AnnouncementFeed({ items = [], emptyLabel = 'No announcements at the moment', variant = 'header' }) {
   const [selectedImage, setSelectedImage] = useState('');
+  const [dismissedCount, setDismissedCount] = useState(0);
+  const navigation = useNavigation();
   const announcements = useMemo(() => normalizeAnnouncements(items), [items]);
+  const remainingAnnouncements = announcements.slice(dismissedCount);
+  const topAnnouncement = remainingAnnouncements[0] || null;
+  const hasMoreToReview = remainingAnnouncements.length > 1;
 
-  if (!announcements.length) {
+  if (!announcements.length || (variant === 'header' && !topAnnouncement)) {
     return (
       <View style={styles.emptyBanner}>
         <MaterialIcons name="campaign" size={16} color="#64748b" />
@@ -46,29 +52,78 @@ export default function AnnouncementFeed({ items = [], emptyLabel = 'No announce
     );
   }
 
+  if (variant === 'feed') {
+    return (
+      <>
+        <View style={styles.feedWrap}>
+          {announcements.map((item) => (
+            <View key={item.id} style={styles.postCard}>
+              <View style={styles.postHeader}>
+                <View style={styles.postAvatar}>
+                  <MaterialIcons name="campaign" size={18} color="#1d4ed8" />
+                </View>
+                <View style={styles.postHeaderText}>
+                  <Text style={styles.postAuthor}>{item.author}</Text>
+                  <Text style={styles.postStamp}>{item.stamp}</Text>
+                </View>
+              </View>
+              <Text style={styles.postTitle}>{item.title}</Text>
+              {item.body ? <Text style={styles.postBody}>{item.body}</Text> : null}
+              {item.image ? (
+                <TouchableOpacity activeOpacity={0.9} onPress={() => setSelectedImage(item.image)}>
+                  <Image source={{ uri: item.image }} style={styles.postImage} resizeMode="cover" />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          ))}
+        </View>
+        <Modal visible={!!selectedImage} transparent animationType="fade" onRequestClose={() => setSelectedImage('')}>
+          <Pressable style={styles.modalBackdrop} onPress={() => setSelectedImage('')}>
+            <Pressable style={styles.modalCard} onPress={() => {}}>
+              {selectedImage ? <Image source={{ uri: selectedImage }} style={styles.modalImage} resizeMode="contain" /> : null}
+            </Pressable>
+          </Pressable>
+        </Modal>
+      </>
+    );
+  }
+
   return (
     <>
       <View style={styles.feedWrap}>
-        {announcements.map((item) => (
-          <View key={item.id} style={styles.postCard}>
+        <TouchableOpacity
+          activeOpacity={hasMoreToReview ? 0.92 : 1}
+          onPress={() => {
+            if (hasMoreToReview) navigation.navigate('AnnouncementFeedScreen');
+          }}
+        >
+          <View key={topAnnouncement.id} style={styles.postCard}>
             <View style={styles.postHeader}>
               <View style={styles.postAvatar}>
                 <MaterialIcons name="campaign" size={18} color="#1d4ed8" />
               </View>
               <View style={styles.postHeaderText}>
-                <Text style={styles.postAuthor}>{item.author}</Text>
-                <Text style={styles.postStamp}>{item.stamp}</Text>
+                <Text style={styles.postAuthor}>{topAnnouncement.author}</Text>
+                <Text style={styles.postStamp}>{topAnnouncement.stamp}</Text>
               </View>
+              <TouchableOpacity
+                onPress={() => setDismissedCount((value) => value + 1)}
+                accessibilityLabel="Close announcement"
+                style={styles.closeButton}
+              >
+                <MaterialIcons name="close" size={18} color="#64748b" />
+              </TouchableOpacity>
             </View>
-            <Text style={styles.postTitle}>{item.title}</Text>
-            {item.body ? <Text style={styles.postBody}>{item.body}</Text> : null}
-            {item.image ? (
-              <TouchableOpacity activeOpacity={0.9} onPress={() => setSelectedImage(item.image)}>
-                <Image source={{ uri: item.image }} style={styles.postImage} resizeMode="cover" />
+            <Text style={styles.postTitle}>{topAnnouncement.title}</Text>
+            {topAnnouncement.body ? <Text style={styles.postBody}>{topAnnouncement.body}</Text> : null}
+            {hasMoreToReview ? <Text style={styles.moreLabel}>Tap to see {remainingAnnouncements.length - 1} more announcement{remainingAnnouncements.length - 1 === 1 ? '' : 's'}.</Text> : null}
+            {topAnnouncement.image ? (
+              <TouchableOpacity activeOpacity={0.9} onPress={() => setSelectedImage(topAnnouncement.image)}>
+                <Image source={{ uri: topAnnouncement.image }} style={styles.postImage} resizeMode="cover" />
               </TouchableOpacity>
             ) : null}
           </View>
-        ))}
+        </TouchableOpacity>
       </View>
       <Modal visible={!!selectedImage} transparent animationType="fade" onRequestClose={() => setSelectedImage('')}>
         <Pressable style={styles.modalBackdrop} onPress={() => setSelectedImage('')}>
@@ -113,10 +168,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   postHeaderText: { marginLeft: 10, flex: 1 },
+  closeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
   postAuthor: { color: '#0f172a', fontWeight: '800' },
   postStamp: { color: '#64748b', fontSize: 12, marginTop: 2 },
   postTitle: { marginTop: 12, color: '#0f172a', fontWeight: '800', fontSize: 15 },
   postBody: { marginTop: 8, color: '#334155', lineHeight: 20 },
+  moreLabel: { marginTop: 10, color: '#1d4ed8', fontWeight: '700' },
   postImage: { marginTop: 12, width: '100%', height: 180, borderRadius: 14, backgroundColor: '#e2e8f0' },
   modalBackdrop: {
     flex: 1,

@@ -380,7 +380,8 @@ export function DataProvider({ children: reactChildren }) {
   useEffect(() => {
     if (!__DEV__) return undefined;
     if (Platform.OS === 'web') return undefined;
-    let mounted = true;
+    let disposed = false;
+    let pollInFlight = false;
     const port = process.env.DEV_CLEAR_PORT || 4001;
     // derive packager host from scriptURL
     let host = 'localhost';
@@ -392,8 +393,12 @@ export function DataProvider({ children: reactChildren }) {
 
     const base = `http://${host}:${port}`;
     const iv = setInterval(async () => {
+      if (disposed || pollInFlight) return;
+      pollInFlight = true;
+      const controller = typeof AbortController === 'function' ? new AbortController() : null;
+      const timeoutId = controller ? setTimeout(() => controller.abort(), 1500) : null;
       try {
-        const res = await fetch(`${base}/clear-status`);
+        const res = await fetch(`${base}/clear-status`, controller ? { signal: controller.signal } : undefined);
         if (!res.ok) return;
         const json = await res.json();
         if (json && json.clear) {
@@ -402,9 +407,15 @@ export function DataProvider({ children: reactChildren }) {
         }
       } catch (e) {
         // ignore
+      } finally {
+        if (timeoutId) clearTimeout(timeoutId);
+        pollInFlight = false;
       }
     }, 3000);
-    return () => { mounted = false; clearInterval(iv); };
+    return () => {
+      disposed = true;
+      clearInterval(iv);
+    };
   }, []);
 
   const maybeRefreshMfaOnPermissionDenied = async (e) => {

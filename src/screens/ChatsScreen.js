@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Image, Alert, Platform, ToastAndroid, Animated, RefreshControl } from 'react-native';
 import { useData } from '../DataContext';
 import { useAuth } from '../AuthContext';
@@ -101,11 +101,24 @@ export default function ChatsScreen({ navigation }) {
   const [dateFilterDays, setDateFilterDays] = useState(null); // null => no filter
   const isWeb = Platform.OS === 'web';
 
+  const startNewMessage = () => {
+    logPress('Chats:NewMessage');
+    navigation.navigate('NewThread');
+  };
+
   // Ensure the native stack header buttons are reset (Fast Refresh can preserve prior setOptions).
   useLayoutEffect(() => {
     navigation.setOptions({
       headerLeft: Platform.OS === 'web' ? undefined : () => <HelpButton />,
-      headerRight: () => null,
+      headerRight: Platform.OS === 'web' ? () => null : () => (
+        <TouchableOpacity
+          onPress={startNewMessage}
+          accessibilityLabel="Start a new chat"
+          style={{ marginRight: 12, width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: '#eff6ff' }}
+        >
+          <MaterialIcons name="add" size={22} color="#1d4ed8" />
+        </TouchableOpacity>
+      ),
     });
   }, [navigation]);
 
@@ -159,11 +172,6 @@ export default function ChatsScreen({ navigation }) {
         { text: 'Cancel', style: 'cancel' },
       ]
     );
-  };
-
-  const startNewMessage = () => {
-    logPress('Chats:NewMessage');
-    navigation.navigate('NewThread');
   };
 
   return (

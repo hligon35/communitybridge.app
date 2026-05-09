@@ -36,6 +36,7 @@ import MyClassScreen from './src/screens/MyClassScreen';
 import MyChildScreen from './src/screens/MyChildScreen';
 import AdminControlsScreen from './src/screens/AdminControlsScreen';
 import AdminChatMonitorScreen from './src/screens/AdminChatMonitorScreen';
+import AnnouncementFeedScreen from './src/screens/AnnouncementFeedScreen';
 import UserMonitorScreen from './src/screens/UserMonitorScreen';
 import StudentDirectoryScreen from './src/screens/StudentDirectoryScreen';
 import FacultyDirectoryScreen from './src/screens/FacultyDirectoryScreen';
@@ -163,6 +164,7 @@ function ControlsStack() {
       }}
     >
       <ControlsStackNav.Screen name="ControlsMain" component={AdminControlsScreen} options={{ title: 'Dashboard' }} />
+      <ControlsStackNav.Screen name="AnnouncementFeedScreen" component={AnnouncementFeedScreen} options={{ title: 'Announcements' }} />
       <ControlsStackNav.Screen name="StudentDirectory" component={StudentDirectoryScreen} options={{ title: 'Students' }} />
       <ControlsStackNav.Screen name="FacultyDirectory" component={FacultyDirectoryScreen} options={{ title: 'Staff' }} />
       <ControlsStackNav.Screen name="ParentDirectory" component={ParentDirectoryScreen} options={{ title: 'Parent Directory' }} />
@@ -223,6 +225,7 @@ function CommunityStack() {
       }}
     >
       <CommunityStackNav.Screen name="CommunityMain" component={RoleDashboardScreen} options={{ title: 'Dashboard' }} />
+      <CommunityStackNav.Screen name="AnnouncementFeedScreen" component={AnnouncementFeedScreen} options={{ title: 'Announcements' }} />
       <CommunityStackNav.Screen name="InsuranceBilling" component={InsuranceBillingScreen} options={{ title: 'Billing & Insurance' }} />
       <CommunityStackNav.Screen name="TherapistItemsNeeded" component={TherapistItemsNeededScreen} options={{ title: 'Items Needed' }} />
       <CommunityStackNav.Screen name="CareTeam" component={CareTeamScreen} options={{ title: 'My Care Team' }} />

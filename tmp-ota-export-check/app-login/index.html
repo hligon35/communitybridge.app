@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/png" href="/icon.png" sizes="any" />
+    <link rel="apple-touch-icon" href="/icon.png" />
+    <title>CommunityBridge Access</title>
+    <style>
+      :root {
+        --bg: #f3f7fb;
+        --panel: #ffffff;
+        --border: #d9e6f5;
+        --text: #0f172a;
+        --muted: #475569;
+        --brand: #0f766e;
+        --brand-dark: #115e59;
+        --error: #b91c1c;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        font-family: "Segoe UI", Arial, sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top left, rgba(15, 118, 110, 0.12), transparent 34%),
+          radial-gradient(circle at bottom right, rgba(37, 99, 235, 0.10), transparent 32%),
+          var(--bg);
+      }
+      .panel {
+        width: min(100%, 560px);
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 28px;
+        padding: 28px;
+        box-shadow: 0 28px 80px rgba(15, 23, 42, 0.12);
+      }
+      .logo { width: 210px; max-width: 100%; display: block; }
+      .eyebrow {
+        margin: 20px 0 8px;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--brand);
+      }
+      h1 { margin: 0; font-size: clamp(28px, 4vw, 38px); line-height: 1.05; }
+      p { margin: 14px 0 0; color: var(--muted); line-height: 1.7; }
+      .status {
+        margin-top: 22px;
+        border-radius: 18px;
+        padding: 16px 18px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        font-weight: 600;
+      }
+      .status.error {
+        background: #fef2f2;
+        border-color: #fecaca;
+        color: var(--error);
+      }
+      .actions { margin-top: 24px; display: flex; gap: 12px; flex-wrap: wrap; }
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 12px 18px;
+        border-radius: 999px;
+        font-weight: 800;
+        text-decoration: none;
+        border: 1px solid transparent;
+      }
+      .button.primary { background: var(--brand); color: #fff; }
+      .button.primary:hover { background: var(--brand-dark); }
+      .button.secondary { border-color: #cbd5e1; color: var(--text); background: #fff; }
+    </style>
+  </head>
+  <body>
+    <main class="panel">
+      <img class="logo" src="/titlelogo.png" alt="CommunityBridge" />
+      <div class="eyebrow">Secure Access</div>
+      <h1>Opening your Super Admin account</h1>
+      <p>This one-time CommunityBridge link grants temporary access for the approved primary contact and routes directly into password setup.</p>
+      <div id="status" class="status">Verifying your approval link…</div>
+      <div class="actions">
+        <a class="button secondary" href="/login">Use standard login instead</a>
+      </div>
+    </main>
+
+    <script type="module">
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
+      import { getAuth, signInWithCustomToken } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+
+      const statusEl = document.getElementById('status');
+      const firebaseConfig = {
+        apiKey: 'AIzaSyC0Q3xKa55tizgve_q9E5bD0oGdnVtNKiQ',
+        authDomain: 'communitybridge-26apr.firebaseapp.com',
+        projectId: 'communitybridge-26apr',
+        storageBucket: 'communitybridge-26apr.firebasestorage.app',
+        messagingSenderId: '752508556236',
+        appId: '1:752508556236:web:dc183f4851108dd8c14369',
+      };
+      const REDIRECT_KEY = 'bb_post_login_redirect_v1';
+      const DEFAULT_REDIRECT_VALUE = 'approval-staff-management';
+
+      function setStatus(message, isError) {
+        statusEl.textContent = message;
+        statusEl.classList.toggle('error', Boolean(isError));
+      }
+
+      async function run() {
+        const params = new URLSearchParams(window.location.search || '');
+        const token = String(params.get('token') || '').trim();
+        if (!token) {
+          setStatus('This approval link is missing its access token. Please open the newest email or contact CommunityBridge support.', true);
+          return;
+        }
+
+        try {
+          const response = await fetch('/api/auth/approval-link-login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token }),
+          });
+          const payload = await response.json().catch(() => null);
+          if (!response.ok || !payload || payload.ok !== true || !payload.customToken) {
+            throw new Error(String(payload?.error || payload?.message || 'This approval link could not be verified.'));
+          }
+
+          const app = initializeApp(firebaseConfig);
+          const auth = getAuth(app);
+          await signInWithCustomToken(auth, String(payload.customToken));
+
+          try {
+            // Persist the intended admin landing screen so the app can finish the
+            // existing Create Password gate before opening Staff Management.
+            window.localStorage.setItem(REDIRECT_KEY, String(payload.redirectIntent || DEFAULT_REDIRECT_VALUE));
+          } catch (_) {
+            // ignore storage failures; the app will still open the account-setup flow
+          }
+
+          setStatus('Access granted. Opening CommunityBridge…', false);
+          window.location.replace('/dashboard');
+        } catch (error) {
+          setStatus(String(error?.message || error || 'This approval link could not be completed.'), true);
+        }
+      }
+
+      run();
+    </script>
+  </body>
+</html>

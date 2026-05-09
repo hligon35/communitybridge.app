@@ -112,6 +112,7 @@ export default function RoleDashboardScreen({ navigation }) {
     () => findRelevantChildren(role, effectiveUser?.id, children, { allowSpecialAccessFallback }),
     [children, role, effectiveUser?.id, allowSpecialAccessFallback]
   );
+  const showDashboardPlaceholder = !directoryLoading && !directoryError && !relevantChildren.length;
   const [selectedChildId, setSelectedChildId] = useState(null);
 
   useEffect(() => {
@@ -371,6 +372,27 @@ export default function RoleDashboardScreen({ navigation }) {
     fetchAndSync?.({ force: true })?.catch?.(() => {});
   };
 
+  const renderPlaceholderFamilyCards = (count = 3) => (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.familyCarouselTrack}>
+      {Array.from({ length: count }).map((_, index) => (
+        <View key={`placeholder-family-${index}`} style={styles.familyCard}>
+          <View style={[styles.familyCardImage, styles.placeholderBlock, styles.placeholderAvatar]} />
+          <View style={[styles.placeholderLine, styles.placeholderLineShort, styles.placeholderLineFamily]} />
+        </View>
+      ))}
+    </ScrollView>
+  );
+
+  const renderPlaceholderDashboardCard = (key) => (
+    <View key={key} style={[styles.card, styles.placeholderCard]}>
+      <View style={[styles.cardIconRow, styles.placeholderIconWrap]}>
+        <View style={[styles.placeholderBlock, styles.placeholderIcon]} />
+      </View>
+      <View style={[styles.placeholderLine, styles.placeholderLineTitle]} />
+      <View style={[styles.placeholderLine, styles.placeholderLineValue]} />
+    </View>
+  );
+
   return (
     <ScreenWrapper bannerShowBack={false} hideBanner={isTabletLayout} style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -411,6 +433,15 @@ export default function RoleDashboardScreen({ navigation }) {
                     </TouchableOpacity>
                   </View>
                 </>
+              ) : showDashboardPlaceholder ? (
+                <>
+                  {renderPlaceholderFamilyCards(4)}
+                  <View style={[styles.sessionLaunchArea, styles.sessionLaunchAreaPlaceholder]}>
+                    <View style={[styles.startSessionButton, styles.startSessionButtonPlaceholder]}>
+                      <View style={[styles.placeholderLine, styles.placeholderLineButton]} />
+                    </View>
+                  </View>
+                </>
               ) : (
                 <View style={styles.statusPanel}>
                   <MaterialIcons name="groups-2" size={18} color="#64748b" />
@@ -420,22 +451,24 @@ export default function RoleDashboardScreen({ navigation }) {
             </>
           ) : (
             <>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.familyCarouselTrack}>
-                {relevantChildren.map((child, index) => {
-                  const isSelected = child?.id === selectedChild?.id;
-                  return (
-                    <TouchableOpacity
-                      key={child?.id || `${child?.name || 'child'}-${index}`}
-                      style={[styles.familyCard, isSelected ? styles.familyCardSelected : null]}
-                      activeOpacity={0.88}
-                      onPress={() => setSelectedChildId(child?.id || null)}
-                    >
-                      <Image source={avatarSourceFor(child) || childCarouselImageFor(child, index)} style={styles.familyCardImage} resizeMode="cover" />
-                      <Text style={styles.familyCardName} numberOfLines={1}>{child?.name || 'Child'}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
+              {showDashboardPlaceholder ? renderPlaceholderFamilyCards(4) : (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.familyCarouselTrack}>
+                  {relevantChildren.map((child, index) => {
+                    const isSelected = child?.id === selectedChild?.id;
+                    return (
+                      <TouchableOpacity
+                        key={child?.id || `${child?.name || 'child'}-${index}`}
+                        style={[styles.familyCard, isSelected ? styles.familyCardSelected : null]}
+                        activeOpacity={0.88}
+                        onPress={() => setSelectedChildId(child?.id || null)}
+                      >
+                        <Image source={avatarSourceFor(child) || childCarouselImageFor(child, index)} style={styles.familyCardImage} resizeMode="cover" />
+                        <Text style={styles.familyCardName} numberOfLines={1}>{child?.name || 'Child'}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              )}
             </>
           )}
         </View>
@@ -445,7 +478,7 @@ export default function RoleDashboardScreen({ navigation }) {
         <AnnouncementFeed items={urgentMemos} />
 
         {!isTherapist ? <View style={[styles.grid, isTherapist ? styles.gridTherapist : null]}>
-          {dashboardCards.map((card) => {
+          {showDashboardPlaceholder ? dashboardCards.map((card) => renderPlaceholderDashboardCard(card.key)) : dashboardCards.map((card) => {
             const cardContent = (
               <>
                 <View style={styles.cardIconRow}>
@@ -503,16 +536,29 @@ const styles = StyleSheet.create({
   familyCardImage: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#e2e8f0' },
   familyCardName: { marginTop: 8, fontSize: 13, fontWeight: '800', color: '#0f172a', textAlign: 'center' },
   sessionLaunchArea: { marginTop: 18, minHeight: 240, borderRadius: 28, backgroundColor: '#e8f5e9', alignItems: 'center', justifyContent: 'center' },
+  sessionLaunchAreaPlaceholder: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0' },
   startSessionButton: { width: '52%', minHeight: 120, borderRadius: 28, backgroundColor: '#16a34a', alignItems: 'center', justifyContent: 'center' },
   startSessionButtonDisabled: { backgroundColor: '#166534' },
+  startSessionButtonPlaceholder: { backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e2e8f0' },
   startSessionButtonText: { color: '#ffffff', fontWeight: '800', fontSize: 28 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginTop: 16 },
   gridTherapist: { justifyContent: 'space-between' },
   card: { width: '31.5%', paddingVertical: 12, paddingHorizontal: 10, marginBottom: 10, borderRadius: 18, backgroundColor: '#fff', borderWidth: 1, borderColor: '#e2e8f0' },
   cardTherapist: { width: '48%' },
   cardFullWidth: { width: '100%' },
+  placeholderCard: { minHeight: 138 },
   cardIconRow: { width: 46, height: 46, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#eff6ff' },
   cardImageIcon: { width: 30, height: 30 },
   cardTitle: { marginTop: 8, fontSize: 13, fontWeight: '800', color: '#0f172a', lineHeight: 16 },
   cardValue: { marginTop: 4, fontSize: 11, fontWeight: '600', color: '#475569', lineHeight: 14 },
+  placeholderBlock: { backgroundColor: '#e2e8f0' },
+  placeholderAvatar: { backgroundColor: '#dbe4f0' },
+  placeholderIconWrap: { backgroundColor: '#f8fafc' },
+  placeholderIcon: { width: 22, height: 22, borderRadius: 8 },
+  placeholderLine: { height: 10, borderRadius: 999, backgroundColor: '#dbe4f0' },
+  placeholderLineShort: { width: '62%' },
+  placeholderLineFamily: { marginTop: 10 },
+  placeholderLineTitle: { width: '54%', marginTop: 12 },
+  placeholderLineValue: { width: '78%', marginTop: 10, height: 12 },
+  placeholderLineButton: { width: '58%', height: 14 },
 });

@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/png" href="/icon.png" sizes="any" />
+    <link rel="apple-touch-icon" href="/icon.png" />
+    <title>CommunityBridge – Sign Up</title>
+    <meta name="robots" content="noindex" />
+    <style>
+      :root { --bg:#ffffff; --card:#ffffff; --text:#111827; --muted:#6b7280; --accent:#22c55e; --danger:#ef4444; --line:#e5e7eb; --primary:#2563eb; --subtle:#f8fafc; }
+      *{box-sizing:border-box}
+      body{margin:0; min-height:100vh; display:flex; align-items:center; justify-content:flex-end; padding: 42px 18px; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; background: var(--bg); color:var(--text);}
+      a{color:inherit}
+      .wrap{max-width: 560px; width:100%; margin:0; padding:0;}
+      .logo{display:flex; justify-content:flex-end; margin-bottom: 14px;}
+      .logo a{display:inline-flex; text-decoration:none;}
+      .logo img{width: min(320px, 100%); height: auto; display:block;}
+
+      .card{background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px;}
+      h1{margin:0 0 12px; font-size: 26px; text-align:left;}
+
+      label{display:block; font-size: 12px; color: var(--muted); margin: 10px 0 6px}
+      input, select{width:100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #ccc; background: #fff; color: var(--text); outline: none;}
+      input:focus, select:focus{border-color: rgba(37,99,235,.55)}
+
+      .row{display:flex; gap: 10px; flex-wrap: wrap; align-items:flex-start;}
+      .row > *{flex: 1 1 0; min-width: 0;}
+      .codeCol{flex: 0 0 190px;}
+
+      .btn{display:inline-flex; align-items:center; justify-content:center; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line); text-decoration:none; background: var(--subtle); color: var(--text); cursor: pointer; font-weight: 800;}
+      .btnPrimary{background: var(--primary); border-color: var(--primary); color: #fff;}
+
+      .checkRow{display:flex; justify-content:flex-end; align-items:center; gap: 8px; margin-top: 10px; font-size: 13px; color: var(--muted)}
+      .checkRow input{width:auto; padding:0; margin:0;}
+      .checkLabel{margin:0; cursor:pointer; -webkit-user-select:none; user-select:none;}
+
+      .meterWrap{margin-top: 10px;}
+      .meterBar{height: 10px; border-radius: 999px; border: 1px solid var(--line); background: #fff; overflow:hidden;}
+      .meterFill{height:100%; width: 0%; background: var(--danger); transition: width .15s ease;}
+      .meterText{margin-top: 6px; font-size: 12px; color: var(--muted); text-align:right;}
+
+      .msg{margin-top: 10px; font-size: 13px; color: var(--muted)}
+      .msg.err{color: #991b1b}
+
+      .actionsRow{display:flex; gap: 10px; align-items:center; flex-wrap: wrap; margin-top: 16px;}
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="logo">
+        <a href="/" aria-label="CommunityBridge home">
+          <img src="/icon.png" alt="CommunityBridge" />
+        </a>
+      </div>
+
+      <div class="card">
+        <h1>Sign Up</h1>
+
+        <form id="form">
+          <label for="name">Name</label>
+          <input id="name" autocomplete="name" placeholder="Full name" required />
+
+          <div class="row">
+            <div>
+              <label for="email">Email</label>
+              <input id="email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" required />
+            </div>
+            <div>
+              <label for="phone">Phone</label>
+              <input id="phone" inputmode="tel" autocomplete="tel" placeholder="(555) 123-4567" required pattern="\(\d{3}\) \d{3}-\d{4}" />
+            </div>
+          </div>
+
+          <label for="password">Password</label>
+          <input id="password" type="password" autocomplete="new-password" placeholder="Password" required minlength="8" maxlength="128" />
+          <div class="checkRow">
+            <label class="checkLabel" for="showPassword">Show password</label>
+            <input id="showPassword" type="checkbox" />
+          </div>
+          <div class="meterWrap" aria-label="Password strength">
+            <div class="meterBar"><div id="strengthFill" class="meterFill"></div></div>
+            <div id="strengthText" class="meterText">Strength: —</div>
+          </div>
+
+          <label for="password2">Confirm password</label>
+          <input id="password2" type="password" autocomplete="new-password" placeholder="Confirm password" required minlength="8" maxlength="128" />
+          <div class="checkRow">
+            <label class="checkLabel" for="showPassword2">Show confirm</label>
+            <input id="showPassword2" type="checkbox" />
+          </div>
+
+          <div class="row">
+            <div>
+              <label for="school">School</label>
+              <select id="school" required>
+                <option value="" selected disabled>Select your school…</option>
+                <option value="school_1">School One</option>
+                <option value="school_2">School Two</option>
+                <option value="school_3">School Three</option>
+              </select>
+            </div>
+            <div class="codeCol">
+              <label for="schoolCode">School ID</label>
+              <input id="schoolCode" inputmode="numeric" autocomplete="one-time-code" placeholder="5-digit code" required pattern="\d{5}" maxlength="5" />
+            </div>
+          </div>
+
+          <div class="actionsRow">
+            <button class="btn btnPrimary" type="submit">Sign up</button>
+            <a class="btn" href="/dashboard">Back to login</a>
+          </div>
+
+          <div id="msg" class="msg"></div>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+
+      const phoneEl = $('phone');
+      const passEl = $('password');
+      const pass2El = $('password2');
+      const showPassEl = $('showPassword');
+      const showPass2El = $('showPassword2');
+      const strengthFill = $('strengthFill');
+      const strengthText = $('strengthText');
+      const msgEl = $('msg');
+
+      function setMsg(text, isErr = false) {
+        msgEl.textContent = text || '';
+        msgEl.className = isErr ? 'msg err' : 'msg';
+      }
+
+      function digitsOnly(value) {
+        return String(value || '').replace(/\D+/g, '');
+      }
+
+      function formatPhone10(digits) {
+        const d = String(digits || '').slice(0, 10);
+        if (d.length <= 3) return d;
+        if (d.length <= 6) return '(' + d.slice(0, 3) + ') ' + d.slice(3);
+        return '(' + d.slice(0, 3) + ') ' + d.slice(3, 6) + '-' + d.slice(6);
+      }
+
+      phoneEl.addEventListener('input', () => {
+        const d = digitsOnly(phoneEl.value);
+        phoneEl.value = formatPhone10(d);
+      });
+
+      showPassEl.addEventListener('change', () => {
+        passEl.type = showPassEl.checked ? 'text' : 'password';
+      });
+      showPass2El.addEventListener('change', () => {
+        pass2El.type = showPass2El.checked ? 'text' : 'password';
+      });
+
+      function passwordStrengthScore(pw) {
+        const p = String(pw || '');
+        let score = 0;
+        if (p.length >= 8) score += 1;
+        if (p.length >= 12) score += 1;
+        if (/[a-z]/.test(p) && /[A-Z]/.test(p)) score += 1;
+        if (/\d/.test(p)) score += 1;
+        if (/[^a-zA-Z0-9]/.test(p)) score += 1;
+        return Math.min(score, 5);
+      }
+
+      function updateStrength() {
+        const score = passwordStrengthScore(passEl.value);
+        const pct = (score / 5) * 100;
+        strengthFill.style.width = pct + '%';
+
+        let label = '—';
+        let color = 'var(--danger)';
+        if (score <= 1) { label = 'Weak'; color = 'var(--danger)'; }
+        else if (score === 2) { label = 'Fair'; color = 'var(--primary)'; }
+        else if (score === 3) { label = 'Good'; color = 'var(--primary)'; }
+        else if (score >= 4) { label = 'Strong'; color = 'var(--accent)'; }
+
+        strengthFill.style.background = color;
+        strengthText.textContent = 'Strength: ' + label;
+      }
+
+      passEl.addEventListener('input', updateStrength);
+      updateStrength();
+
+      $('form').addEventListener('submit', (ev) => {
+        ev.preventDefault();
+        setMsg('');
+
+        const name = String($('name').value || '').trim();
+        const email = String($('email').value || '').trim();
+        const phoneDigits = digitsOnly(phoneEl.value);
+        const password = String(passEl.value || '');
+        const password2 = String(pass2El.value || '');
+        const school = String($('school').value || '');
+        const code = digitsOnly($('schoolCode').value).slice(0, 5);
+
+        if (!name || !email || !phoneDigits || !password || !password2 || !school || !code) {
+          setMsg('Please complete all fields.', true);
+          return;
+        }
+
+        if (phoneDigits.length !== 10) {
+          setMsg('Phone must be 10 digits (e.g., (555) 123-4567).', true);
+          return;
+        }
+
+        if (code.length !== 5) {
+          setMsg('School ID must be a 5-digit code.', true);
+          return;
+        }
+
+        if (password !== password2) {
+          setMsg('Passwords do not match.', true);
+          return;
+        }
+
+        if (!/^\S+@\S+\.[^\s@]+$/.test(email)) {
+          setMsg('Please enter a valid email address.', true);
+          return;
+        }
+
+        if (password.length < 8 || !/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/\d/.test(password)) {
+          setMsg('Password must be at least 8 characters and include uppercase, lowercase, and a number.', true);
+          return;
+        }
+
+        setMsg('Sign-up details look valid.');
+      });
+    </script>
+  </body>
+</html>

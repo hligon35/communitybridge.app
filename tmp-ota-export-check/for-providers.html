@@ -1,0 +1,670 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/png" href="/icon.png" sizes="any" />
+    <link rel="apple-touch-icon" href="/icon.png" />
+    <script>
+      (function () {
+        var CANONICAL_HOST = 'communitybridge.app';
+        if (window.location.hostname === 'www.' + CANONICAL_HOST) {
+          var target = 'https://' + CANONICAL_HOST + window.location.pathname + window.location.search + window.location.hash;
+          window.location.replace(target);
+        }
+      })();
+    </script>
+    <title>CommunityBridge for Providers - role-based operations for ABA, clinic, and school teams</title>
+    <meta
+      name="description"
+      content="CommunityBridge for ABA, clinic, and school teams. Coordinate schedules, communication, reporting, billing workflows, and family access in one role-based platform."
+    />
+    <meta name="keywords" content="ABA operations software, therapy scheduling, billing authorization exports, school communication platform, BCBA dashboard, parent portal" />
+    <link rel="canonical" href="https://communitybridge.app/for-providers" />
+
+    <meta property="og:site_name" content="CommunityBridge" />
+    <meta property="og:title" content="CommunityBridge for Providers - role-based operations for ABA, clinic, and school teams" />
+    <meta
+      property="og:description"
+      content="One place for communication, scheduling, reporting, billing coordination, and family access."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://communitybridge.app/for-providers" />
+    <meta property="og:image" content="https://communitybridge.app/og-image.png" />
+    <meta property="og:image:alt" content="CommunityBridge — connect your school community" />
+    <meta property="og:locale" content="en_US" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="CommunityBridge for Providers" />
+    <meta name="twitter:description" content="Communication, scheduling, reporting, and billing coordination built for ABA, clinic, and school teams." />
+    <meta name="twitter:image" content="https://communitybridge.app/og-image.png" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        "name": "CommunityBridge for Providers",
+        "url": "https://communitybridge.app/for-providers",
+        "breadcrumb": {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://communitybridge.app/" },
+            { "@type": "ListItem", "position": 2, "name": "For Providers", "item": "https://communitybridge.app/for-providers" }
+          ]
+        }
+      }
+    </script>
+
+    <style>
+      :root {
+        --bg: #f8fafc;
+        --card: #ffffff;
+        --text: #0f172a;
+        --muted: #475569;
+        --accent: #16a34a;
+        --accent2: #2563eb;
+        --line: rgba(15, 23, 42, 0.12);
+
+        --darkBg: #0b1220;
+        --darkText: #e5e7eb;
+        --darkMuted: #94a3b8;
+        --darkLine: rgba(255, 255, 255, 0.12);
+
+        --warnBg: #fffbeb;
+        --warnLine: #fde68a;
+        --warnText: #78350f;
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+        min-height: 100vh;
+        background:
+          radial-gradient(900px 520px at 18% -10%, rgba(37, 99, 235, 0.16) 0%, rgba(37, 99, 235, 0.0) 62%),
+          radial-gradient(900px 520px at 86% 6%, rgba(22, 163, 74, 0.14) 0%, rgba(22, 163, 74, 0.0) 60%),
+          linear-gradient(180deg, #ffffff 0%, var(--bg) 100%);
+        color: var(--text);
+      }
+      a { color: inherit; }
+
+      .top {
+        background: transparent;
+        border-bottom: 0;
+      }
+      .wrap { max-width: 1080px; margin: 0 auto; padding: 44px 18px; }
+      .wrap0 { padding: 0; }
+      .heroWrap { padding: 58px 18px; }
+
+      .nav {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .brand {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        text-decoration: none;
+      }
+      .brandLogo {
+        height: 84px;
+        width: auto;
+        max-width: min(560px, 100%);
+        display: inline-block;
+        object-fit: contain;
+        filter: drop-shadow(0 12px 28px rgba(15, 23, 42, 0.18));
+      }
+      .brandTag {
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.2px;
+        color: var(--muted);
+      }
+
+      .navActions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 14px;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        text-decoration: none;
+        background: rgba(255, 255, 255, 0.85);
+        color: var(--text);
+        font-weight: 600;
+        font-size: 13px;
+      }
+      .btnPrimary {
+        background: var(--accent);
+        border-color: rgba(22, 163, 74, 0.35);
+        color: #ffffff;
+      }
+      .btnGhost { background: transparent; }
+
+      .max760 { max-width: 760px; }
+
+      .gridHero {
+        display: grid;
+        gap: 22px;
+        grid-template-columns: 1.2fr 0.8fr;
+        align-items: center;
+      }
+
+      .pillTag {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        border: 1px solid rgba(15, 23, 42, 0.10);
+        background: rgba(15, 23, 42, 0.04);
+        padding: 6px 10px;
+        font-size: 13px;
+        font-weight: 600;
+        color: rgba(15, 23, 42, 0.76);
+      }
+
+      h1 {
+        margin: 10px 0 0;
+        font-size: 46px;
+        line-height: 1.08;
+        letter-spacing: -0.6px;
+      }
+      p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .heroLead { margin-top: 16px; font-size: 17px; max-width: 680px; }
+      .ctaRow { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+
+      .darkCard {
+        border-radius: 22px;
+        border: 1px solid var(--darkLine);
+        background: var(--darkBg);
+        color: var(--darkText);
+        padding: 18px;
+        box-shadow: 0 18px 46px rgba(15, 23, 42, 0.18);
+      }
+      .darkCardTitle { font-size: 13px; font-weight: 700; color: rgba(148, 163, 184, 0.9); }
+      .darkBlock {
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.10);
+        padding: 14px;
+        margin-top: 12px;
+      }
+      .darkProofItem { font-size: 13px; line-height: 1.6; color: rgba(229, 231, 235, 0.95); }
+
+      .section { max-width: 1080px; margin: 0 auto; padding: 56px 18px; }
+      .sectionBorder { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: #ffffff; }
+
+      h2 { margin: 0; font-size: 32px; letter-spacing: -0.4px; }
+      .sub { margin-top: 10px; max-width: 720px; font-size: 15px; }
+
+      .featuresGrid {
+        margin-top: 20px;
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .featureCard {
+        border-radius: 22px;
+        border: 1px solid var(--line);
+        background: #ffffff;
+        padding: 16px;
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+      }
+      .featureTitle { margin: 0; font-size: 16px; font-weight: 800; }
+      .featureBody { margin-top: 10px; font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+      .audGrid {
+        margin-top: 20px;
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .audCard {
+        border-radius: 22px;
+        border: 1px solid var(--line);
+        background: rgba(15, 23, 42, 0.03);
+        padding: 16px;
+      }
+      .audCard h3 { margin: 0; font-size: 18px; font-weight: 900; }
+      .audList { margin: 12px 0 0; padding-left: 18px; color: rgba(71, 85, 105, 0.95); font-size: 13px; line-height: 1.65; }
+      .audList li { margin: 8px 0; }
+
+      .sectionAlt {
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+        background: rgba(15, 23, 42, 0.03);
+      }
+
+      .pillarsGrid {
+        margin-top: 18px;
+        display: grid;
+        gap: 14px;
+        grid-template-columns: 1fr 1fr;
+      }
+      .pillarCard {
+        border-radius: 22px;
+        border: 1px solid var(--line);
+        background: #ffffff;
+        padding: 16px;
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+      }
+      .pillarCard h3 { margin: 0; font-size: 20px; letter-spacing: -0.2px; }
+      .pillarCard p { margin-top: 10px; font-size: 15px; }
+
+      .trustGrid {
+        margin-top: 18px;
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .trustCard {
+        border-radius: 22px;
+        border: 1px solid var(--line);
+        background: rgba(15, 23, 42, 0.03);
+        padding: 16px;
+      }
+      .trustCard h3 { margin: 0; font-size: 16px; font-weight: 900; }
+      .trustCard p { margin-top: 10px; font-size: 13px; line-height: 1.65; }
+
+      .packetGrid {
+        margin-top: 14px;
+        display: grid;
+        gap: 10px;
+        grid-template-columns: 1fr 1fr;
+      }
+      .packetItem {
+        border-radius: 18px;
+        border: 1px solid var(--line);
+        background: #ffffff;
+        padding: 10px 12px;
+        font-size: 13px;
+        color: rgba(71, 85, 105, 0.95);
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+      }
+
+      .docsGrid {
+        margin-top: 16px;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: 1fr 0.9fr;
+      }
+      .docCards {
+        margin-top: 14px;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: 1fr 1fr;
+      }
+      .doc {
+        border-radius: 18px;
+        border: 1px solid var(--line);
+        background: #ffffff;
+        padding: 14px;
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+      }
+      .docName { font-size: 13px; font-weight: 900; }
+      .docHint { margin-top: 8px; font-size: 13px; color: rgba(71, 85, 105, 0.9); }
+      .docLink { font-weight: 800; text-decoration: none; }
+      .docLink:hover { text-decoration: underline; }
+
+      .request {
+        border-radius: 22px;
+        border: 1px solid var(--darkLine);
+        background: var(--darkBg);
+        color: var(--darkText);
+        padding: 18px;
+        box-shadow: 0 18px 46px rgba(15, 23, 42, 0.18);
+      }
+      .request h3 { margin: 0; font-size: 22px; letter-spacing: -0.2px; }
+      .request p { margin-top: 10px; color: rgba(148, 163, 184, 0.95); font-size: 13px; line-height: 1.6; }
+      .reqItem { margin-top: 10px; border-radius: 18px; padding: 12px; background: rgba(255, 255, 255, 0.10); font-size: 13px; }
+      .reqBtn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        margin-top: 14px;
+        border-radius: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        background: #ffffff;
+        padding: 12px 14px;
+        text-decoration: none;
+        color: var(--darkBg);
+        font-weight: 900;
+        font-size: 13px;
+      }
+
+      .footer {
+        border-top: 1px solid var(--line);
+        background: #ffffff;
+      }
+      .footerCard {
+        border-radius: 22px;
+        background: rgba(15, 23, 42, 0.03);
+        padding: 18px;
+      }
+      .footerCard h2 { font-size: 22px; margin: 0; }
+      .footerCard p { margin-top: 12px; font-size: 13px; max-width: 900px; }
+
+      @media (max-width: 980px) {
+        .gridHero { grid-template-columns: 1fr; }
+        .featuresGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .audGrid { grid-template-columns: 1fr; }
+        .pillarsGrid { grid-template-columns: 1fr; }
+        .trustGrid { grid-template-columns: 1fr; }
+        .packetGrid { grid-template-columns: 1fr; }
+        .docsGrid { grid-template-columns: 1fr; }
+        .docCards { grid-template-columns: 1fr; }
+        h1 { font-size: 38px; }
+      }
+      @media (max-width: 520px) {
+        .featuresGrid { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="top">
+      <div class="wrap">
+        <div class="nav">
+          <a class="brand" href="/" aria-label="CommunityBridge home">
+            <img class="brandLogo" src="/titlelogo.png" alt="CommunityBridge" loading="eager" decoding="async" />
+            <div class="brandTag">For providers • operations • procurement</div>
+          </a>
+
+          <div class="navActions">
+            <a class="btn btnGhost" href="/">Home</a>
+            <a class="btn btnGhost" href="/support">Support</a>
+            <a class="btn btnGhost" href="/dashboard">Open app</a>
+            <a class="btn btnPrimary" href="/download">Get the app</a>
+          </div>
+        </div>
+
+        <div class="heroWrap">
+          <div class="gridHero">
+            <div>
+              <div class="pillTag">Why CommunityBridge</div>
+              <h1>Role-based operations for therapy programs, care teams, office staff, and families.</h1>
+              <p class="heroLead">
+                CommunityBridge replaces fragmented communication and scheduling tools with one platform for staff rosters,
+                learner schedules, clinical reporting, family messaging, authorizations, and billing exports.
+              </p>
+
+              <div class="ctaRow">
+                <a class="btn btnPrimary" href="#who-its-for">See who it is for</a>
+                <a class="btn" href="#features">Explore features</a>
+                <a class="btn" href="#documents">Review documents</a>
+              </div>
+            </div>
+
+            <div class="darkCard">
+              <div class="darkCardTitle">At a glance</div>
+
+              <div class="darkBlock"><div class="darkProofItem">Role-aware workspaces for parents, ABA techs, BCBAs, office teams, reception, and admins</div></div>
+              <div class="darkBlock"><div class="darkProofItem">Shared communication with posts, messaging, urgent memos, and organization-wide updates</div></div>
+              <div class="darkBlock"><div class="darkProofItem">Scheduling, staff assignment, reports, authorizations, and billing export workflows in one place</div></div>
+              <div class="darkBlock"><div class="darkProofItem">Available across web, iOS, and Android with browser access at /dashboard</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <section id="who-its-for" class="section">
+      <div class="max760">
+        <h2>Built for organizations that need one operational system</h2>
+        <p class="sub">
+          CommunityBridge fits programs where clinical, front-office, and family-facing work all depend on accurate schedules, clear role boundaries, and timely follow-up.
+        </p>
+      </div>
+
+      <div class="audGrid" aria-label="Audiences">
+        <div class="audCard">
+          <h3>ABA therapy programs</h3>
+          <ul class="audList">
+            <li>Support ABA tech and BCBA workflows without losing family context</li>
+            <li>Track schedules, assignments, reports, and learner-specific activity in one system</li>
+            <li>Keep billing and authorization follow-up closer to clinical operations</li>
+          </ul>
+        </div>
+        <div class="audCard">
+          <h3>Schools, clinics, and support programs</h3>
+          <ul class="audList">
+            <li>Centralize announcements, chats, rosters, and parent communication</li>
+            <li>Give office and reception staff clearer control over arrivals, scheduling, and front-desk visibility</li>
+            <li>Support both organization-wide and learner-level coordination</li>
+          </ul>
+        </div>
+        <div class="audCard">
+          <h3>Care teams serving families</h3>
+          <ul class="audList">
+            <li>Give parents a cleaner experience with only the information tied to their child</li>
+            <li>Provide continuity across staff, families, and leadership roles</li>
+            <li>Support escalation with urgent communication and visible follow-up</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section sectionAlt">
+      <div class="wrap wrap0">
+        <div class="pillarsGrid" aria-label="Pillars">
+          <div class="pillarCard">
+            <h3>Keep families and care teams aligned</h3>
+            <p>CommunityBridge keeps parent communication connected to the same learner, roster, and schedule context used by ABA techs, BCBAs, and office teams.</p>
+          </div>
+          <div class="pillarCard">
+            <h3>Handle urgent communication with clarity</h3>
+            <p>Urgent memos, alerts, and acknowledgement workflows help teams send high-priority updates with more structure than a standard chat or email thread.</p>
+          </div>
+          <div class="pillarCard">
+            <h3>Support role-based coordination</h3>
+            <p>Separate experiences for parents, ABA techs, BCBAs, office, reception, and admins keep each role focused on the tools and visibility it actually needs.</p>
+          </div>
+          <div class="pillarCard">
+            <h3>Give administrators better oversight</h3>
+            <p>Directories, permissions, scheduling views, reporting filters, billing exports, and operational settings give leadership clearer day-to-day visibility.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="features" class="section">
+      <div class="max760">
+        <h2>What CommunityBridge brings together</h2>
+        <p class="sub">
+          Instead of splitting communication across disconnected tools, CommunityBridge brings core coordination workflows into one system designed around real organizational roles.
+        </p>
+      </div>
+
+      <div class="featuresGrid" aria-label="Feature list">
+        <div class="featureCard">
+          <h3 class="featureTitle">Community feed and announcements</h3>
+          <div class="featureBody">A shared home space for organization-wide updates, family communication, and team visibility.</div>
+        </div>
+        <div class="featureCard">
+          <h3 class="featureTitle">Direct messaging and threaded chats</h3>
+          <div class="featureBody">Built-in conversations that keep staff and families aligned without leaving the platform.</div>
+        </div>
+        <div class="featureCard">
+          <h3 class="featureTitle">Urgent memos and acknowledgement flows</h3>
+          <div class="featureBody">Structured, high-priority communication for time-sensitive updates.</div>
+        </div>
+        <div class="featureCard">
+          <h3 class="featureTitle">Learner, parent, and staff directories</h3>
+          <div class="featureBody">Directory-style views that help teams find the right contacts, relationships, and roster details quickly.</div>
+        </div>
+        <div class="featureCard">
+          <h3 class="featureTitle">Role-based views for BCBA, ABA tech, office, reception, admin, and parent workflows</h3>
+          <div class="featureBody">Experiences designed so each audience sees only the tools relevant to its scope and permissions.</div>
+        </div>
+        <div class="featureCard">
+          <h3 class="featureTitle">Admin controls for permissions, alerts, settings, and exports</h3>
+          <div class="featureBody">Operational oversight tools for leadership, office, and other authorized admin users.</div>
+        </div>
+        <div class="featureCard">
+          <h3 class="featureTitle">Scheduling and staff assignment workflows</h3>
+          <div class="featureBody">Calendar-based scheduling with learner session updates and staff assignment actions from the same workspace.</div>
+        </div>
+        <div class="featureCard">
+          <h3 class="featureTitle">Reports, authorizations, and billing exports</h3>
+          <div class="featureBody">Clinical and operational reporting plus billing and authorization workflows that support office follow-through.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section sectionBorder">
+      <div class="wrap wrap0">
+        <div class="max760">
+          <h2>Why organizations evaluate CommunityBridge</h2>
+          <p class="sub">
+            Prospective clients need to see not just communication features, but whether the product supports the real handoffs between clinical, operational, and family-facing work.
+          </p>
+        </div>
+
+        <div class="trustGrid" aria-label="Trust">
+          <div class="trustCard">
+            <h3>Built for privacy-conscious organizations</h3>
+            <p>CommunityBridge includes role-based workflows, scoped staff access, and parent views designed for school and therapy settings.</p>
+          </div>
+          <div class="trustCard">
+            <h3>Documentation-ready evaluation flow</h3>
+            <p>Prospective clients can review product overviews, implementation materials, and policy documents through a dedicated document center.</p>
+          </div>
+          <div class="trustCard">
+            <h3>Careful compliance language</h3>
+            <p>Security and HIPAA-related statements should reflect the actual deployment environment, signed agreements, and safeguards currently in place.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="documents" class="section">
+      <div class="docsGrid">
+        <div>
+          <h2>Document center for client review</h2>
+          <p class="sub">
+            CommunityBridge can be reviewed with product, implementation, support, and policy materials for leadership, procurement, and operations teams.
+          </p>
+
+          <div class="docCards" aria-label="Documents">
+            <div class="doc">
+              <div class="docName">Executive product overview</div>
+              <div class="docHint">
+                <a class="docLink" href="downloads/client-packet/html/01_CommunityBridge_Executive_Product_Overview.html">View</a>
+                &middot;
+                <a class="docLink" href="downloads/client-packet/docx/01_CommunityBridge_Executive_Product_Overview.docx" download>Download (.docx)</a>
+              </div>
+            </div>
+            <div class="doc">
+              <div class="docName">Security overview</div>
+              <div class="docHint">
+                <a class="docLink" href="downloads/client-packet/html/02_CommunityBridge_Security_Overview.html">View</a>
+                &middot;
+                <a class="docLink" href="downloads/client-packet/docx/02_CommunityBridge_Security_Overview.docx" download>Download (.docx)</a>
+              </div>
+            </div>
+            <div class="doc">
+              <div class="docName">HIPAA / privacy controls checklist</div>
+              <div class="docHint">
+                <a class="docLink" href="downloads/client-packet/html/03_CommunityBridge_Privacy_and_HIPAA_Readiness_Checklist.html">View</a>
+                &middot;
+                <a class="docLink" href="downloads/client-packet/docx/03_CommunityBridge_Privacy_and_HIPAA_Readiness_Checklist.docx" download>Download (.docx)</a>
+              </div>
+            </div>
+            <div class="doc">
+              <div class="docName">Sample BAA or BAA request workflow</div>
+              <div class="docHint">
+                <a class="docLink" href="downloads/client-packet/html/04_CommunityBridge_BAA_and_Security_Packet_Request_Workflow.html">View</a>
+                &middot;
+                <a class="docLink" href="downloads/client-packet/docx/04_CommunityBridge_BAA_and_Security_Packet_Request_Workflow.docx" download>Download (.docx)</a>
+              </div>
+            </div>
+            <div class="doc">
+              <div class="docName">Data flow diagram</div>
+              <div class="docHint">
+                <a class="docLink" href="downloads/client-packet/html/05_CommunityBridge_Data_Flow_Summary.html">View</a>
+                &middot;
+                <a class="docLink" href="downloads/client-packet/docx/05_CommunityBridge_Data_Flow_Summary.docx" download>Download (.docx)</a>
+              </div>
+            </div>
+            <div class="doc">
+              <div class="docName">Implementation guide for schools and ABA organizations</div>
+              <div class="docHint">
+                <a class="docLink" href="downloads/client-packet/html/06_CommunityBridge_Implementation_Guide.html">View</a>
+                &middot;
+                <a class="docLink" href="downloads/client-packet/docx/06_CommunityBridge_Implementation_Guide.docx" download>Download (.docx)</a>
+              </div>
+            </div>
+            <div class="doc">
+              <div class="docName">Parent and staff onboarding guide</div>
+              <div class="docHint">
+                <a class="docLink" href="downloads/client-packet/html/07_CommunityBridge_Parent_and_Staff_Onboarding_Guide.html">View</a>
+                &middot;
+                <a class="docLink" href="downloads/client-packet/docx/07_CommunityBridge_Parent_and_Staff_Onboarding_Guide.docx" download>Download (.docx)</a>
+              </div>
+            </div>
+            <div class="doc">
+              <div class="docName">Incident response summary</div>
+              <div class="docHint">
+                <a class="docLink" href="downloads/client-packet/html/08_CommunityBridge_Incident_Response_Summary.html">View</a>
+                &middot;
+                <a class="docLink" href="downloads/client-packet/docx/08_CommunityBridge_Incident_Response_Summary.docx" download>Download (.docx)</a>
+              </div>
+            </div>
+            <div class="doc">
+              <div class="docName">Release and support policy</div>
+              <div class="docHint">
+                <a class="docLink" href="downloads/client-packet/html/09_CommunityBridge_Release_and_Support_Policy.html">View</a>
+                �
+                <a class="docLink" href="downloads/client-packet/docx/09_CommunityBridge_Release_and_Support_Policy.docx" download>Download (.docx)</a>
+              </div>
+            </div>
+            <div class="doc">
+              <div class="docName">Subprocessor list</div>
+              <div class="docHint">
+                <a class="docLink" href="downloads/client-packet/html/10_CommunityBridge_Subprocessor_and_Third_Party_Services_List.html">View</a>
+                �
+                <a class="docLink" href="downloads/client-packet/docx/10_CommunityBridge_Subprocessor_and_Third_Party_Services_List.docx" download>Download (.docx)</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="request" aria-label="Request information">
+          <h3>Request a review packet</h3>
+          <p>
+            Share your organization type, approximate user count, deployment goals, and document requirements to receive the right materials for evaluation.
+          </p>
+          <div class="reqItem">Organization name and type</div>
+          <div class="reqItem">ABA program, school, or support services model</div>
+          <div class="reqItem">Estimated staff, family, and student users</div>
+          <div class="reqItem">Security, privacy, or procurement requirements</div>
+          <div class="reqItem">Target timeline and implementation needs</div>
+
+          <a
+            class="reqBtn"
+            href="mailto:info@communitybridge.app?subject=CommunityBridge%20review%20packet%20request&body=Organization%20name%20and%20type%3A%0D%0AABA%20program%2C%20school%2C%20or%20support%20services%20model%3A%0D%0AEstimated%20staff%2C%20family%2C%20and%20student%20users%3A%0D%0ASecurity%2C%20privacy%2C%20or%20procurement%20requirements%3A%0D%0ATarget%20timeline%20and%20implementation%20needs%3A%0D%0A%0D%0APlease%20share%20the%20appropriate%20materials%20and%20next%20steps."
+          >Contact CommunityBridge</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="footer">
+      <div class="section">
+        <div class="footerCard">
+          <h2>CommunityBridge</h2>
+          <p>
+            CommunityBridge supports communication and operational coordination for therapy programs, schools, and family-centered organizations. Privacy and security statements should reflect the actual deployment environment, signed agreements, and the safeguards currently in place.
+          </p>
+        </div>
+      </div>
+    </section>
+  </body>
+</html>
+

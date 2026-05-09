@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Delete account – CommunityBridge</title>
+    <meta name="robots" content="noindex" />
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background: #0b1220; color: #e5e7eb; }
+      .wrap { max-width: 680px; margin: 0 auto; padding: 32px 16px; }
+      .card { background: #111827; border: 1px solid #1f2937; border-radius: 12px; padding: 18px; }
+      h1 { margin: 0 0 8px 0; font-size: 20px; }
+      p { margin: 8px 0; color: #cbd5e1; line-height: 1.4; }
+      .row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+      button, a.btn { border: 0; border-radius: 10px; padding: 10px 14px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-block; }
+      button.primary { background: #b91c1c; color: #fff; }
+      button.secondary, a.btn.secondary { background: #1f2937; color: #e5e7eb; }
+      button:disabled { opacity: 0.6; cursor: not-allowed; }
+      code { background: #0b1220; padding: 2px 6px; border-radius: 6px; }
+      .status { margin-top: 10px; font-size: 13px; color: #93c5fd; }
+      .err { color: #fca5a5; }
+      .hidden { display: none; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <h1>Delete your CommunityBridge account</h1>
+        <p>
+          This will permanently delete your account and sign you out. This cannot be undone.
+        </p>
+        <p id="who"></p>
+        <div class="row">
+          <a id="loginLink" class="btn secondary hidden" href="/dashboard">Sign in to continue</a>
+          <button id="deleteBtn" class="primary" disabled>Delete my account</button>
+          <a class="btn secondary" href="/dashboard">Back to dashboard</a>
+        </div>
+        <div id="status" class="status"></div>
+      </div>
+    </div>
+
+    <script type="module">
+      const $ = (id) => document.getElementById(id);
+      const statusEl = $('status');
+      const whoEl = $('who');
+      const deleteBtn = $('deleteBtn');
+      const loginLink = $('loginLink');
+
+      function setStatus(msg, kind) {
+        statusEl.textContent = msg || '';
+        statusEl.className = 'status' + (kind === 'err' ? ' err' : '');
+      }
+
+      async function loadFirebaseConfig() {
+        try {
+          const res = await fetch('/__/firebase/init.json', { cache: 'no-store' });
+          if (!res.ok) throw new Error('Firebase init config is unavailable.');
+          const json = await res.json();
+          if (!json || !json.apiKey || !json.projectId || !json.appId) {
+            throw new Error('Firebase init config is incomplete.');
+          }
+          return json;
+        } catch (_) {
+          throw new Error('Account deletion is temporarily unavailable. Please try again later.');
+        }
+      }
+
+      const firebaseConfig = await loadFirebaseConfig().catch((error) => {
+        setStatus(error?.message || 'Account deletion is temporarily unavailable.', 'err');
+        throw error;
+      });
+
+      const [{ initializeApp }, { getAuth, onAuthStateChanged }] = await Promise.all([
+        import('https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js'),
+        import('https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js'),
+      ]);
+
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+
+      let currentUser = null;
+      onAuthStateChanged(auth, (u) => {
+        currentUser = u;
+        if (!u) {
+          whoEl.textContent = 'You are not signed in.';
+          deleteBtn.disabled = true;
+          loginLink.style.display = 'inline-block';
+          setStatus('Sign in first, then return to /delete-account.');
+          return;
+        }
+
+        whoEl.textContent = 'Signed in as ' + (u.email || u.uid);
+        deleteBtn.disabled = false;
+        loginLink.style.display = 'none';
+        setStatus('');
+      });
+
+      async function doDelete() {
+        if (!currentUser) return;
+        const ok1 = confirm('Delete your account? This cannot be undone.');
+        if (!ok1) return;
+        const ok2 = confirm('Final confirmation: permanently delete your account now?');
+        if (!ok2) return;
+
+        try {
+          deleteBtn.disabled = true;
+          setStatus('Deleting your account…');
+          const idToken = await currentUser.getIdToken(true);
+          const resp = await fetch('/api/account/delete', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${idToken}`,
+            },
+            body: JSON.stringify({ confirm: true }),
+          });
+          const json = await resp.json().catch(() => null);
+          if (!resp.ok || json?.ok !== true) {
+            throw new Error((json && (json.error || json.message)) || 'Could not delete account.');
+          }
+
+          setStatus('Account deleted. Redirecting to home…');
+          window.location.replace('/');
+        } catch (e) {
+          const msg = (e && (e.message || e.code)) ? (e.message || e.code) : String(e);
+          setStatus('Delete failed: ' + msg, 'err');
+          deleteBtn.disabled = false;
+        }
+      }
+
+      deleteBtn.addEventListener('click', () => { doDelete(); });
+    </script>
+  </body>
+</html>

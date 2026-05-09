@@ -737,7 +737,7 @@ const styles = StyleSheet.create({
   profileMeta: { marginTop: 4, color: '#64748b', paddingRight: 4 },
   profileMetaSecondary: { marginTop: 4, color: '#475569', fontSize: 10, fontWeight: '700' },
   statusPill: { marginTop: 2, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 999, alignSelf: 'flex-start' },
-  statusPillTopRight: { position: 'absolute', top: 0, right: 22, marginTop: 46, minWidth: 56, alignItems: 'center' },
+  statusPillTopRight: { position: 'absolute', top: 0, right: 22, marginTop: 38, minWidth: 56, alignItems: 'center' },
   statusPillText: { fontWeight: '800', fontSize: 10, textAlign: 'center', lineHeight: 12 },
   tabContent: { marginTop: 8 },
   summaryCardsRow: { flexDirection: 'row', alignItems: 'stretch', marginTop: 6, marginBottom: 2 },

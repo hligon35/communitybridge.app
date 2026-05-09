@@ -1,0 +1,1057 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CommunityBridge Organization Intake</title>
+    <meta name="description" content="Submit a new organization, program, and campus intake for approval in CommunityBridge." />
+    <script src="https://www.google.com/recaptcha/api.js?render=explicit" async defer></script>
+    <style>
+      :root {
+        --bg: #f8fafc;
+        --card: #ffffff;
+        --text: #0f172a;
+        --muted: #475569;
+        --line: rgba(15, 23, 42, 0.12);
+        --green: #16a34a;
+        --blue: #2563eb;
+        --amber: #b45309;
+        --red: #dc2626;
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background:
+          radial-gradient(900px 520px at 16% -12%, rgba(37, 99, 235, 0.16), rgba(37, 99, 235, 0)),
+          radial-gradient(900px 520px at 88% 4%, rgba(22, 163, 74, 0.14), rgba(22, 163, 74, 0)),
+          linear-gradient(180deg, #ffffff 0%, var(--bg) 100%);
+        color: var(--text);
+        min-height: 100vh;
+      }
+
+      .shell {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 42px 18px 72px;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: 1.15fr 0.85fr;
+        gap: 20px;
+        align-items: start;
+        margin-bottom: 26px;
+      }
+
+      .heroCard,
+      .formCard,
+      .panel,
+      .locationCard {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        box-shadow: 0 18px 44px rgba(15, 23, 42, 0.06);
+      }
+
+      .heroCard {
+        padding: 28px;
+      }
+
+      .heroLabel {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: rgba(37, 99, 235, 0.08);
+        color: var(--blue);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+      }
+
+      h1 {
+        margin: 14px 0 12px;
+        font-size: 42px;
+        line-height: 1.05;
+        letter-spacing: -0.04em;
+      }
+
+      p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .heroMeta {
+        display: grid;
+        gap: 12px;
+        padding: 22px;
+      }
+
+      .heroMeta h2 {
+        margin: 0;
+        font-size: 18px;
+      }
+
+      .heroMeta ul {
+        margin: 0;
+        padding-left: 18px;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .formCard {
+        padding: 22px;
+      }
+
+      .grid {
+        display: grid;
+        gap: 16px;
+      }
+
+      .grid.two {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .mt16 { margin-top: 16px; }
+      .mt22 { margin-top: 22px; }
+      .spanAll { grid-column: 1 / -1; }
+
+      .panel {
+        padding: 18px;
+      }
+
+      .panel h2,
+      .locationCard h3 {
+        margin: 0 0 6px;
+        font-size: 18px;
+      }
+
+      .panel p,
+      .locationCard p {
+        font-size: 14px;
+      }
+
+      label {
+        display: grid;
+        gap: 8px;
+        font-size: 13px;
+        font-weight: 700;
+        color: #1e293b;
+      }
+
+      input,
+      select,
+      textarea {
+        width: 100%;
+        border: 1px solid rgba(15, 23, 42, 0.12);
+        border-radius: 14px;
+        padding: 12px 14px;
+        font: inherit;
+        color: var(--text);
+        background: #fff;
+      }
+
+      textarea {
+        min-height: 110px;
+        resize: vertical;
+      }
+
+      input:focus,
+      select:focus,
+      textarea:focus {
+        outline: 2px solid rgba(37, 99, 235, 0.18);
+        border-color: rgba(37, 99, 235, 0.4);
+      }
+
+      .fieldHint {
+        margin-top: -2px;
+        font-size: 12px;
+        line-height: 1.5;
+        color: #64748b;
+        font-weight: 500;
+      }
+
+      .pac-container {
+        z-index: 9999;
+      }
+
+      .locationsHeader {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+
+      .locationsStack {
+        display: grid;
+        gap: 14px;
+      }
+
+      .locationCard {
+        padding: 18px;
+      }
+
+      .locationHead {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+
+      .locationHeadActions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-left: auto;
+      }
+
+      .locationBody.isCollapsed {
+        display: none;
+      }
+
+      .locationPill {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: rgba(22, 163, 74, 0.12);
+        color: #166534;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .btnRow {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+      }
+
+      button {
+        appearance: none;
+        border: 0;
+        border-radius: 14px;
+        padding: 12px 18px;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .btnPrimary {
+        background: var(--green);
+        color: #fff;
+      }
+
+      .btnSecondary {
+        background: rgba(37, 99, 235, 0.08);
+        color: var(--blue);
+      }
+
+      .btnDanger {
+        background: rgba(220, 38, 38, 0.08);
+        color: var(--red);
+      }
+
+      .btnGhost {
+        background: rgba(15, 23, 42, 0.06);
+        color: #334155;
+      }
+
+      .status {
+        margin-top: 16px;
+        border-radius: 16px;
+        padding: 14px 16px;
+        font-size: 14px;
+        line-height: 1.6;
+        display: none;
+      }
+
+      .status.show { display: block; }
+      .status.info { background: rgba(37, 99, 235, 0.08); color: #1d4ed8; }
+      .status.success { background: rgba(22, 163, 74, 0.1); color: #166534; }
+      .status.error { background: rgba(220, 38, 38, 0.1); color: #b91c1c; }
+
+      .captchaWrap {
+        margin-top: 18px;
+        display: grid;
+        gap: 10px;
+        justify-content: start;
+      }
+
+      .captchaHint {
+        font-size: 12px;
+        color: #64748b;
+      }
+
+      .captchaPlaceholder {
+        min-height: 78px;
+        padding: 14px 16px;
+        border: 1px dashed rgba(15, 23, 42, 0.14);
+        border-radius: 16px;
+        background: rgba(15, 23, 42, 0.03);
+        color: #475569;
+        font-size: 13px;
+        line-height: 1.6;
+        display: none;
+        max-width: 420px;
+      }
+
+      .captchaPlaceholder.show {
+        display: block;
+      }
+
+      .finePrint {
+        margin-top: 18px;
+        font-size: 12px;
+        color: #64748b;
+      }
+
+      .hiddenTrap {
+        position: absolute;
+        left: -9999px;
+        width: 1px;
+        height: 1px;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      @media (max-width: 880px) {
+        .hero {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .grid.two {
+          grid-template-columns: 1fr;
+        }
+
+        h1 {
+          font-size: 34px;
+        }
+
+        .locationsHeader,
+        .locationHead {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <div class="hero">
+        <section class="heroCard">
+          <div class="heroLabel">CommunityBridge Organization Intake</div>
+          <h1>Submit your organization for approval.</h1>
+          <p>
+            Complete this intake once for your organization and locations. After review, CommunityBridge will activate your organization,
+            programs, and campuses so users can join with the approved enrollment codes immediately.
+          </p>
+        </section>
+        <aside class="heroMeta">
+          <h2>What happens next</h2>
+          <ul>
+            <li>Your submission is stored for review.</li>
+            <li>An approval email is sent to CommunityBridge operations.</li>
+            <li>When approved, your organization and locations are written directly into the app.</li>
+            <li>Your users can join using the approved ZIP or enrollment codes tied to each location.</li>
+          </ul>
+        </aside>
+      </div>
+
+      <form class="formCard" id="orgIntakeForm" novalidate>
+        <div class="grid">
+          <section class="panel">
+            <h2>Organization</h2>
+            <p>Enter the main organization or headquarters information exactly as it should appear in CommunityBridge.</p>
+            <div class="grid two mt16" data-address-scope="organization">
+              <label>
+                Organization name
+                <input type="text" name="organizationName" required placeholder="CommunityBridge Care Network HQ" />
+              </label>
+              <label>
+                Short code
+                <input type="text" name="organizationShortCode" maxlength="12" pattern="[A-Za-z0-9-]{2,12}" placeholder="CBRIDGE" />
+              </label>
+              <label>
+                Organization phone
+                <input type="tel" name="organizationPhone" required pattern="\d{3}-\d{3}-\d{4}" placeholder="317-555-1000" />
+              </label>
+              <label>
+                Organization email
+                <input type="email" name="organizationEmail" required placeholder="info@organization.com" />
+              </label>
+              <label class="grid spanAll">
+                Address line 1
+                <input type="text" name="organizationAddress1" required placeholder="1201 N Meridian St Suite 200" autocomplete="address-line1" data-address-role="line1" data-address-scope="organization" />
+                <span class="fieldHint">Start typing to search and auto-fill city, state, and ZIP.</span>
+              </label>
+              <label class="grid spanAll">
+                Address line 2
+                <input type="text" name="organizationAddress2" placeholder="Optional suite, building, or floor" autocomplete="address-line2" data-address-role="line2" data-address-scope="organization" />
+              </label>
+              <label>
+                City
+                <input type="text" name="organizationCity" required placeholder="Indianapolis" autocomplete="address-level2" data-address-role="city" data-address-scope="organization" />
+              </label>
+              <label>
+                State
+                <input type="text" name="organizationState" required maxlength="2" pattern="[A-Za-z]{2}" placeholder="IN" autocomplete="address-level1" data-address-role="state" data-address-scope="organization" />
+              </label>
+              <label>
+                ZIP
+                <input type="text" name="organizationZipCode" required pattern="\d{5}(-\d{4})?" placeholder="46204" autocomplete="postal-code" data-address-role="zipCode" data-address-scope="organization" />
+              </label>
+              <label>
+                Website
+                <input type="url" name="organizationWebsite" placeholder="https://www.organization.com" />
+              </label>
+            </div>
+          </section>
+
+          <section class="panel">
+            <h2>Primary Contact</h2>
+            <p>This is the person CommunityBridge will follow up with if onboarding questions come up.</p>
+            <div class="grid two mt16">
+              <label>
+                Contact name
+                <input type="text" name="contactName" required maxlength="120" placeholder="Jane Smith" />
+              </label>
+              <label>
+                Job title
+                <input type="text" name="contactTitle" placeholder="Regional Operations Lead" />
+              </label>
+              <label>
+                Contact email
+                <input type="email" name="contactEmail" required placeholder="jane.smith@organization.com" />
+              </label>
+              <label>
+                Contact phone
+                <input type="tel" name="contactPhone" pattern="\d{3}-\d{3}-\d{4}" placeholder="317-555-0101" />
+              </label>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="locationsHeader">
+              <div>
+                <h2>Programs and Campuses</h2>
+                <p>Add every program/location pair that should be active after approval.</p>
+              </div>
+              <button type="button" class="btnSecondary" id="addLocationBtn">Add Location</button>
+            </div>
+            <div class="locationsStack" id="locationsStack"></div>
+          </section>
+
+          <section class="panel">
+            <h2>Notes</h2>
+            <p>Optional rollout details, implementation notes, or anything you want included in the approval review.</p>
+            <label class="mt16">
+              Notes
+              <textarea name="notes" placeholder="Example: We want Indiana locations approved first, then Michigan in phase two."></textarea>
+            </label>
+          </section>
+        </div>
+
+        <div class="hiddenTrap" aria-hidden="true">
+          <label>
+            Website
+            <input type="text" name="website" tabindex="-1" autocomplete="off" />
+          </label>
+        </div>
+
+        <div class="btnRow mt22">
+          <button type="submit" class="btnPrimary" id="submitBtn">Send for Approval</button>
+          <button type="button" class="btnSecondary" id="resetBtn">Reset Form</button>
+        </div>
+        <div class="captchaWrap">
+          <div id="recaptchaMount"></div>
+          <div class="captchaPlaceholder" id="captchaPlaceholder"></div>
+          <div class="captchaHint">Spam protection is required before submitting this intake.</div>
+        </div>
+        <div class="status" id="statusBox"></div>
+        <p class="finePrint">
+          Submitting this form does not activate your organization immediately. CommunityBridge will first review and approve the request.
+        </p>
+      </form>
+    </div>
+
+    <template id="locationTemplate">
+      <article class="locationCard" data-location-card>
+        <div class="locationHead">
+          <div>
+            <div class="locationPill">Location <span data-location-index></span></div>
+            <h3>Program and campus details</h3>
+            <p>Each location becomes an enrollment destination that users can join after approval.</p>
+          </div>
+          <div class="locationHeadActions">
+            <button type="button" class="btnGhost" data-toggle-location>Hide</button>
+            <button type="button" class="btnDanger" data-remove-location>Remove</button>
+          </div>
+        </div>
+        <div class="grid two locationBody" data-location-body>
+          <label>
+            Program name
+            <input type="text" data-field="programName" required placeholder="Center-Based ABA" />
+          </label>
+          <label>
+            Program type
+            <select data-field="programType">
+              <option value="centerBasedAba">Center Based ABA</option>
+              <option value="earlyInterventionAcademy">Early Intervention Academy</option>
+              <option value="corporate">Corporate / Operations</option>
+            </select>
+          </label>
+          <label>
+            Campus/location name
+            <input type="text" data-field="name" required maxlength="120" placeholder="Center-Based ABA - Downtown Indianapolis" />
+          </label>
+          <label>
+            Campus type
+            <input type="text" data-field="campusType" placeholder="Center" />
+          </label>
+          <label>
+            Location phone
+            <input type="tel" data-field="phone" pattern="\d{3}-\d{3}-\d{4}" placeholder="317-300-5725" />
+          </label>
+          <label>
+            Location email
+            <input type="email" data-field="email" placeholder="info@organization.com" />
+          </label>
+          <label class="grid spanAll">
+            Address line 1
+            <input type="text" data-field="address1" required placeholder="5505 N Post Rd" autocomplete="address-line1" data-address-role="line1" />
+            <span class="fieldHint">Start typing to search and auto-fill city, state, and ZIP.</span>
+          </label>
+          <label class="grid spanAll">
+            Address line 2
+            <input type="text" data-field="address2" placeholder="Optional suite, building, or floor" autocomplete="address-line2" data-address-role="line2" />
+          </label>
+          <label>
+            City
+            <input type="text" data-field="city" required placeholder="Indianapolis" autocomplete="address-level2" data-address-role="city" />
+          </label>
+          <label>
+            State
+            <input type="text" data-field="state" required maxlength="2" pattern="[A-Za-z]{2}" placeholder="IN" autocomplete="address-level1" data-address-role="state" />
+          </label>
+          <label>
+            ZIP
+            <input type="text" data-field="zipCode" required pattern="\d{5}(-\d{4})?" placeholder="46216" autocomplete="postal-code" data-address-role="zipCode" />
+          </label>
+          <label>
+            Enrollment code
+            <input type="text" data-field="enrollmentCode" maxlength="24" pattern="[A-Za-z0-9-]{4,24}" placeholder="Defaults to ZIP + short code, like 46204CBRIDGE" />
+          </label>
+        </div>
+      </article>
+    </template>
+
+    <script>
+      (function () {
+        var form = document.getElementById('orgIntakeForm');
+        var statusBox = document.getElementById('statusBox');
+        var addLocationBtn = document.getElementById('addLocationBtn');
+        var resetBtn = document.getElementById('resetBtn');
+        var locationsStack = document.getElementById('locationsStack');
+        var template = document.getElementById('locationTemplate');
+        var submitBtn = document.getElementById('submitBtn');
+        var organizationShortCodeInput = form.querySelector('input[name="organizationShortCode"]');
+        var captchaPlaceholder = document.getElementById('captchaPlaceholder');
+        var recaptchaWidgetId = null;
+        var recaptchaToken = '';
+        var recaptchaEnabled = false;
+        var googlePlacesEnabled = false;
+        var placesScriptPromise = null;
+        var addressAutocompleteInstances = [];
+
+        function showCaptchaPlaceholder(message) {
+          captchaPlaceholder.textContent = message;
+          captchaPlaceholder.classList.add('show');
+        }
+
+        function hideCaptchaPlaceholder() {
+          captchaPlaceholder.textContent = '';
+          captchaPlaceholder.classList.remove('show');
+        }
+
+        function setRecaptchaToken(token) {
+          recaptchaToken = (token || '').toString().trim();
+        }
+
+        function clearAutocompleteInstances() {
+          addressAutocompleteInstances.forEach(function (listener) {
+            try {
+              if (listener && typeof listener.remove === 'function') listener.remove();
+            } catch (_) {}
+          });
+          addressAutocompleteInstances = [];
+          Array.prototype.slice.call(document.querySelectorAll('[data-address-role="line1"]')).forEach(function (input) {
+            if (input && input.dataset) delete input.dataset.autocompleteBound;
+          });
+        }
+
+        function loadGooglePlaces(apiKey) {
+          if (!apiKey) return Promise.resolve(null);
+          if (window.google && window.google.maps && window.google.maps.places) return Promise.resolve(window.google.maps);
+          if (placesScriptPromise) return placesScriptPromise;
+
+          placesScriptPromise = new Promise(function (resolve, reject) {
+            var existing = document.querySelector('script[data-google-places="true"]');
+            if (existing) {
+              existing.addEventListener('load', function () { resolve(window.google && window.google.maps ? window.google.maps : null); }, { once: true });
+              existing.addEventListener('error', function () { reject(new Error('Google Places failed to load.')); }, { once: true });
+              return;
+            }
+
+            var script = document.createElement('script');
+            script.async = true;
+            script.defer = true;
+            script.setAttribute('data-google-places', 'true');
+            script.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(apiKey) + '&libraries=places';
+            script.onload = function () { resolve(window.google && window.google.maps ? window.google.maps : null); };
+            script.onerror = function () { reject(new Error('Google Places failed to load.')); };
+            document.head.appendChild(script);
+          });
+
+          return placesScriptPromise;
+        }
+
+        function getPlaceComponentMap(place) {
+          var map = {};
+          var components = Array.isArray(place && place.address_components) ? place.address_components : [];
+          components.forEach(function (component) {
+            (component.types || []).forEach(function (type) {
+              if (!map[type]) map[type] = component;
+            });
+          });
+          return map;
+        }
+
+        function buildAddressFromPlace(place) {
+          var componentMap = getPlaceComponentMap(place);
+          var streetNumber = componentMap.street_number ? componentMap.street_number.long_name : '';
+          var route = componentMap.route ? componentMap.route.long_name : '';
+          var subpremise = componentMap.subpremise ? componentMap.subpremise.long_name : '';
+          var locality = componentMap.locality ? componentMap.locality.long_name : '';
+          var postalTown = componentMap.postal_town ? componentMap.postal_town.long_name : '';
+          var adminLevel2 = componentMap.administrative_area_level_2 ? componentMap.administrative_area_level_2.long_name : '';
+          var city = locality || postalTown || adminLevel2;
+          var state = componentMap.administrative_area_level_1 ? componentMap.administrative_area_level_1.short_name : '';
+          var postalCode = componentMap.postal_code ? componentMap.postal_code.long_name : '';
+          var postalCodeSuffix = componentMap.postal_code_suffix ? componentMap.postal_code_suffix.long_name : '';
+          var address1 = [streetNumber, route].filter(Boolean).join(' ').trim() || (place && place.name ? place.name : '');
+          return {
+            line1: address1,
+            line2: subpremise,
+            city: city,
+            state: state,
+            zipCode: [postalCode, postalCodeSuffix].filter(Boolean).join('-')
+          };
+        }
+
+        function fillAddressScope(scope, values) {
+          if (!scope || !values) return;
+          ['line1', 'line2', 'city', 'state', 'zipCode'].forEach(function (role) {
+            var input = scope.querySelector('[data-address-role="' + role + '"]');
+            if (!input || values[role] == null || values[role] === '') return;
+            input.value = values[role];
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+          });
+        }
+
+        function bindAutocompleteForInput(input) {
+          if (!googlePlacesEnabled || !input || input.dataset.autocompleteBound === 'true') return;
+          if (!(window.google && window.google.maps && window.google.maps.places)) return;
+
+          var autocomplete = new window.google.maps.places.Autocomplete(input, {
+            types: ['address'],
+            fields: ['address_components', 'name']
+          });
+          var scope = input.closest('[data-address-scope]') || form;
+          var listener = autocomplete.addListener('place_changed', function () {
+            var place = autocomplete.getPlace();
+            var values = buildAddressFromPlace(place);
+            fillAddressScope(scope, values);
+          });
+          addressAutocompleteInstances.push(listener);
+          input.dataset.autocompleteBound = 'true';
+        }
+
+        function wireAddressAutocomplete() {
+          if (!googlePlacesEnabled) return;
+          Array.prototype.slice.call(document.querySelectorAll('[data-address-role="line1"]')).forEach(bindAutocompleteForInput);
+        }
+
+        function resetRecaptcha() {
+          setRecaptchaToken('');
+          if (window.grecaptcha && recaptchaWidgetId != null) {
+            window.grecaptcha.reset(recaptchaWidgetId);
+          }
+        }
+
+        function waitForRecaptcha() {
+          return new Promise(function (resolve, reject) {
+            var attempts = 0;
+            var timer = window.setInterval(function () {
+              attempts += 1;
+              if (window.grecaptcha && typeof window.grecaptcha.render === 'function') {
+                window.clearInterval(timer);
+                resolve(window.grecaptcha);
+                return;
+              }
+              if (attempts >= 100) {
+                window.clearInterval(timer);
+                reject(new Error('reCAPTCHA library did not load.'));
+              }
+            }, 100);
+          });
+        }
+
+        async function initRecaptcha() {
+          if (window.location.protocol === 'file:') {
+            showCaptchaPlaceholder('Local preview mode: reCAPTCHA loads only when this page is served from communitybridge.app or Firebase Hosting.');
+            return;
+          }
+
+          try {
+            var configResponse = await fetch('/organizations-intake-config', { method: 'GET' });
+            var config = await configResponse.json().catch(function () { return {}; });
+            if (!configResponse.ok || !config.ok || !config.recaptchaSiteKey) {
+              showCaptchaPlaceholder('reCAPTCHA is not configured yet. Add the production site key before using this intake form.');
+            } else {
+              var grecaptcha = await waitForRecaptcha();
+              recaptchaWidgetId = grecaptcha.render('recaptchaMount', {
+                sitekey: config.recaptchaSiteKey,
+                callback: function (token) { setRecaptchaToken(token); },
+                'expired-callback': function () { setRecaptchaToken(''); },
+                'error-callback': function () { setRecaptchaToken(''); }
+              });
+              hideCaptchaPlaceholder();
+              recaptchaEnabled = true;
+            }
+
+            if (config.googlePlacesApiKey) {
+              try {
+                await loadGooglePlaces(config.googlePlacesApiKey);
+                googlePlacesEnabled = Boolean(window.google && window.google.maps && window.google.maps.places);
+                wireAddressAutocomplete();
+              } catch (_) {
+                googlePlacesEnabled = false;
+              }
+            }
+          } catch (error) {
+            showCaptchaPlaceholder('reCAPTCHA could not be initialized. Please reload the page or contact CommunityBridge support.');
+          }
+        }
+
+        function setStatus(kind, message) {
+          statusBox.className = 'status show ' + kind;
+          statusBox.textContent = message;
+        }
+
+        function clearStatus() {
+          statusBox.className = 'status';
+          statusBox.textContent = '';
+        }
+
+        function formatPhoneInput(value) {
+          var digits = (value || '').toString().replace(/\D/g, '');
+          if (digits.length === 11 && digits.charAt(0) === '1') digits = digits.slice(1);
+          digits = digits.slice(0, 10);
+          if (!digits) return '';
+          if (digits.length <= 3) return digits;
+          if (digits.length <= 6) return digits.slice(0, 3) + '-' + digits.slice(3);
+          return digits.slice(0, 3) + '-' + digits.slice(3, 6) + '-' + digits.slice(6);
+        }
+
+        function normalizeWebsiteInput(value, options) {
+          var presetScheme = options && options.presetScheme;
+          var trimmed = (value || '').toString().trim();
+          if (!trimmed) return presetScheme ? 'https://' : '';
+          if (/^https:\/\//i.test(trimmed)) return 'https://' + trimmed.slice(8);
+          if (/^http:\/\//i.test(trimmed)) return 'https://' + trimmed.slice(7);
+          if (/^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)) return trimmed;
+          return 'https://' + trimmed.replace(/^\/+/, '');
+        }
+
+        function normalizeFormInput(target) {
+          if (!target || !target.tagName || target.tagName.toLowerCase() !== 'input') return;
+          if (target.type === 'tel') {
+            target.value = formatPhoneInput(target.value);
+            return;
+          }
+          if (target.type === 'url') {
+            target.value = target.value ? normalizeWebsiteInput(target.value) : '';
+          }
+        }
+
+        function normalizeEnrollmentFragment(value) {
+          return (value || '').toString().trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+        }
+
+        function buildDefaultEnrollmentCode(zipCode, organizationShortCode) {
+          var zip = normalizeEnrollmentFragment(zipCode);
+          var shortCode = normalizeEnrollmentFragment(organizationShortCode);
+          return (zip + shortCode) || zip || shortCode;
+        }
+
+        function syncLocationEnrollmentCode(index, enrollmentField) {
+          var location = locations[index];
+          if (!location) return;
+          var derived = buildDefaultEnrollmentCode(location.zipCode, organizationShortCodeInput ? organizationShortCodeInput.value : '');
+          var current = (location.enrollmentCode || '').toString().trim();
+          var shouldReplace = !location.enrollmentCodeManual || !current || current === location.lastAutoEnrollmentCode;
+          location.lastAutoEnrollmentCode = derived;
+          if (!shouldReplace) return;
+          location.enrollmentCodeManual = false;
+          location.enrollmentCode = derived;
+          if (enrollmentField) enrollmentField.value = derived;
+        }
+
+        function syncAllLocationEnrollmentCodes() {
+          var cards = Array.prototype.slice.call(locationsStack.querySelectorAll('[data-location-card]'));
+          cards.forEach(function (card, index) {
+            syncLocationEnrollmentCode(index, card.querySelector('[data-field="enrollmentCode"]'));
+          });
+        }
+
+        function blankLocation() {
+          return {
+            programName: '',
+            programType: 'centerBasedAba',
+            name: '',
+            campusType: 'Center',
+            phone: '',
+            email: '',
+            address1: '',
+            address2: '',
+            city: '',
+            state: '',
+            zipCode: '',
+            enrollmentCode: '',
+            enrollmentCodeManual: false,
+            lastAutoEnrollmentCode: '',
+            expanded: true
+          };
+        }
+
+        var locations = [blankLocation()];
+
+        form.addEventListener('focusin', function (event) {
+          var target = event.target;
+          if (target && target.tagName && target.tagName.toLowerCase() === 'input' && target.type === 'url' && !target.value) {
+            target.value = 'https://';
+          }
+        });
+
+        form.addEventListener('input', function (event) {
+          normalizeFormInput(event.target);
+        }, true);
+
+        form.addEventListener('blur', function (event) {
+          var target = event.target;
+          if (target && target.tagName && target.tagName.toLowerCase() === 'input' && target.type === 'url') {
+            target.value = normalizeWebsiteInput(target.value);
+          }
+        }, true);
+
+        if (organizationShortCodeInput) {
+          organizationShortCodeInput.addEventListener('input', function (event) {
+            event.target.value = (event.target.value || '').toString().toUpperCase();
+            syncAllLocationEnrollmentCodes();
+          });
+        }
+
+        function renderLocations() {
+          clearAutocompleteInstances();
+          locationsStack.innerHTML = '';
+          locations.forEach(function (location, index) {
+            var fragment = template.content.cloneNode(true);
+            var card = fragment.querySelector('[data-location-card]');
+            var locationBody = fragment.querySelector('[data-location-body]');
+            var toggleBtn = fragment.querySelector('[data-toggle-location]');
+            var enrollmentField = fragment.querySelector('[data-field="enrollmentCode"]');
+            card.setAttribute('data-address-scope', 'location-' + index);
+            fragment.querySelector('[data-location-index]').textContent = String(index + 1);
+            if (location.expanded === false) {
+              card.setAttribute('data-collapsed', 'true');
+              locationBody.classList.add('isCollapsed');
+              toggleBtn.textContent = 'Show';
+            } else {
+              card.removeAttribute('data-collapsed');
+              locationBody.classList.remove('isCollapsed');
+              toggleBtn.textContent = 'Hide';
+            }
+            Array.prototype.slice.call(fragment.querySelectorAll('[data-field]')).forEach(function (field) {
+              var key = field.getAttribute('data-field');
+              field.value = location[key] || '';
+              field.addEventListener('input', function (event) {
+                if (key === 'enrollmentCode') {
+                  var manualValue = normalizeEnrollmentFragment(event.target.value);
+                  var autoValue = buildDefaultEnrollmentCode(locations[index].zipCode, organizationShortCodeInput ? organizationShortCodeInput.value : '');
+                  if (!manualValue) {
+                    locations[index].enrollmentCode = '';
+                    locations[index].enrollmentCodeManual = false;
+                    syncLocationEnrollmentCode(index, event.target);
+                    return;
+                  }
+                  locations[index].enrollmentCode = manualValue;
+                  locations[index].lastAutoEnrollmentCode = autoValue;
+                  locations[index].enrollmentCodeManual = manualValue !== autoValue;
+                  event.target.value = manualValue;
+                  return;
+                }
+                locations[index][key] = event.target.value;
+                if (key === 'zipCode') {
+                  syncLocationEnrollmentCode(index, enrollmentField);
+                }
+              });
+              field.addEventListener('change', function (event) {
+                locations[index][key] = event.target.value;
+                if (key === 'zipCode') {
+                  syncLocationEnrollmentCode(index, enrollmentField);
+                }
+              });
+            });
+            syncLocationEnrollmentCode(index, enrollmentField);
+            toggleBtn.addEventListener('click', function () {
+              locations[index].expanded = locations[index].expanded === false;
+              renderLocations();
+            });
+            fragment.querySelector('[data-remove-location]').addEventListener('click', function () {
+              if (locations.length === 1) {
+                locations = [blankLocation()];
+              } else {
+                locations.splice(index, 1);
+              }
+              renderLocations();
+            });
+            locationsStack.appendChild(fragment);
+          });
+          wireAddressAutocomplete();
+        }
+
+        function collectPayload() {
+          var fd = new FormData(form);
+          return {
+            organizationName: (fd.get('organizationName') || '').toString().trim(),
+            organizationShortCode: (fd.get('organizationShortCode') || '').toString().trim(),
+            organizationPhone: formatPhoneInput((fd.get('organizationPhone') || '').toString().trim()),
+            organizationEmail: (fd.get('organizationEmail') || '').toString().trim(),
+            organizationAddress1: (fd.get('organizationAddress1') || '').toString().trim(),
+            organizationAddress2: (fd.get('organizationAddress2') || '').toString().trim(),
+            organizationCity: (fd.get('organizationCity') || '').toString().trim(),
+            organizationState: (fd.get('organizationState') || '').toString().trim().toUpperCase(),
+            organizationZipCode: (fd.get('organizationZipCode') || '').toString().trim(),
+            organizationWebsite: normalizeWebsiteInput((fd.get('organizationWebsite') || '').toString().trim()),
+            contactName: (fd.get('contactName') || '').toString().trim(),
+            contactTitle: (fd.get('contactTitle') || '').toString().trim(),
+            contactEmail: (fd.get('contactEmail') || '').toString().trim(),
+            contactPhone: formatPhoneInput((fd.get('contactPhone') || '').toString().trim()),
+            notes: (fd.get('notes') || '').toString().trim(),
+            website: (fd.get('website') || '').toString().trim(),
+            recaptchaToken: recaptchaToken,
+            locations: locations.map(function (location) {
+              return {
+                programName: (location.programName || '').toString().trim(),
+                programType: (location.programType || 'centerBasedAba').toString().trim(),
+                name: (location.name || '').toString().trim(),
+                campusType: (location.campusType || 'Center').toString().trim(),
+                phone: formatPhoneInput((location.phone || '').toString().trim()),
+                email: (location.email || '').toString().trim(),
+                address1: (location.address1 || '').toString().trim(),
+                address2: (location.address2 || '').toString().trim(),
+                city: (location.city || '').toString().trim(),
+                state: (location.state || '').toString().trim().toUpperCase(),
+                zipCode: (location.zipCode || '').toString().trim(),
+                enrollmentCode: (location.enrollmentCode || '').toString().trim()
+              };
+            })
+          };
+        }
+
+        function clientValidate(payload) {
+          if (!payload.organizationName) return 'Organization name is required.';
+          if (!payload.organizationPhone) return 'Organization phone is required.';
+          if (!payload.organizationEmail) return 'Organization email is required.';
+          if (!payload.contactName || !payload.contactEmail) return 'Primary contact name and email are required.';
+          if (!Array.isArray(payload.locations) || payload.locations.length === 0) return 'Add at least one location.';
+          if (recaptchaEnabled && !payload.recaptchaToken) return 'Please complete the reCAPTCHA check.';
+          for (var i = 0; i < payload.locations.length; i += 1) {
+            var location = payload.locations[i];
+            if (!location.programName || !location.name || !location.address1 || !location.city || !location.state || !location.zipCode) {
+              return 'Each location needs a program name, location name, address, city, state, and ZIP.';
+            }
+          }
+          return '';
+        }
+
+        addLocationBtn.addEventListener('click', function () {
+          locations.push(blankLocation());
+          renderLocations();
+        });
+
+        resetBtn.addEventListener('click', function () {
+          form.reset();
+          locations = [blankLocation()];
+          renderLocations();
+          resetRecaptcha();
+          clearStatus();
+        });
+
+        form.addEventListener('submit', async function (event) {
+          event.preventDefault();
+          clearStatus();
+          var payload = collectPayload();
+          var validationError = clientValidate(payload);
+          if (validationError) {
+            setStatus('error', validationError);
+            return;
+          }
+
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Sending...';
+          setStatus('info', 'Sending your organization intake for approval...');
+
+          try {
+            var response = await fetch('/organizations-intake-submit', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+            var result = await response.json().catch(function () { return {}; });
+            if (!response.ok || !result.ok) {
+              var errorText = Array.isArray(result.errors) && result.errors.length
+                ? result.errors.join(' ')
+                : (result.error || 'The organization intake could not be submitted.');
+              throw new Error(errorText);
+            }
+            setStatus('success', 'Your organization intake was submitted successfully. CommunityBridge will review it and activate your organization after approval.');
+            form.reset();
+            locations = [blankLocation()];
+            renderLocations();
+            resetRecaptcha();
+          } catch (error) {
+            setStatus('error', error && error.message ? error.message : 'The organization intake could not be submitted.');
+            resetRecaptcha();
+          } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Send for Approval';
+          }
+        });
+
+        renderLocations();
+        initRecaptcha();
+      })();
+    </script>
+  </body>
+</html>

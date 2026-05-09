@@ -1,13 +1,16 @@
-import React, { useMemo, useState } from 'react';
+import React, { useLayoutEffect, useMemo, useState } from 'react';
 import { Alert, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { useAuth } from '../AuthContext';
 import { useData } from '../DataContext';
 import Api from '../Api';
 import { isBcbaRole, isOfficeAdminRole } from '../core/tenant/models';
 import { THERAPY_ROLE_LABELS } from '../utils/roleTerminology';
+import AppIconButton from '../components/AppIconButton';
+import { HelpButton } from '../components/TopButtons';
 
 const IMAGE_PICKER_MEDIA_TYPES = ImagePicker.MediaTypeOptions?.Images ?? ImagePicker.MediaType?.Images;
 
@@ -60,6 +63,25 @@ export default function AdminChatMonitorScreen() {
   const [announcementBody, setAnnouncementBody] = useState('');
   const [announcementImage, setAnnouncementImage] = useState('');
   const [sendingAnnouncement, setSendingAnnouncement] = useState(false);
+
+  const openNewStaffChat = () => {
+    navigation.navigate('Chats', { screen: 'NewThread' });
+  };
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerLeft: () => <HelpButton />,
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={openNewStaffChat}
+          accessibilityLabel="Start a new staff chat"
+          style={{ marginRight: 12, width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: '#eff6ff' }}
+        >
+          <MaterialIcons name="add" size={22} color="#1d4ed8" />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation]);
 
   const threads = useMemo(() => buildThreads(messages), [messages]);
   const filteredThreads = useMemo(() => {
@@ -148,7 +170,17 @@ export default function AdminChatMonitorScreen() {
   }
 
   return (
-    <ScreenWrapper style={styles.container}>
+    <ScreenWrapper
+      style={styles.container}
+      bannerRight={(
+        <AppIconButton
+          onPress={openNewStaffChat}
+          accessibilityLabel="Start a new staff chat"
+          name="add"
+          size={36}
+        />
+      )}
+    >
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipCarouselContent} style={styles.chipCarousel}>
           <View style={styles.tabRow}>
@@ -173,7 +205,12 @@ export default function AdminChatMonitorScreen() {
         {tab === 'inbox' ? (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Inbox</Text>
-            {filteredThreads.length ? filteredThreads.slice(0, 8).map((thread) => <Text key={thread.id} style={styles.rowText}>{thread.last?.body || thread.last?.subject || 'Thread'} • {thread.count} message{thread.count === 1 ? '' : 's'}</Text>) : <Text style={styles.rowText}>No communication threads available.</Text>}
+            {filteredThreads.length ? filteredThreads.slice(0, 8).map((thread) => (
+              <TouchableOpacity key={thread.id} style={styles.threadRow} onPress={() => navigation.navigate('ChatThread', { threadId: thread.id })}>
+                <Text style={styles.threadTitle}>{thread.last?.subject || thread.last?.body || 'Thread'}</Text>
+                <Text style={styles.rowText}>{thread.count} message{thread.count === 1 ? '' : 's'}</Text>
+              </TouchableOpacity>
+            )) : <Text style={styles.rowText}>No communication threads available.</Text>}
           </View>
         ) : null}
 

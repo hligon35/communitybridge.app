@@ -846,9 +846,6 @@ export default function ScheduleCalendarScreen() {
                         <Text style={styles.parentCancelButtonText}>{session.status === 'canceled' ? 'Session canceled' : 'Cancel session'}</Text>
                       </TouchableOpacity>
                     ) : null}
-                    <View style={[styles.statusPill, session.status === 'canceled' ? styles.statusCanceled : session.status === 'completed' ? styles.statusCompleted : styles.statusScheduled]}>
-                      <Text style={[styles.statusText, session.status === 'canceled' ? styles.statusTextCanceled : session.status === 'completed' ? styles.statusTextCompleted : styles.statusTextScheduled]}>{session.status.toUpperCase()}</Text>
-                    </View>
                   </View>
                 )}
               </View>

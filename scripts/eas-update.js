@@ -5,6 +5,19 @@ const { spawnSync } = require('child_process');
 
 const root = path.resolve(__dirname, '..');
 
+function removeDirIfExists(dir) {
+  if (!fs.existsSync(dir)) return;
+  fs.rmSync(dir, { recursive: true, force: true });
+}
+
+function clearGeneratedWebArtifacts() {
+  removeDirIfExists(path.join(root, 'web-dist'));
+  removeDirIfExists(path.join(root, 'public', '_expo'));
+  removeDirIfExists(path.join(root, 'public', 'assets'));
+  removeDirIfExists(path.join(root, 'public', 'home'));
+  removeDirIfExists(path.join(root, 'public', 'dashboard'));
+}
+
 function usage() {
   console.log(`Usage: node ./scripts/eas-update.js [--channel <name>] [--platform <ios|android|all>] [--message <text>] [--input-dir <dir>] [--skip-fingerprint]
 
@@ -153,6 +166,7 @@ function main() {
     env.EAS_SKIP_AUTO_FINGERPRINT = '1';
   }
 
+  clearGeneratedWebArtifacts();
   fs.rmSync(inputDir, { recursive: true, force: true });
   fs.mkdirSync(inputDir, { recursive: true });
 
