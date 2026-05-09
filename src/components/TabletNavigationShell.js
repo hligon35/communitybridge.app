@@ -17,11 +17,21 @@ import { canAccessPhoneRoute, getPhoneAccessProfile, isPhoneViewport as resolveP
 const checkUpdatesIcon = require('../../assets/icons/checkUpdates.png');
 const BREAK_OPTIONS = [5, 10, 15, 30];
 const MOBILE_BOTTOM_MENU_HEIGHT = 36;
+const DRAWER_COLLAPSED_WIDTH = 92;
+const DRAWER_EXPANDED_MIN_WIDTH = 216;
+const DRAWER_EXPANDED_MAX_WIDTH = 240;
+const DRAWER_EXPANDED_WIDTH = 232;
 
 function formatOperationalTime(value) {
   const parsed = value ? new Date(value) : new Date();
   if (!Number.isFinite(parsed.getTime())) return 'now';
   return parsed.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
+function formatOperationalClock(value) {
+  const parsed = value ? new Date(value) : new Date();
+  if (!Number.isFinite(parsed.getTime())) return 'now';
+  return parsed.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
 }
 
 export const MobileAdminShellContext = createContext({
@@ -111,6 +121,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
   const [breakEndsAt, setBreakEndsAt] = useState(null);
   const [breakDurationMinutes, setBreakDurationMinutes] = useState(0);
   const [breakNow, setBreakNow] = useState(Date.now());
+  const [clockNow, setClockNow] = useState(Date.now());
   const [clockConfirmOpen, setClockConfirmOpen] = useState(false);
   const [clockPromptAt, setClockPromptAt] = useState(null);
   const [clockActionSaving, setClockActionSaving] = useState(false);
@@ -188,6 +199,13 @@ export default function TabletNavigationShell({ currentRoute, children }) {
     setQuickLogBody('');
     setQuickLogSaving(false);
   }, [currentRoute]);
+
+  useEffect(() => {
+    const timerId = setInterval(() => {
+      setClockNow(Date.now());
+    }, 1000);
+    return () => clearInterval(timerId);
+  }, []);
 
   useEffect(() => {
     if (!breakEndsAt) return undefined;
@@ -419,12 +437,12 @@ export default function TabletNavigationShell({ currentRoute, children }) {
   const isClockedIn = String(latestClockEvent?.clockStatus || '').trim().toLowerCase() === 'in';
   const nextClockAction = isClockedIn ? 'out' : 'in';
   const clockButtonLabel = isClockedIn ? 'Clock Out' : 'Clock In';
+  const drawerWidth = collapsed ? DRAWER_COLLAPSED_WIDTH : DRAWER_EXPANDED_WIDTH;
 
   const quickMenuWidth = useMemo(() => {
-    const drawerWidth = collapsed ? 92 : 280;
     const availableWidth = Math.max(176, width - drawerWidth - 120);
     return Math.max(176, Math.min(220, availableWidth));
-  }, [collapsed, width]);
+  }, [drawerWidth, width]);
 
   const quickHeaderMenuItems = useMemo(() => {
     if (showBcbaQuickActions) {
@@ -655,7 +673,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
                       <TouchableOpacity style={[styles.mobileBreakButton, isClockedIn ? styles.mobileClockButtonActive : null]} onPress={handleClockPress}>
                         <MaterialIcons name={isClockedIn ? 'logout' : 'login'} size={20} color="#0f172a" />
                         <Text style={styles.mobileBreakText}>{clockButtonLabel}</Text>
-                        {latestClockEvent?.eventAt ? <Text style={styles.mobileClockMetaText}>{formatOperationalTime(latestClockEvent.eventAt)}</Text> : null}
+                        <Text style={styles.mobileClockMetaText}>{formatOperationalClock(clockNow)}</Text>
                       </TouchableOpacity>
                     ) : null}
                     <TouchableOpacity style={[styles.mobileBreakButton, breakEndsAt ? styles.mobileBreakButtonActive : null]} onPress={handleBreakPress}>
@@ -704,7 +722,15 @@ export default function TabletNavigationShell({ currentRoute, children }) {
           <Text style={styles.shellHeaderTitle} numberOfLines={1}>{currentScreenTitle}</Text>
         </View>
         <View style={styles.shell}>
-          <View style={[styles.drawer, { paddingTop: 20, paddingBottom: 20 + Math.max(insets.bottom, 0) }, collapsed ? styles.drawerCollapsed : null]}>
+          <ScrollView
+            style={[
+              styles.drawer,
+              collapsed ? styles.drawerCollapsed : null,
+              { width: drawerWidth, minWidth: drawerWidth, maxWidth: drawerWidth, flexBasis: drawerWidth },
+            ]}
+            contentContainerStyle={[styles.drawerScrollContent, { paddingTop: 20, paddingBottom: 20 + Math.max(insets.bottom, 0) }]}
+            showsVerticalScrollIndicator
+          >
           <View style={[styles.drawerBrandWrap, collapsed ? styles.drawerBrandWrapCollapsed : null]}>
           </View>
           {!collapsed ? (
@@ -759,7 +785,12 @@ export default function TabletNavigationShell({ currentRoute, children }) {
               <TouchableOpacity style={[styles.drawerUtilityButton, isClockedIn ? styles.drawerClockButtonActive : null]} onPress={handleClockPress}>
                 <MaterialIcons name={isClockedIn ? 'logout' : 'login'} size={20} color="#f8fafc" />
                 {!collapsed ? <Text style={styles.drawerUtilityText}>{clockButtonLabel}</Text> : null}
-                {!collapsed && latestClockEvent?.eventAt ? <Text style={styles.drawerUtilityTimerText}>{formatOperationalTime(latestClockEvent.eventAt)}</Text> : null}
+                {!collapsed ? (
+                  <View style={styles.drawerUtilityMetaWrap}>
+                    <View style={styles.drawerUtilityDivider} />
+                    <Text style={styles.drawerUtilityTimerText}>{formatOperationalClock(clockNow)}</Text>
+                  </View>
+                ) : null}
               </TouchableOpacity>
             ) : null}
             <TouchableOpacity style={[styles.drawerUtilityButton, breakEndsAt ? styles.drawerUtilityButtonActive : null]} onPress={handleBreakPress}>
@@ -780,7 +811,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
               {!collapsed ? <Text style={styles.logoutText}>Logout</Text> : null}
             </TouchableOpacity>
           </View>
-        </View>
+        </ScrollView>
 
           <View style={[styles.contentWrap, { paddingTop: 12, paddingBottom: Math.max(insets.bottom, 12) }]}>
             {renderBreakModals()}
@@ -828,8 +859,9 @@ const styles = StyleSheet.create({
   },
   shellHeaderTitle: { color: '#0f172a', fontWeight: '800', fontSize: 24, lineHeight: 30, textAlign: 'center' },
   shell: { flex: 1, flexDirection: 'row', backgroundColor: '#e2e8f0' },
-  drawer: { width: 280, backgroundColor: '#0f172a', paddingHorizontal: 16 },
-  drawerCollapsed: { width: 92, paddingHorizontal: 10 },
+  drawer: { backgroundColor: '#0f172a', paddingHorizontal: 16, flexShrink: 0 },
+  drawerCollapsed: { paddingHorizontal: 10 },
+  drawerScrollContent: { flexGrow: 1 },
   drawerBrandWrap: { alignItems: 'flex-start', justifyContent: 'center', marginBottom: 8, minHeight: 12 },
   drawerBrandWrapCollapsed: { alignItems: 'center' },
   drawerIdentityWrap: { marginBottom: 16, paddingHorizontal: 6 },
@@ -858,7 +890,9 @@ const styles = StyleSheet.create({
   drawerUtilityIcon: { width: 20, height: 20 },
   drawerUtilityIconDisabled: { opacity: 0.5 },
   drawerUtilityText: { color: '#e2e8f0', fontWeight: '700', marginLeft: 10 },
-  drawerUtilityTimerText: { color: '#f8fafc', fontWeight: '800', marginLeft: 'auto' },
+  drawerUtilityMetaWrap: { flexDirection: 'row', alignItems: 'center', marginLeft: 'auto' },
+  drawerUtilityDivider: { width: 2, height: 24, backgroundColor: 'rgba(226, 232, 240, 0.3)', marginRight: 6 },
+  drawerUtilityTimerText: { color: '#f8fafc', fontWeight: '800' },
   logoutButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 14, backgroundColor: '#1e293b' },
   logoutText: { color: '#fecaca', fontWeight: '700', marginLeft: 10 },
   contentWrap: { flex: 1, paddingHorizontal: 12, position: 'relative' },

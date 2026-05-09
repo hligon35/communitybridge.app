@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFocusEffect, useRoute } from '@react-navigation/native';
 import { ScreenWrapper } from '../components/ScreenWrapper';
+import { MobileAdminShellContext } from '../components/TabletNavigationShell';
 import AppDropdown from '../components/AppDropdown';
 import AppIconButton from '../components/AppIconButton';
 import TimeField from '../components/TimeField';
@@ -103,6 +104,7 @@ export default function ScheduleCalendarScreen() {
   const { children = [], parents = [], therapists = [], setChildren, fetchAndSync } = useData();
   const { width, height } = useWindowDimensions();
   const route = useRoute();
+  const mobileAdminShell = useContext(MobileAdminShellContext);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -118,7 +120,8 @@ export default function ScheduleCalendarScreen() {
   const usePhoneSafeMode = isPhoneWorkspace && shouldUsePhoneSafeSchedule(user?.role);
   const aggregateOnlyPhoneMode = usePhoneSafeMode && isAggregateOnlyPhoneProfile(user?.role);
   const canManageSchedule = isBcba || isOffice;
-  const useCompactSessionLayout = width < 900;
+  const useAdminDropdownShellLayout = Boolean(mobileAdminShell?.showMobileAdminShell && !isTherapist && !isParent);
+  const useCompactSessionLayout = width < 900 && !useAdminDropdownShellLayout;
   const requestedChildId = route?.params?.childId ? String(route.params.childId) : '';
   const requestedEditorMode = route?.params?.editorMode === 'assignment' || route?.params?.editorMode === 'session'
     ? route.params.editorMode
@@ -139,7 +142,7 @@ export default function ScheduleCalendarScreen() {
   const [cancellationReason, setCancellationReason] = useState('');
   const [submittingCancellation, setSubmittingCancellation] = useState(false);
   const linkedParentId = isParent ? (findLinkedParentId(user, parents) || user?.id || null) : null;
-  const isWideLayout = width >= 980;
+  const isWideLayout = width >= 980 || useAdminDropdownShellLayout;
 
   const filteredChildren = useMemo(() => {
     if (!isTherapist) return children;
@@ -617,7 +620,7 @@ export default function ScheduleCalendarScreen() {
       </TouchableOpacity>
     </View>
   ) : null;
-  const useMobileHeaderFilters = !isTherapist && !isParent && width < 900;
+  const useMobileHeaderFilters = !isTherapist && !isParent && width < 900 && !useAdminDropdownShellLayout;
   const mobileHeaderFilters = useMobileHeaderFilters ? <View style={styles.mobileHeaderFilterRow}>{headerFocusMode}</View> : null;
 
   return (
