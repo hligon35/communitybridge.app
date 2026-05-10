@@ -13,7 +13,7 @@ import { getDemoRoleIdentity } from './utils/demoIdentity';
 
 function getRootWorkspaceForRole(role) {
   const normalized = normalizeRoleOverride(role);
-  return normalized === 'admin' || normalized === 'bcba' ? 'Controls' : 'Home';
+  return normalized === 'admin' || normalized === 'bcba' || normalized === 'office' ? 'Controls' : 'Home';
 }
 
 function navigateToRoleWorkspace(role) {
@@ -32,13 +32,13 @@ const DEV_ROLE_BEHAVIOR_KEY = 'bb_dev_role_behavior_v1';
 
 function normalizeDevRoleBehavior(value) {
   const normalized = String(value || '').trim().toLowerCase();
-  if (normalized === 'parent' || normalized === 'admin') return normalized;
+  if (normalized === 'parent' || normalized === 'admin' || normalized === 'office') return normalized;
   return 'remember';
 }
 
 function resolveDevRoleOverride(overrideRole, behavior) {
   const normalizedBehavior = normalizeDevRoleBehavior(behavior);
-  if (normalizedBehavior === 'parent' || normalizedBehavior === 'admin') return normalizedBehavior;
+  if (normalizedBehavior === 'parent' || normalizedBehavior === 'admin' || normalizedBehavior === 'office') return normalizedBehavior;
   return normalizeRoleOverride(overrideRole);
 }
 
@@ -54,6 +54,7 @@ function readWebDevSessionBootstrap() {
       parent: { id: 'par-001', name: 'Alicia Cook' },
       therapist: { id: 'aba-101', name: 'Jordan Ellis' },
       bcba: { id: 'bcba-001', name: 'Dr. Marissa Bennett' },
+      office: { id: 'office-001', name: 'CommunityBridge Office' },
       admin: { id: 'user-admin-001', name: 'Jordan Admin' },
     };
     const identity = identityByRole[requestedRole] || identityByRole.admin;

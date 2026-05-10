@@ -18,6 +18,7 @@ export default function DevRoleSwitcher() {
   const tenant = useTenant() || {};
   const isDevAccount = isDevSwitcherUser(user?.email);
   const isReviewAccount = isDemoReviewer || isDemoReviewerUser(user?.email);
+  const canChangeRole = isDevAccount;
   const isAllowed = ENABLE_DEV_SWITCHER && (__DEV__ || isDevAccount || isReviewAccount);
   const [open, setOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
@@ -186,21 +187,27 @@ export default function DevRoleSwitcher() {
             <Text>Clear seeded data</Text>
           </TouchableOpacity>
 
-          <View style={styles.divider} />
-          {/* Role */}
-          <Text style={styles.sectionLabel}>Role</Text>
-          <TouchableOpacity onPress={() => changeRole('parent')} style={styles.menuBtn}>
-            <Text>Parent</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => changeRole('therapist')} style={styles.menuBtn}>
-            <Text>{THERAPY_ROLE_LABELS.therapist}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => changeRole('bcba')} style={styles.menuBtn}>
-            <Text>BCBA</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => changeRole('admin')} style={styles.menuBtn}>
-            <Text>Admin</Text>
-          </TouchableOpacity>
+          {canChangeRole ? (
+            <>
+              <View style={styles.divider} />
+              <Text style={styles.sectionLabel}>Role</Text>
+              <TouchableOpacity onPress={() => changeRole('parent')} style={styles.menuBtn}>
+                <Text>Parent</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => changeRole('therapist')} style={styles.menuBtn}>
+                <Text>{THERAPY_ROLE_LABELS.therapist}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => changeRole('bcba')} style={styles.menuBtn}>
+                <Text>BCBA</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => changeRole('office')} style={styles.menuBtn}>
+                <Text>Office</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => changeRole('admin')} style={styles.menuBtn}>
+                <Text>Admin</Text>
+              </TouchableOpacity>
+            </>
+          ) : null}
 
           {isDevAccount ? (
             <>
@@ -214,6 +221,9 @@ export default function DevRoleSwitcher() {
               </TouchableOpacity>
               <TouchableOpacity onPress={() => changeDevBehavior('admin')} style={[styles.menuBtn, devRoleBehavior === 'admin' ? styles.menuBtnActive : null]}>
                 <Text style={[styles.menuBtnText, devRoleBehavior === 'admin' ? styles.menuBtnTextActive : null]}>Admin on launch</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => changeDevBehavior('office')} style={[styles.menuBtn, devRoleBehavior === 'office' ? styles.menuBtnActive : null]}>
+                <Text style={[styles.menuBtnText, devRoleBehavior === 'office' ? styles.menuBtnTextActive : null]}>Office on launch</Text>
               </TouchableOpacity>
             </>
           ) : null}

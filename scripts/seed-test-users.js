@@ -1,13 +1,19 @@
 #!/usr/bin/env node
 /*
-  Seed three test users for app review / QA into BOTH:
+  Seed demo users for TestFlight / QA into BOTH:
     1) Firebase Auth (so mobile login via signInWithEmailAndPassword works)
     2) The Postgres `users` table (so the API has a profile + role for them)
 
-  Hardcoded users (override via CLI flags or env if needed):
-    admin@communitybridge.app     / Admin123!     role=admin
-    parent@communitybridge.app    / Parent123!    role=parent
-    therapist@communitybridge.app / Therapy123!   role=therapist
+  Hardcoded demo users:
+    hligon35@gmail.com            / ParentDemo123!   role=parent
+    cheyanne2448@gmail.com        / ParentDemo123!   role=parent
+    abatech1@communitybridge.app  / AbaTech123!      role=therapist
+    abatech2@communitybridge.app  / AbaTech123!      role=therapist
+    abatech3@communitybridge.app  / AbaTech123!      role=therapist
+    abatech4@communitybridge.app  / AbaTech123!      role=therapist
+    bcba@communitybridge.app      / BcbaDemo123!     role=bcba
+    office@communitybridge.app    / OfficeDemo123!   role=office
+    admin@communitybridge.app     / AdminDemo123!    role=admin
 
   Requirements:
     - GOOGLE_APPLICATION_CREDENTIALS pointing at a service-account JSON for the
@@ -47,9 +53,15 @@ const { Pool } = require('pg');
 const DRY = process.argv.includes('--dry') || process.argv.includes('-n');
 
 const TEST_USERS = [
-  { name: 'Admin Reviewer',     email: 'admin@communitybridge.app',     password: 'Admin123!',   role: 'admin' },
-  { name: 'Parent Reviewer',    email: 'parent@communitybridge.app',    password: 'Parent123!',  role: 'parent' },
-  { name: 'Therapist Reviewer', email: 'therapist@communitybridge.app', password: 'Therapy123!', role: 'therapist' },
+  { name: 'Harold Ligon',             email: 'hligon35@gmail.com',          password: 'ParentDemo123!', role: 'parent' },
+  { name: 'Cheyanne Cook',            email: 'cheyanne2448@gmail.com',      password: 'ParentDemo123!', role: 'parent' },
+  { name: 'CommunityBridge ABA Tech 1', email: 'abatech1@communitybridge.app', password: 'AbaTech123!', role: 'therapist' },
+  { name: 'CommunityBridge ABA Tech 2', email: 'abatech2@communitybridge.app', password: 'AbaTech123!', role: 'therapist' },
+  { name: 'CommunityBridge ABA Tech 3', email: 'abatech3@communitybridge.app', password: 'AbaTech123!', role: 'therapist' },
+  { name: 'CommunityBridge ABA Tech 4', email: 'abatech4@communitybridge.app', password: 'AbaTech123!', role: 'therapist' },
+  { name: 'CommunityBridge BCBA',     email: 'bcba@communitybridge.app',    password: 'BcbaDemo123!',   role: 'bcba' },
+  { name: 'CommunityBridge Office',   email: 'office@communitybridge.app',  password: 'OfficeDemo123!', role: 'office' },
+  { name: 'CommunityBridge Admin',    email: 'admin@communitybridge.app',   password: 'AdminDemo123!',  role: 'admin' },
 ];
 
 const DATABASE_URL = (

@@ -103,38 +103,203 @@ function titleCaseWords(value) {
     .join(' ');
 }
 
+const DEMO_CHILD_ID_SET = new Set(['child-001', 'child-002']);
+const DEMO_PARENT_ID_SET = new Set(['par-001', 'par-dev-001']);
+const DEMO_THERAPIST_ID_SET = new Set(['bcba-001', 'aba-101', 'aba-102', 'aba-103', 'aba-104']);
+const DEMO_STAFF_ID_SET = new Set(['staff-001', 'office-001']);
+const DEMO_USER_ID_SET = new Set([
+  'user-parent-review',
+  'user-parent-dev-switch',
+  'user-therapist-review',
+  'user-bcba-review',
+  'user-office-review',
+  'user-admin-review',
+]);
+const DEMO_THREAD_PARTICIPANT_ID_SET = new Set([
+  'par-001',
+  'par-dev-001',
+  'aba-101',
+  'aba-102',
+  'aba-103',
+  'aba-104',
+  'bcba-001',
+  'office-001',
+  'staff-001',
+  'user-parent-review',
+  'user-parent-dev-switch',
+  'user-therapist-review',
+  'user-bcba-review',
+  'user-office-review',
+  'user-admin-review',
+]);
+
+const DEMO_USER_OVERRIDES = Object.freeze({
+  'user-parent-review': { name: 'Cheyanne Cook', email: 'cheyanne2448@gmail.com', role: 'parent' },
+  'user-parent-dev-switch': { name: 'Harold Ligon', email: 'hligon35@gmail.com', role: 'parent' },
+  'user-therapist-review': { name: 'CommunityBridge ABA Tech 1', email: 'abatech1@communitybridge.app', role: 'therapist' },
+  'user-bcba-review': { name: 'CommunityBridge BCBA', email: 'bcba@communitybridge.app', role: 'bcba' },
+  'user-office-review': { name: 'CommunityBridge Office', email: 'office@communitybridge.app', role: 'office' },
+  'user-admin-review': { name: 'CommunityBridge Admin', email: 'admin@communitybridge.app', role: 'admin' },
+});
+
+const DEMO_PARENT_OVERRIDES = Object.freeze({
+  'par-001': { name: 'Cheyanne Cook', email: 'cheyanne2448@gmail.com' },
+  'par-dev-001': { name: 'Harold Ligon', email: 'hligon35@gmail.com' },
+});
+
+const DEMO_THERAPIST_OVERRIDES = Object.freeze({
+  'bcba-001': { name: 'CommunityBridge BCBA', email: 'bcba@communitybridge.app', role: 'bcba', title: 'Supervising Clinician' },
+  'aba-101': { name: 'CommunityBridge ABA Tech 1', email: 'abatech1@communitybridge.app', role: 'therapist', title: 'ABA Therapist', supervisedBy: 'bcba-001' },
+  'aba-102': { name: 'CommunityBridge ABA Tech 2', email: 'abatech2@communitybridge.app', role: 'therapist', title: 'ABA Therapist', supervisedBy: 'bcba-001' },
+  'aba-103': { name: 'CommunityBridge ABA Tech 3', email: 'abatech3@communitybridge.app', role: 'therapist', title: 'ABA Therapist', supervisedBy: 'bcba-001' },
+  'aba-104': { name: 'CommunityBridge ABA Tech 4', email: 'abatech4@communitybridge.app', role: 'therapist', title: 'ABA Therapist', supervisedBy: 'bcba-001' },
+});
+
+const DEMO_CHILD_THERAPIST_ASSIGNMENTS = Object.freeze({
+  'child-001': Object.freeze({ assignedABA: ['aba-101', 'aba-102'], amTherapist: 'aba-101', pmTherapist: 'aba-102' }),
+  'child-002': Object.freeze({ assignedABA: ['aba-103', 'aba-104'], amTherapist: 'aba-103', pmTherapist: 'aba-104' }),
+});
+
+const DEMO_THERAPIST_ID_REMAPPINGS = Object.freeze({
+  'aba-101': 'aba-101',
+  'aba-106': 'aba-102',
+  'aba-102': 'aba-103',
+  'aba-107': 'aba-104',
+});
+
+const DEMO_STAFF_OVERRIDES = Object.freeze({
+  'staff-001': { name: 'CommunityBridge Admin', email: 'admin@communitybridge.app', role: 'Admin', title: 'Center Administrator' },
+  'office-001': { name: 'CommunityBridge Office', email: 'office@communitybridge.app', role: 'Office', title: 'Operations Director' },
+});
+
+function applyDemoOverride(entity, overrides) {
+  if (!entity || typeof entity !== 'object') return entity;
+  const id = String(entity.id || '').trim();
+  const override = overrides[id] || null;
+  return override ? { ...entity, ...override } : entity;
+}
+
+function isDemoChildId(value) {
+  return DEMO_CHILD_ID_SET.has(String(value || '').trim());
+}
+
+function remapDemoTherapistId(value) {
+  const id = String(value || '').trim();
+  if (!id) return 'aba-101';
+  if (id === 'bcba-001') return id;
+  if (DEMO_THERAPIST_ID_REMAPPINGS[id]) return DEMO_THERAPIST_ID_REMAPPINGS[id];
+  if (id.startsWith('aba-')) return 'aba-101';
+  return id;
+}
+
+function filterByDemoChild(items) {
+  return (Array.isArray(items) ? items : []).filter((item) => isDemoChildId(getEntryChildId(item)));
+}
+
+function filterDemoThreads(threadGroups) {
+  return Object.fromEntries(
+    Object.entries(threadGroups && typeof threadGroups === 'object' ? threadGroups : {})
+      .map(([role, threads]) => [
+        role,
+        (Array.isArray(threads) ? threads : []).filter((thread) => {
+          const participants = Array.isArray(thread?.participants)
+            ? thread.participants.map((id) => String(id || '').trim()).filter(Boolean)
+            : [];
+          return participants.length > 0 && participants.every((participantId) => DEMO_THREAD_PARTICIPANT_ID_SET.has(participantId));
+        }),
+      ])
+      .filter(([, threads]) => threads.length > 0)
+  );
+}
+
+function normalizeDemoChild(child) {
+  const explicitParents = Array.isArray(child?.parents) ? child.parents : [];
+  const childId = String(child?.id || '').trim();
+  const therapistAssignment = DEMO_CHILD_THERAPIST_ASSIGNMENTS[childId] || DEMO_CHILD_THERAPIST_ASSIGNMENTS['child-001'];
+  return {
+    ...child,
+    parents: explicitParents
+      .filter((entry) => DEMO_PARENT_ID_SET.has(String(entry?.id || '').trim()))
+      .map((entry) => applyDemoOverride(entry, DEMO_PARENT_OVERRIDES)),
+    assignedABA: [...therapistAssignment.assignedABA],
+    assigned_ABA: [...therapistAssignment.assignedABA],
+    amTherapist: therapistAssignment.amTherapist,
+    pmTherapist: therapistAssignment.pmTherapist,
+    bcaTherapist: 'bcba-001',
+    bcbaId: 'bcba-001',
+  };
+}
+
 const organization = raw.organization || {};
 const firstProgram = (Array.isArray(raw.programs) ? raw.programs : [])[0] || {};
 const firstCampus = (Array.isArray(raw.campuses) ? raw.campuses : [])[0] || {};
-const usersRaw = Array.isArray(raw.users) ? raw.users : [];
-const parentsRaw = Array.isArray(raw.parents) ? raw.parents : [];
-const therapistsRaw = Array.isArray(raw.therapists) ? raw.therapists : [];
-const staffRaw = Array.isArray(raw.staff) ? raw.staff : [];
-const childrenRaw = Array.isArray(raw.children) ? raw.children : [];
-const progressReportsRaw = Array.isArray(raw.progressReports) ? raw.progressReports : [];
-const nextSessionsRaw = Array.isArray(raw.nextSessions) ? raw.nextSessions : [];
-const moodScoresRaw = Array.isArray(raw.moodScores) ? raw.moodScores : [];
-const sessionSummariesRaw = Array.isArray(raw.sessionSummaries) ? raw.sessionSummaries : [];
-const activeSessionStatesRaw = Array.isArray(raw.activeSessionStates) ? raw.activeSessionStates : [];
-const timeChangeProposalsRaw = Array.isArray(raw.timeChangeProposals) ? raw.timeChangeProposals : [];
-const urgentMemosRaw = Array.isArray(raw.urgentMemos) ? raw.urgentMemos : [];
+const usersRaw = (Array.isArray(raw.users) ? raw.users : [])
+  .filter((user) => DEMO_USER_ID_SET.has(String(user?.id || '').trim()))
+  .map((user) => applyDemoOverride(user, DEMO_USER_OVERRIDES));
+const parentsRaw = (Array.isArray(raw.parents) ? raw.parents : [])
+  .filter((parent) => DEMO_PARENT_ID_SET.has(String(parent?.id || '').trim()))
+  .map((parent) => applyDemoOverride(parent, DEMO_PARENT_OVERRIDES));
+const therapistsRaw = (Array.isArray(raw.therapists) ? raw.therapists : [])
+  .filter((therapist) => DEMO_THERAPIST_ID_SET.has(String(therapist?.id || '').trim()))
+  .map((therapist) => applyDemoOverride(therapist, DEMO_THERAPIST_OVERRIDES));
+const staffRaw = (Array.isArray(raw.staff) ? raw.staff : [])
+  .filter((staff) => DEMO_STAFF_ID_SET.has(String(staff?.id || '').trim()))
+  .map((staff) => applyDemoOverride(staff, DEMO_STAFF_OVERRIDES));
+const childrenRaw = (Array.isArray(raw.children) ? raw.children : [])
+  .filter((child) => isDemoChildId(child?.id))
+  .map((child) => normalizeDemoChild(child));
+const progressReportsRaw = filterByDemoChild(raw.progressReports).map((entry) => ({
+  ...entry,
+  therapistId: remapDemoTherapistId(entry?.therapistId),
+}));
+const nextSessionsRaw = filterByDemoChild(raw.nextSessions).map((entry) => ({
+  ...entry,
+  therapistId: remapDemoTherapistId(entry?.therapistId),
+}));
+const moodScoresRaw = filterByDemoChild(raw.moodScores);
+const sessionSummariesRaw = filterByDemoChild(raw.sessionSummaries).map((entry) => ({
+  ...entry,
+  therapistId: remapDemoTherapistId(entry?.therapistId),
+}));
+const activeSessionStatesRaw = filterByDemoChild(raw.activeSessionStates).map((entry) => ({
+  ...entry,
+  therapistId: remapDemoTherapistId(entry?.therapistId),
+}));
+const timeChangeProposalsRaw = filterByDemoChild(raw.timeChangeProposals);
+const urgentMemosRaw = (Array.isArray(raw.urgentMemos) ? raw.urgentMemos : []).filter((memo) => {
+  const childId = getEntryChildId(memo);
+  return !childId || isDemoChildId(childId);
+});
 const exportJobsRaw = Array.isArray(raw.exportJobs) ? raw.exportJobs : [];
 const auditLogsRaw = Array.isArray(raw.auditLogs) ? raw.auditLogs : [];
-const dashboardMetricsRaw = raw.dashboardMetrics && typeof raw.dashboardMetrics === 'object' ? raw.dashboardMetrics : {};
-const insurancePlansRaw = Array.isArray(raw.insurancePlans) ? raw.insurancePlans : [];
-const authorizationsRaw = Array.isArray(raw.authorizations) ? raw.authorizations : [];
-const invoicesRaw = Array.isArray(raw.invoices) ? raw.invoices : [];
-const postsRaw = Array.isArray(raw.posts) ? raw.posts : [];
+const dashboardMetricsRaw = {
+  ...(raw.dashboardMetrics && typeof raw.dashboardMetrics === 'object' ? raw.dashboardMetrics : {}),
+  sessionsToday: 2,
+  cancellationsToday: 0,
+  incidentsToday: 0,
+  overdueDocumentation: 0,
+  authorizationRiskCount: 0,
+};
+const insurancePlansRaw = filterByDemoChild(raw.insurancePlans);
+const authorizationsRaw = filterByDemoChild(raw.authorizations);
+const invoicesRaw = filterByDemoChild(raw.invoices);
+const postsRaw = (Array.isArray(raw.posts) ? raw.posts : []).filter((item) => {
+  const childId = getEntryChildId(item);
+  if (childId) return isDemoChildId(childId);
+  const authorId = String(item?.authorId || item?.therapistId || item?.createdBy || '').trim();
+  return !authorId || DEMO_THREAD_PARTICIPANT_ID_SET.has(authorId);
+});
 const parentResourcesRaw = Array.isArray(raw.parentResources) ? raw.parentResources : [];
 const programDocumentsRaw = Array.isArray(raw.programDocuments) ? raw.programDocuments : [];
 const campusDocumentsRaw = Array.isArray(raw.campusDocuments) ? raw.campusDocuments : [];
-const itemsNeededRaw = Array.isArray(raw.itemsNeeded) ? raw.itemsNeeded : [];
-const attendanceRaw = Array.isArray(raw.attendance) ? raw.attendance : [];
-const arrivalPingsRaw = Array.isArray(raw.arrivalPings) ? raw.arrivalPings : [];
-const pickupQueueRaw = Array.isArray(raw.pickupQueue) ? raw.pickupQueue : [];
-const tapEventsRaw = Array.isArray(raw.tapEvents) ? raw.tapEvents : [];
-const skillAcquisitionDataRaw = Array.isArray(raw.skillAcquisitionData) ? raw.skillAcquisitionData : [];
-const behaviorTrackingDataRaw = Array.isArray(raw.behaviorTrackingData) ? raw.behaviorTrackingData : [];
+const itemsNeededRaw = filterByDemoChild(raw.itemsNeeded);
+const attendanceRaw = filterByDemoChild(raw.attendance);
+const arrivalPingsRaw = filterByDemoChild(raw.arrivalPings);
+const pickupQueueRaw = filterByDemoChild(raw.pickupQueue);
+const tapEventsRaw = filterByDemoChild(raw.tapEvents);
+const skillAcquisitionDataRaw = filterByDemoChild(raw.skillAcquisitionData);
+const behaviorTrackingDataRaw = filterByDemoChild(raw.behaviorTrackingData);
+const messageThreadsRaw = filterDemoThreads(raw.messageThreads);
 
 const usersById = new Map(usersRaw.map((user) => [String(user?.id || ''), user]));
 const usersByEmail = new Map(usersRaw.map((user) => [normalizeLookup(user?.email), user]).filter(([key]) => key));
@@ -697,7 +862,7 @@ const seededScreenshotChildren = childrenRaw.map((child) => {
   };
 });
 
-const seededScreenshotMessages = Object.values(raw?.messageThreads || {}).flatMap((threads) => {
+const seededScreenshotMessages = Object.values(messageThreadsRaw).flatMap((threads) => {
   if (!Array.isArray(threads)) return [];
   return threads.flatMap((thread, threadIndex) => {
     const participants = Array.isArray(thread?.participants) ? thread.participants.map((id) => String(id)) : [];
