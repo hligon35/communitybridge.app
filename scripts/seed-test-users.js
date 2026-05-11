@@ -71,14 +71,16 @@ loadEnvFile(path.join(process.cwd(), 'env', 'cloudrun.env'));
 const TEST_USERS = [
   { name: 'Jason Bridgeport',             email: 'hligon35@gmail.com',          password: 'ParentDemo123!', role: 'parent' },
   { name: 'Chelsey Bridgeport',            email: 'cheyanne2448@gmail.com',      password: 'ParentDemo123!', role: 'parent' },
-  { name: 'CommunityBridge ABA Tech 1', email: 'abatech1@communitybridge.app', password: 'AbaTech123!', role: 'therapist' },
-  { name: 'CommunityBridge ABA Tech 2', email: 'abatech2@communitybridge.app', password: 'AbaTech123!', role: 'therapist' },
-  { name: 'CommunityBridge ABA Tech 3', email: 'abatech3@communitybridge.app', password: 'AbaTech123!', role: 'therapist' },
-  { name: 'CommunityBridge ABA Tech 4', email: 'abatech4@communitybridge.app', password: 'AbaTech123!', role: 'therapist' },
-  { name: 'CommunityBridge BCBA',     email: 'bcba@communitybridge.app',    password: 'BcbaDemo123!',   role: 'bcba' },
-  { name: 'CommunityBridge Office',   email: 'office@communitybridge.app',  password: 'OfficeDemo123!', role: 'office' },
-  { name: 'CommunityBridge Admin',    email: 'admin@communitybridge.app',   password: 'AdminDemo123!',  role: 'admin' },
+  { name: 'CB ABA Tech 1', email: 'abatech1@communitybridge.app', password: 'AbaTech123!', role: 'therapist' },
+  { name: 'CB ABA Tech 2', email: 'abatech2@communitybridge.app', password: 'AbaTech123!', role: 'therapist' },
+  { name: 'CB ABA Tech 3', email: 'abatech3@communitybridge.app', password: 'AbaTech123!', role: 'therapist' },
+  { name: 'CB ABA Tech 4', email: 'abatech4@communitybridge.app', password: 'AbaTech123!', role: 'therapist' },
+  { name: 'CB BCBA',     email: 'bcba@communitybridge.app',    password: 'BcbaDemo123!',   role: 'bcba' },
+  { name: 'CB Office',   email: 'office@communitybridge.app',  password: 'OfficeDemo123!', role: 'office' },
+  { name: 'CB Admin',    email: 'admin@communitybridge.app',   password: 'AdminDemo123!',  role: 'admin' },
 ];
+
+const SEEDED_CENTER_BASED_PROGRAM_ID = 'center-based-aba';
 
 const DEMO_EMAIL_MAP = Object.freeze(Object.fromEntries(TEST_USERS.map((user) => [String(user.email || '').trim().toLowerCase(), user])));
 
@@ -89,10 +91,14 @@ function loadTenantSeedData() {
   const programs = Array.isArray(raw?.programs) ? raw.programs : [];
   const campuses = Array.isArray(raw?.campuses) ? raw.campuses : [];
   const organization = organizations[0] || null;
-  const program = programs.find((item) => String(item?.id || '').trim() === 'center-based-aba') || programs[0] || null;
-  const campus = campuses.find((item) => String(item?.programId || '').trim() === String(program?.id || '').trim()) || campuses[0] || null;
+  const program = programs.find((item) => String(item?.id || '').trim() === SEEDED_CENTER_BASED_PROGRAM_ID) || null;
+  const matchingCampuses = campuses.filter((item) => String(item?.programId || '').trim() === SEEDED_CENTER_BASED_PROGRAM_ID);
+  const campus = matchingCampuses[0] || null;
   if (!organization || !program || !campus) {
-    throw new Error('Tenant seed is missing organization/program/campus data.');
+    throw new Error(`Tenant seed must include organization data, the ${SEEDED_CENTER_BASED_PROGRAM_ID} program, and a matching campus.`);
+  }
+  if (matchingCampuses.length !== 1) {
+    throw new Error(`Tenant seed must include exactly one ${SEEDED_CENTER_BASED_PROGRAM_ID} campus for test users. Found ${matchingCampuses.length}.`);
   }
   return { organizations, programs, campuses, organization, program, campus };
 }

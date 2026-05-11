@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, Image, Alert, ScrollView, Platform, Modal, TextInput, ActivityIndicator, KeyboardAvoidingView } from 'react-native';
+import * as Updates from 'expo-updates';
 import { useAuth } from '../AuthContext';
 import { BASE_URL } from '../config';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -194,6 +195,7 @@ export default function SettingsScreen({ navigation }) {
   const [parentTwoFactorStatus, setParentTwoFactorStatus] = useState('');
   const [parentTwoFactorError, setParentTwoFactorError] = useState('');
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [updateBusy, setUpdateBusy] = useState(false);
 
   // Debounced push preference sync to backend (efficient + consistent).
   const pushSyncTimerRef = useRef(null);
@@ -533,6 +535,43 @@ export default function SettingsScreen({ navigation }) {
     );
   }
 
+  async function checkForOtaUpdate() {
+    if (Platform.OS === 'web') {
+      Alert.alert('Not supported', 'EAS Update is not supported on web.');
+      return;
+    }
+    if (!Updates.isEnabled) {
+      Alert.alert(
+        'Updates disabled',
+        'This build does not have expo-updates enabled, or you are running a dev session. Install an EAS-built binary to receive OTA updates.'
+      );
+      return;
+    }
+
+    try {
+      setUpdateBusy(true);
+      const result = await Updates.checkForUpdateAsync();
+      if (!result.isAvailable) {
+        Alert.alert('Up to date', 'No update is available for this channel/runtime version.');
+        return;
+      }
+
+      await Updates.fetchUpdateAsync();
+      Alert.alert(
+        'Update downloaded',
+        'Restart the app to apply it now.',
+        [
+          { text: 'Later', style: 'cancel' },
+          { text: 'Restart now', onPress: () => Updates.reloadAsync().catch(() => {}) },
+        ]
+      );
+    } catch (error) {
+      Alert.alert('Update check failed', error?.message || String(error));
+    } finally {
+      setUpdateBusy(false);
+    }
+  }
+
   return (
     <ScreenWrapper bannerShowBack={false} style={{ flex: 1 }}>
       <ScrollView style={{ flex: 1, width: '100%' }} contentContainerStyle={{ alignItems: 'center', paddingBottom: 28, paddingHorizontal: 16 }} bounces={true} alwaysBounceVertical={true} showsVerticalScrollIndicator={false}>
@@ -675,6 +714,20 @@ export default function SettingsScreen({ navigation }) {
         <View style={{ width: '100%', maxWidth: isWeb ? 980 : 720, marginTop: 12 }}>
           <TenantSwitcher />
         </View>
+
+        {isParentSettings ? (
+          <View style={{ width: '100%', maxWidth: isWeb ? 980 : 720, marginTop: 12, borderTopWidth: 1, borderTopColor: '#eef2f7', paddingTop: 12 }}>
+            <Text style={{ fontSize: 16, fontWeight: '700', marginBottom: 8 }}>App Updates</Text>
+            <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 10 }}>Check whether a newer app update is available for this build.</Text>
+            <TouchableOpacity
+              onPress={checkForOtaUpdate}
+              disabled={updateBusy}
+              style={{ alignSelf: 'flex-start', borderRadius: 12, backgroundColor: '#e2e8f0', paddingVertical: 10, paddingHorizontal: 14, opacity: updateBusy ? 0.7 : 1 }}
+            >
+              <Text style={{ color: '#0f172a', fontWeight: '700' }}>{updateBusy ? 'Checking for updates...' : 'Check for updates'}</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
 
         {/* Account */}
         <View style={{ marginTop: 12, borderTopWidth: 1, borderTopColor: '#eef2f7', paddingTop: 12 }}>
