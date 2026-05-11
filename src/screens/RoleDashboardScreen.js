@@ -476,6 +476,12 @@ export default function RoleDashboardScreen({ navigation }) {
   return (
     <ScreenWrapper bannerShowBack={false} hideBanner={isTabletLayout} style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <AnnouncementFeed
+          items={urgentMemos}
+          headerTapMode={!isTherapist && isPhoneWorkspace ? 'overlay' : 'screen'}
+          storageScopeKey={`${role}:${String(effectiveUser?.id || user?.id || 'guest').trim() || 'guest'}`}
+        />
+
         <View style={[styles.hero, isTherapist ? styles.heroTherapist : null]}>
           {isTherapist ? (
             <>
@@ -554,12 +560,6 @@ export default function RoleDashboardScreen({ navigation }) {
         </View>
 
         <TenantSwitcher />
-
-        <AnnouncementFeed
-          items={urgentMemos}
-          headerTapMode={!isTherapist && isPhoneWorkspace ? 'overlay' : 'screen'}
-          storageScopeKey={`${role}:${String(effectiveUser?.id || user?.id || 'guest').trim() || 'guest'}`}
-        />
 
         {!isTherapist ? <View style={[styles.grid, isTherapist ? styles.gridTherapist : null]}>
           {showDashboardPlaceholder ? dashboardCards.map((card) => renderPlaceholderDashboardCard(card.key)) : dashboardCards.map((card) => {

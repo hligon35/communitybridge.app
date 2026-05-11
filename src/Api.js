@@ -10,6 +10,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
+  updateEmail,
   updateProfile,
   getIdToken,
   deleteUser,
@@ -1064,6 +1065,16 @@ export async function me() {
 export async function updateMe(payload) {
   const u = requireUser();
   const next = { ...(payload || {}) };
+
+  if (next.email != null) {
+    const normalizedEmail = normalizeEmailInput(next.email);
+    if (normalizedEmail && normalizedEmail !== normalizeEmailInput(u.email)) {
+      await updateEmail(u, normalizedEmail);
+      next.email = normalizedEmail;
+    } else if (normalizedEmail) {
+      next.email = normalizedEmail;
+    }
+  }
 
   // Keep Firebase Auth profile loosely in sync for displayName/photoURL.
   try {

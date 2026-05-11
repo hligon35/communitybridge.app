@@ -37,6 +37,37 @@ export default function SettingsScreen({ navigation }) {
   const isTabletLayout = useIsTabletLayout();
   const isParentMobileSettings = !isWeb && !isTabletLayout && normalizeUserRole(user?.role) === USER_ROLES.PARENT;
 
+  React.useLayoutEffect(() => {
+    if (!isParentMobileSettings) {
+      navigation.setOptions({
+        headerLeft: undefined,
+      });
+      return;
+    }
+
+    navigation.setOptions({
+      headerLeft: () => (
+        <TouchableOpacity
+          onPress={() => logout?.()}
+          accessibilityRole="button"
+          accessibilityLabel="Logout"
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          style={{
+            marginLeft: 8,
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: '#fef2f2',
+          }}
+        >
+          <MaterialIcons name="logout" size={20} color="#b91c1c" />
+        </TouchableOpacity>
+      ),
+    });
+  }, [isParentMobileSettings, logout, navigation]);
+
   const openEditProfile = React.useCallback(() => {
     const parentNavigation = navigation?.getParent?.();
     const state = navigation?.getState?.();
@@ -434,19 +465,8 @@ export default function SettingsScreen({ navigation }) {
           <Image source={editIconImage} style={{ width: 20, height: 20, resizeMode: 'contain' }} />
         </TouchableOpacity>
 
-        {!isWeb ? (
+        {!isWeb && !isParentMobileSettings ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16, paddingRight: 56 }}>
-            {isParentMobileSettings ? (
-              <TouchableOpacity
-                onPress={() => logout?.()}
-                style={{ marginRight: 12, paddingVertical: 4, paddingHorizontal: 2, flexDirection: 'row', alignItems: 'center' }}
-                activeOpacity={0.7}
-                accessibilityLabel="Logout"
-              >
-                <MaterialIcons name="logout" size={22} color="#b91c1c" />
-                <Text style={{ color: '#b91c1c', fontWeight: '700', marginLeft: 4 }}>Logout</Text>
-              </TouchableOpacity>
-            ) : null}
             <Text style={{ fontSize: 22, fontWeight: '800', color: '#0f172a' }}>Profile Settings</Text>
           </View>
         ) : null}

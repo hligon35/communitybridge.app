@@ -41,7 +41,7 @@ function InlineToast({ toast, onClose }) {
   );
 }
 
-const DEFAULT_ROLES = ['Admin', 'Teacher', 'Therapist', 'Parent', 'Staff'];
+const DEFAULT_ROLES = ['Admin', 'Office', 'BCBA', 'Therapist', 'Parent', 'Super Admin'];
 const DEFAULT_CAPS = [
   { id: 'users:manage', label: 'Manage users' },
   { id: 'children:edit', label: 'Edit children' },
@@ -51,16 +51,16 @@ const DEFAULT_CAPS = [
 ];
 const PERMISSION_GROUPS = [
   {
-    key: 'office',
-    label: 'Office',
-    description: 'Organization settings, imports, exports, compliance, and scheduling controls.',
-    roles: ['Admin', 'Staff'],
+    key: 'operations',
+    label: 'Operations',
+    description: 'Administrative and office-facing controls for user access, exports, settings, and operational workflows.',
+    roles: ['Admin', 'Office', 'Super Admin'],
   },
   {
     key: 'clinical',
     label: 'Clinical',
     description: `BCBA and ${THERAPY_ROLE_LABELS.therapist} workflows, child editing, and clinical communication.`,
-    roles: ['Therapist', 'Teacher'],
+    roles: ['BCBA', 'Therapist'],
   },
   {
     key: 'family',
@@ -71,33 +71,27 @@ const PERMISSION_GROUPS = [
 ];
 const ROLE_OPTIONS = [
   { value: 'parent', label: 'Parent', adminOnly: false },
-  { value: 'faculty', label: 'Faculty', adminOnly: false },
   { value: 'therapist', label: THERAPY_ROLE_LABELS.therapist, adminOnly: false },
   { value: 'bcba', label: 'BCBA', adminOnly: false },
   { value: 'office', label: 'Office', adminOnly: false },
-  { value: 'reception', label: 'Reception', adminOnly: false },
   { value: 'admin', label: 'Admin', adminOnly: true },
-  { value: 'campusAdmin', label: 'Campus Admin', adminOnly: true },
-  { value: 'orgAdmin', label: 'Org Admin', adminOnly: true },
-  { value: 'superAdmin', label: 'Super Admin', adminOnly: true },
 ];
 const STAFF_INVITE_ROLE_OPTIONS = [
   { value: 'bcba', label: 'BCBA', adminOnly: false },
   { value: 'office', label: 'Office', adminOnly: false },
-  { value: 'reception', label: 'Reception', adminOnly: false },
-  { value: 'faculty', label: 'Faculty', adminOnly: false },
   { value: 'therapist', label: 'ABA Tech', adminOnly: false },
-  { value: 'orgAdmin', label: 'Org Admin', adminOnly: true },
-  { value: 'superAdmin', label: 'Super Admin', adminOnly: true },
+  { value: 'admin', label: 'Admin', adminOnly: true },
 ];
 
 function capabilityRoleKey(role) {
   const value = normalizeUserRole(role);
-  if (value === 'superAdmin' || value === 'orgAdmin' || value === 'campusAdmin' || value === 'admin' || value === 'office' || value === 'reception') return 'Admin';
-  if (value === 'therapist' || value === 'bcba') return 'Therapist';
-  if (value === 'faculty') return 'Teacher';
+  if (value === 'superAdmin') return 'Super Admin';
+  if (value === 'admin') return 'Admin';
+  if (value === 'office') return 'Office';
+  if (value === 'bcba') return 'BCBA';
+  if (value === 'therapist') return 'Therapist';
   if (value === 'parent') return 'Parent';
-  return 'Staff';
+  return 'Therapist';
 }
 
 function createUserDraft(user) {
@@ -163,17 +157,18 @@ export default function ManagePermissionsScreen(){
   const [sectionsOpen, setSectionsOpen] = useState({ users: true, permissions: true });
   const [roleSectionsOpen, setRoleSectionsOpen] = useState({
     Admin: true,
-    Teacher: false,
+    Office: false,
+    BCBA: false,
     Therapist: false,
     Parent: false,
-    Staff: false,
+    'Super Admin': false,
   });
   const [userSectionsOpen, setUserSectionsOpen] = useState({});
-  const [selectedPermissionGroup, setSelectedPermissionGroup] = useState('office');
+  const [selectedPermissionGroup, setSelectedPermissionGroup] = useState('operations');
   const [organizations, setOrganizations] = useState([]);
   const [programsByOrg, setProgramsByOrg] = useState({});
   const [campusesByOrg, setCampusesByOrg] = useState({});
-  const canManagePermissions = isSuperAdminRole(user?.role);
+  const canManagePermissions = normalizeUserRole(user?.role) === 'admin';
   const actorTenantProfile = useMemo(() => buildTenantProfile(user || {}), [user]);
   const actorOrganizationIds = useMemo(() => {
     if (canManagePermissions) return [];
@@ -191,10 +186,8 @@ export default function ManagePermissionsScreen(){
     return uniqueIds(actorTenantProfile.campusIds);
   }, [actorTenantProfile.campusIds, canManagePermissions]);
   const canManageUsers = useMemo(() => {
-    if (canManagePermissions) return true;
-    const roleKey = capabilityRoleKey(user?.role);
-    return Boolean(mapping?.[roleKey]?.['users:manage']);
-  }, [canManagePermissions, mapping, user?.role]);
+    return normalizeUserRole(user?.role) === 'admin';
+  }, [user?.role]);
   const visibleRoleOptions = useMemo(() => {
     return ROLE_OPTIONS.filter((option) => canManagePermissions || !option.adminOnly);
   }, [canManagePermissions]);
@@ -885,7 +878,7 @@ export default function ManagePermissionsScreen(){
               <View style={styles.sectionBody}>
                 <View style={styles.infoCard}>
                   <Text style={styles.infoTitle}>Role assignment rules</Text>
-                  <Text style={styles.infoBody}>Only super admins can assign elevated roles. Org admins should be scoped to one organization. Campus admins should be scoped to one organization and one or more campuses.</Text>
+                  <Text style={styles.infoBody}>Admins can assign Parent, ABA Tech, BCBA, Office, and Admin roles. Legacy campus-admin users are treated as Office and legacy org-admin users are treated as Admin.</Text>
                 </View>
                 <View style={styles.inviteComposer}>
                   <Text style={styles.inviteComposerTitle}>Staff invite</Text>

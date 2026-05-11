@@ -10,7 +10,11 @@ function safeString(value) {
 }
 
 function normalizeRole(role) {
-  return safeString(role).toLowerCase();
+  const value = safeString(role).toLowerCase();
+  if (value === 'orgadmin' || value === 'org_admin' || value === 'organizationadmin' || value === 'administrator') return 'admin';
+  if (value === 'campusadmin' || value === 'campus_admin' || value === 'reception' || value === 'receptionist' || value === 'frontdesk' || value === 'front_desk' || value === 'front-desk' || value === 'officeadmin' || value === 'office_admin' || value === 'office-admin') return 'office';
+  if (value === 'faculty' || value === 'teacher' || value === 'staff') return 'therapist';
+  return value;
 }
 
 function normalizeIds(values) {
@@ -55,15 +59,7 @@ function hasIdOverlap(left, right) {
 
 function isAdminRole(role) {
   const value = normalizeRole(role);
-  return value === 'admin'
-    || value === 'administrator'
-    || value === 'campusadmin'
-    || value === 'campus_admin'
-    || value === 'orgadmin'
-    || value === 'org_admin'
-    || value === 'organizationadmin'
-    || value === 'superadmin'
-    || value === 'super_admin';
+  return value === 'admin' || value === 'superadmin' || value === 'super_admin';
 }
 
 function isSuperAdminRole(role) {
@@ -110,14 +106,6 @@ function canManageTargetUser(actorInput, targetInput) {
     if (getScopedCampusIds(actor).length) return hasCampusOverlap(actor, target);
     if (getScopedProgramIds(actor).length) return hasProgramOverlap(actor, target);
     return getScopedOrganizationIds(actor).length > 0;
-  }
-
-  if (actor.role === 'orgadmin' || actor.role === 'org_admin' || actor.role === 'organizationadmin') {
-    return getScopedOrganizationIds(actor).length > 0;
-  }
-
-  if (actor.role === 'campusadmin' || actor.role === 'campus_admin') {
-    return hasCampusOverlap(actor, target);
   }
 
   return false;

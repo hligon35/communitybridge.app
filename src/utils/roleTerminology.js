@@ -11,15 +11,15 @@ const VALUE_LABELS = Object.freeze({
   therapists: THERAPY_ROLE_LABELS.therapists,
   bcba: 'BCBA',
   office: 'Office',
-  reception: 'Reception',
-  faculty: 'Faculty',
+  reception: 'Office',
+  faculty: THERAPY_ROLE_LABELS.therapist,
   parent: 'Parent',
   admin: 'Admin',
-  campusadmin: 'Campus Admin',
-  orgadmin: 'Org Admin',
+  campusadmin: 'Office',
+  orgadmin: 'Admin',
   superadmin: 'Super Admin',
-  teacher: 'Teacher',
-  staff: 'Staff',
+  teacher: THERAPY_ROLE_LABELS.therapist,
+  staff: THERAPY_ROLE_LABELS.therapist,
 });
 
 export { THERAPY_ROLE_LABELS };

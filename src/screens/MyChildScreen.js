@@ -6,21 +6,20 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useData } from '../DataContext';
 import { useAuth } from '../AuthContext';
 import { ScreenWrapper } from '../components/ScreenWrapper';
-import MoodTrackerCard from '../components/MoodTrackerCard';
 import ImageToggle from '../components/ImageToggle';
 import LatestSummaryCard from '../features/sessionInsights/components/LatestSummaryCard';
 import { childHasParent, findLinkedParentId } from '../utils/directoryLinking';
 import { avatarSourceFor } from '../utils/idVisibility';
 import { maskEmailDisplay, maskPhoneDisplay } from '../utils/inputFormat';
-import { THERAPY_ROLE_LABELS, getAssignmentRoleLabel, getDisplayRoleLabel } from '../utils/roleTerminology';
+import { THERAPY_ROLE_LABELS, getAssignmentRoleLabel } from '../utils/roleTerminology';
 import { useTenant } from '../core/tenant/TenantContext';
-import { isAdminRole, isStaffRole } from '../core/tenant/models';
+import { isAdminRole } from '../core/tenant/models';
 import { getChildSessionSummaries, getLatestChildSessionSummary, getTherapySessionSummaryText, listParentSummariesByChild } from '../Api';
 
 export default function MyChildScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { children, parents, urgentMemos, timeChangeProposals, proposeTimeChange, respondToProposal, respondToUrgentMemo, fetchAndSync, seededSessionSummariesByChild = {} } = useData();
+  const { children, parents, urgentMemos, timeChangeProposals, proposeTimeChange, respondToProposal, respondToUrgentMemo, seededSessionSummariesByChild = {} } = useData();
   const { user } = useAuth();
   const tenant = useTenant() || {};
   const childProfileMode = tenant.childProfileMode || { mode: 'family', entityLabel: 'child', collectionLabel: 'children', profileTitle: 'My Child', profileSummaryTitle: 'Family Overview' };
@@ -31,7 +30,6 @@ export default function MyChildScreen() {
 
   const role = (user?.role || '').toString().toLowerCase();
   const isParent = role.includes('parent');
-  const canRecordMood = isAdminRole(user?.role) || isStaffRole(user?.role);
   const linkedParentId = isParent ? (findLinkedParentId(user, parents) || user?.id || null) : null;
 
   // Only show linked children for parents; keep existing behavior for other roles.
@@ -309,29 +307,6 @@ export default function MyChildScreen() {
       setArtifactLoading(false);
     }
   }
-
-  const linkedParents = useMemo(() => {
-    if (!Array.isArray(parents) || !child?.id) return [];
-    return parents.filter((parent) => childHasParent(child, parent?.id));
-  }, [child, parents]);
-
-  const studentTherapistCards = useMemo(() => {
-    const raw = [
-      child?.bcaTherapist ? { ...child.bcaTherapist, cardKey: `bca-${child.bcaTherapist.id || child.bcaTherapist.name || 'therapist'}` } : null,
-      child?.amTherapist ? { ...child.amTherapist, cardKey: `am-${child.amTherapist.id || child.amTherapist.name || 'therapist'}` } : null,
-      child?.pmTherapist ? { ...child.pmTherapist, cardKey: `pm-${child.pmTherapist.id || child.pmTherapist.name || 'therapist'}` } : null,
-    ].filter(Boolean);
-
-    const unique = [];
-    const seen = new Set();
-    raw.forEach((item) => {
-      const key = String(item?.id || item?.email || item?.name || item?.cardKey || '').trim();
-      if (!key || seen.has(key)) return;
-      seen.add(key);
-      unique.push(item);
-    });
-    return unique;
-  }, [child]);
 
   const programDocs = useMemo(() => {
     const docsRaw = child?.programDocs;
@@ -635,7 +610,13 @@ export default function MyChildScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Program</Text>
           <Text style={styles.sectionText}>
-            {child?.curriculum || child?.programCurriculum || child?.carePlan || 'No curriculum details available yet.'}
+            {child?.curriculum || child?.programCurriculum || 'No curriculum details available yet.'}
+          </Text>
+
+          <View style={{ height: 10 }} />
+          <Text style={[styles.sectionTitle, { marginBottom: 6 }]}>Care Plan</Text>
+          <Text style={styles.sectionText}>
+            {child?.carePlan || "Sam's goals: fine motor, communication prompts, and independent dressing."}
           </Text>
 
           {featureFlags.programDocuments !== false ? (
@@ -665,13 +646,6 @@ export default function MyChildScreen() {
             </>
           ) : null}
         </View>
-
-        <MoodTrackerCard
-          childId={child?.id}
-          latestEntry={child?.latestMoodEntry}
-          editable={canRecordMood}
-          onRecorded={() => fetchAndSync({ force: true })}
-        />
       </View>
 
       <Modal transparent visible={artifactModalOpen} animationType="fade" onRequestClose={() => setArtifactModalOpen(false)}>
@@ -697,129 +671,6 @@ export default function MyChildScreen() {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
-
-      {/* Care team */}
-      <View style={styles.careTeamWrap}>
-        <Text style={styles.careTeamTitle}>{childProfileMode.mode === 'student' ? 'Support Team' : 'Care Team'}</Text>
-
-        {childProfileMode.mode === 'student' ? (
-          <>
-            <View style={styles.sectionCompact}>
-              <Text style={styles.sectionTitle}>Parents</Text>
-              {linkedParents.length ? (
-                <View style={styles.peopleCardGrid}>
-                  {linkedParents.map((parent, index) => (
-                    <View key={parent?.id || `parent-${index}`} style={styles.personCard}>
-                      <Image source={avatarSourceFor(parent)} style={styles.personCardAvatar} />
-                      <Text style={styles.personCardName} numberOfLines={2}>{shortName(parent?.name, 18) || 'Parent'}</Text>
-                    </View>
-                  ))}
-                </View>
-              ) : (
-                <Text style={styles.sectionText}>No parents linked yet.</Text>
-              )}
-            </View>
-
-            <View style={styles.sectionCompact}>
-              <Text style={styles.sectionTitle}>{THERAPY_ROLE_LABELS.therapists}</Text>
-              {studentTherapistCards.length ? (
-                <View style={styles.peopleCardGrid}>
-                  {studentTherapistCards.map((therapist, index) => (
-                    <View key={therapist?.cardKey || therapist?.id || `therapist-${index}`} style={styles.personCard}>
-                      <Image source={avatarSourceFor(therapist)} style={styles.personCardAvatar} />
-                      <Text style={styles.personCardName} numberOfLines={2}>{shortName(therapist?.name, 18) || THERAPY_ROLE_LABELS.therapist}</Text>
-                    </View>
-                  ))}
-                </View>
-              ) : (
-                <Text style={styles.sectionText}>{`No ${THERAPY_ROLE_LABELS.therapists.toLowerCase()} assigned yet.`}</Text>
-              )}
-            </View>
-          </>
-        ) : (
-          <>
-            <View style={[styles.card, { marginTop: 8, alignItems: 'center' }]}>
-              {child.bcaTherapist ? (
-                <>
-                  <Image source={avatarSourceFor(child.bcaTherapist)} style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#eee' }} />
-                  <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text style={styles.name}>{shortName(child.bcaTherapist.name, 20)}</Text>
-                    <Text style={styles.meta}>{getDisplayRoleLabel(child.bcaTherapist.role)}</Text>
-                  </View>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <TouchableOpacity onPress={() => openPhone(child.bcaTherapist.phone)} style={{ paddingVertical: 6 }} accessibilityLabel="Call BCBA">
-                      <MaterialIcons name="call" size={20} color="#2563eb" />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => openEmail(child.bcaTherapist.email)} style={{ paddingVertical: 6 }} accessibilityLabel="Email BCBA">
-                      <MaterialIcons name="email" size={20} color="#2563eb" />
-                    </TouchableOpacity>
-                  </View>
-                </>
-              ) : (
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={styles.name}>BCBA</Text>
-                  <Text style={styles.meta}>No BCBA assigned.</Text>
-                </View>
-              )}
-            </View>
-
-            <View style={[styles.row, { marginTop: 12 }]}> 
-              <View style={[styles.therapistBlock, { marginRight: 8 }]}>
-                <Text style={styles.therapistTitle}>{THERAPY_ROLE_LABELS.amTherapist}</Text>
-                {child.amTherapist ? (
-                  <View style={styles.therapistInner}>
-                    <Image source={avatarSourceFor(child.amTherapist)} style={styles.therapistAvatar} />
-                    <View style={{ flex: 1, marginLeft: 8, alignItems: 'center' }}>
-                      <Text style={styles.therapistName}>{shortName(child.amTherapist.name, 18)}</Text>
-                      <Text style={styles.therapistRole}>{getDisplayRoleLabel(child.amTherapist.role)}</Text>
-                      <View style={styles.amIconRow}>
-                        <TouchableOpacity onPress={() => openPhone(child.amTherapist.phone)} style={styles.iconTouch} accessibilityLabel={`Call ${THERAPY_ROLE_LABELS.amTherapist}`}>
-                          <MaterialIcons name="call" size={22} color="#2563eb" />
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={() => openEmail(child.amTherapist.email)} style={styles.iconTouch} accessibilityLabel={`Email ${THERAPY_ROLE_LABELS.amTherapist}`}>
-                          <MaterialIcons name="email" size={22} color="#2563eb" />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  </View>
-                ) : (
-                  <Text style={styles.sectionText}>{`No ${THERAPY_ROLE_LABELS.amTherapist.toLowerCase()} assigned.`}</Text>
-                )}
-              </View>
-
-              <View style={[styles.therapistBlock, { marginLeft: 8 }]}>
-                <Text style={styles.therapistTitle}>{THERAPY_ROLE_LABELS.pmTherapist}</Text>
-                {child.pmTherapist ? (
-                  <View style={styles.therapistInner}>
-                    <Image source={avatarSourceFor(child.pmTherapist)} style={styles.therapistAvatar} />
-                    <View style={{ flex: 1, marginLeft: 8, alignItems: 'center' }}>
-                      <Text style={styles.therapistName}>{shortName(child.pmTherapist.name, 18)}</Text>
-                      <Text style={styles.therapistRole}>{getDisplayRoleLabel(child.pmTherapist.role)}</Text>
-                      <View style={styles.amIconRow}>
-                        <TouchableOpacity onPress={() => openPhone(child.pmTherapist.phone)} style={styles.iconTouch} accessibilityLabel={`Call ${THERAPY_ROLE_LABELS.pmTherapist}`}>
-                          <MaterialIcons name="call" size={22} color="#2563eb" />
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={() => openEmail(child.pmTherapist.email)} style={styles.iconTouch} accessibilityLabel={`Email ${THERAPY_ROLE_LABELS.pmTherapist}`}>
-                          <MaterialIcons name="email" size={22} color="#2563eb" />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  </View>
-                ) : (
-                  <Text style={styles.sectionText}>{`No ${THERAPY_ROLE_LABELS.pmTherapist.toLowerCase()} assigned.`}</Text>
-                )}
-              </View>
-            </View>
-          </>
-        )}
-
-        <View style={[styles.card, { marginTop: 12 }]}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.sectionTitle}>{childProfileMode.mode === 'student' ? 'Learning Plan' : childProfileMode.mode === 'operations' ? 'Program Plan' : 'Care Plan'}</Text>
-            <Text style={styles.sectionText}>{child.carePlan || "Sam's goals: fine motor, communication prompts, and independent dressing."}</Text>
-          </View>
-        </View>
-      </View>
 
       </ScrollView>
     </ScreenWrapper>

@@ -791,6 +791,20 @@ app.get('/api/audit-logs', authMiddleware, requireAdmin, (req, res) => {
         createdAt: row.created_at || nowISO(),
       };
     });
+    if (isSuperAdminRole(req.user?.role)) {
+      return res.json({
+        ok: true,
+        mode: 'superAdminRaw',
+        items: items.map((item) => ({
+          id: item.id,
+          action: item.action,
+          targetType: item.targetType,
+          targetId: item.targetId,
+          status: item.status,
+          createdAt: item.createdAt,
+        })),
+      });
+    }
     return res.json({ ok: true, items });
   } catch (e) {
     return res.status(500).json({ ok: false, error: e?.message || String(e) });
@@ -1319,8 +1333,6 @@ function isAdminRole(role) {
   const r = safeString(role).trim().toLowerCase();
   return r === 'admin'
     || r === 'administrator'
-    || r === 'campusadmin'
-    || r === 'campus_admin'
     || r === 'orgadmin'
     || r === 'org_admin'
     || r === 'organizationadmin'
@@ -1346,9 +1358,16 @@ function defaultPermissionsConfig() {
       'settings:system': true,
       'export:data': true,
     },
-    Teacher: {
+    Office: {
+      'users:manage': true,
+      'children:edit': true,
+      'messages:send': true,
+      'settings:system': true,
+      'export:data': true,
+    },
+    BCBA: {
       'users:manage': false,
-      'children:edit': false,
+      'children:edit': true,
       'messages:send': true,
       'settings:system': false,
       'export:data': false,
@@ -1367,34 +1386,47 @@ function defaultPermissionsConfig() {
       'settings:system': false,
       'export:data': false,
     },
-    Staff: {
+    'Super Admin': {
       'users:manage': false,
       'children:edit': false,
-      'messages:send': true,
+      'messages:send': false,
       'settings:system': false,
       'export:data': false,
     },
   };
 }
 
+function normalizePermissionsConfigValue(value) {
+  const input = value && typeof value === 'object' ? value : {};
+  const defaults = defaultPermissionsConfig();
+  return {
+    Admin: { ...defaults.Admin, ...(input.Admin || {}) },
+    Office: { ...defaults.Office, ...(input.Office || input.Admin || {}) },
+    BCBA: { ...defaults.BCBA, ...(input.BCBA || input.Therapist || {}) },
+    Therapist: { ...defaults.Therapist, ...(input.Therapist || input.Teacher || input.Staff || {}) },
+    Parent: { ...defaults.Parent, ...(input.Parent || {}) },
+    'Super Admin': { ...defaults['Super Admin'], ...(input['Super Admin'] || {}) },
+  };
+}
+
 function getPermissionsConfigRow() {
   const row = db.prepare('SELECT data_json FROM permissions_config WHERE id = ?').get('default');
   if (!row || !row.data_json) return null;
-  try { return JSON.parse(String(row.data_json)); } catch (_) { return null; }
+  try { return normalizePermissionsConfigValue(JSON.parse(String(row.data_json))); } catch (_) { return null; }
 }
 
 function permissionRoleKey(role) {
   const r = safeString(role).trim().toLowerCase();
-  if (r === 'superadmin' || r === 'super_admin') return 'Admin';
-  if (r === 'admin' || r === 'administrator' || r === 'campusadmin' || r === 'campus_admin' || r === 'orgadmin' || r === 'org_admin' || r === 'organizationadmin') return 'Admin';
-  if (r.includes('therapist') || r.includes('bcba')) return 'Therapist';
-  if (r.includes('teacher') || r.includes('faculty')) return 'Teacher';
+  if (r === 'superadmin' || r === 'super_admin') return 'Super Admin';
+  if (r === 'admin' || r === 'administrator' || r === 'orgadmin' || r === 'org_admin' || r === 'organizationadmin') return 'Admin';
+  if (r === 'office' || r === 'officeadmin' || r === 'office admin' || r === 'office-admin' || r === 'office_admin' || r === 'reception' || r === 'receptionist' || r === 'frontdesk' || r === 'front desk' || r === 'front-desk' || r === 'front_desk' || r === 'campusadmin' || r === 'campus_admin') return 'Office';
+  if (r === 'bcba') return 'BCBA';
+  if (r.includes('therapist') || r.includes('teacher') || r.includes('faculty') || r === 'staff') return 'Therapist';
   if (r.includes('parent')) return 'Parent';
-  return 'Staff';
+  return 'Therapist';
 }
 
 function roleHasCapability(role, config, capability) {
-  if (isSuperAdminRole(role)) return true;
   const key = permissionRoleKey(role);
   const caps = config && typeof config === 'object' ? config[key] : null;
   return Boolean(caps && caps[capability]);
@@ -1423,6 +1455,57 @@ function requireSuperAdmin(req, res, next) {
     if (req.user && isSuperAdminRole(req.user.role)) return next();
   } catch (e) {}
   return res.status(403).json({ ok: false, error: 'super admin required' });
+}
+
+function requirePermissionEditor(req, res, next) {
+  try {
+    const role = safeString(req.user?.role).trim().toLowerCase();
+    if (role === 'admin' || role === 'administrator' || role === 'orgadmin' || role === 'org_admin' || role === 'organizationadmin') return next();
+  } catch (e) {}
+  return res.status(403).json({ ok: false, error: 'admin required to edit role permissions' });
+}
+
+function sanitizeDirectoryRecordForSuperAdmin(record, entityType) {
+  const item = record && typeof record === 'object' ? record : {};
+  const linkedStudentIds = Array.isArray(item.linkedStudentIds) ? item.linkedStudentIds.map(String).filter(Boolean) : [];
+  const campusIds = Array.isArray(item.campusIds) ? item.campusIds.map(String).filter(Boolean) : [];
+  const programIds = Array.isArray(item.programIds || item.branchIds) ? (item.programIds || item.branchIds).map(String).filter(Boolean) : [];
+  return {
+    id: safeString(item.id || item.uid),
+    entityType,
+    role: safeString(item.role),
+    organizationId: safeString(item.organizationId),
+    programIds,
+    campusIds,
+    linkedStudentCount: linkedStudentIds.length,
+    active: item.active !== false,
+    createdAt: item.createdAt || null,
+    updatedAt: item.updatedAt || null,
+  };
+}
+
+function buildSuperAdminDirectoryPayload({ children, parents, therapists, aba }) {
+  const safeChildren = (Array.isArray(children) ? children : []).map((item) => sanitizeDirectoryRecordForSuperAdmin(item, 'child'));
+  const safeParents = (Array.isArray(parents) ? parents : []).map((item) => sanitizeDirectoryRecordForSuperAdmin(item, 'parent'));
+  const safeTherapists = (Array.isArray(therapists) ? therapists : []).map((item) => sanitizeDirectoryRecordForSuperAdmin(item, 'staff'));
+  return {
+    ok: true,
+    mode: 'superAdminRaw',
+    summary: {
+      children: safeChildren.length,
+      parents: safeParents.length,
+      staff: safeTherapists.length,
+      assignments: Array.isArray(aba?.assignments) ? aba.assignments.length : 0,
+      supervisionLinks: Array.isArray(aba?.supervision) ? aba.supervision.length : 0,
+    },
+    children: safeChildren,
+    parents: safeParents,
+    therapists: safeTherapists,
+    aba: {
+      assignments: Array.isArray(aba?.assignments) ? aba.assignments.map((item) => ({ childId: safeString(item?.childId), session: safeString(item?.session), abaId: safeString(item?.abaId) })) : [],
+      supervision: Array.isArray(aba?.supervision) ? aba.supervision.map((item) => ({ abaId: safeString(item?.abaId), bcbaId: safeString(item?.bcbaId) })) : [],
+    },
+  };
 }
 
 function requireCapability(capability) {
@@ -3351,7 +3434,11 @@ app.get('/api/directory', authMiddleware, requireAdmin, (req, res) => {
     const supervision = db.prepare('SELECT aba_id, bcba_id FROM aba_supervision ORDER BY aba_id ASC').all()
       .map((r) => ({ abaId: r.aba_id, bcbaId: r.bcba_id }));
 
-    return res.json({ ok: true, children, parents, therapists, aba: { assignments, supervision } });
+    const aba = { assignments, supervision };
+    if (isSuperAdminRole(req.user?.role)) {
+      return res.json(buildSuperAdminDirectoryPayload({ children, parents, therapists, aba }));
+    }
+    return res.json({ ok: true, children, parents, therapists, aba });
   } catch (e) {
     return res.status(500).json({ ok: false, error: e?.message || String(e) });
   }
@@ -3383,6 +3470,10 @@ app.get('/api/directory/me', authMiddleware, (req, res) => {
       .map((r) => ({ childId: r.child_id, session: r.session, abaId: r.aba_id }));
     const allSupervision = db.prepare('SELECT aba_id, bcba_id FROM aba_supervision ORDER BY aba_id ASC').all()
       .map((r) => ({ abaId: r.aba_id, bcbaId: r.bcba_id }));
+
+    if (req.user && isSuperAdminRole(req.user.role)) {
+      return res.json(buildSuperAdminDirectoryPayload({ children: allChildren, parents: allParents, therapists: allTherapists, aba: { assignments: allAssignments, supervision: allSupervision } }));
+    }
 
     if (req.user && isAdminRole(req.user.role)) {
       return res.json({ ok: true, children: allChildren, parents: allParents, therapists: allTherapists, aba: { assignments: allAssignments, supervision: allSupervision } });
@@ -4642,22 +4733,23 @@ app.get('/api/permissions-config', authMiddleware, requireAdmin, (req, res) => {
   }
 });
 
-app.put('/api/permissions-config', authMiddleware, requireSuperAdmin, (req, res) => {
+app.put('/api/permissions-config', authMiddleware, requirePermissionEditor, (req, res) => {
   const item = req.body && typeof req.body === 'object' ? req.body : null;
   if (!item) return res.status(400).json({ ok: false, error: 'permissions config object required' });
   const now = nowISO();
   try {
+    const normalized = normalizePermissionsConfigValue(item);
     db.prepare(
       'INSERT INTO permissions_config (id, data_json, created_at, updated_at) VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET data_json=excluded.data_json, updated_at=excluded.updated_at'
-    ).run('default', JSON.stringify(item), now, now);
+    ).run('default', JSON.stringify(normalized), now, now);
     recordAuditLog({
       actorId: req.user?.id,
       action: 'permissions_config.updated',
       targetType: 'permissions_config',
       targetId: 'default',
-      details: { roleCount: Object.keys(item || {}).length },
+      details: { roleCount: Object.keys(normalized || {}).length },
     });
-    return res.json({ ok: true, item });
+    return res.json({ ok: true, item: normalized });
   } catch (e) {
     return res.status(500).json({ ok: false, error: e?.message || String(e) });
   }
@@ -5043,8 +5135,8 @@ app.post('/api/admin/users/invite', authMiddleware, requireAdmin, requireCapabil
 
   if (!email) return res.status(400).json({ ok: false, error: 'email required' });
   if (!role) return res.status(400).json({ ok: false, error: 'role required' });
-  if (isAdminRole(role) && !isSuperAdminRole(req.user?.role)) {
-    return res.status(403).json({ ok: false, error: 'super admin required to assign elevated roles' });
+  if (isSuperAdminRole(role) && !isSuperAdminRole(req.user?.role)) {
+    return res.status(403).json({ ok: false, error: 'super admin assignments are reserved for the raw-data account' });
   }
 
   try {
@@ -5152,8 +5244,8 @@ app.put('/api/admin/users/:userId', authMiddleware, requireAdmin, requireCapabil
     const nextRole = isReservedSuperAdminEmail(email !== undefined ? email : existingUser.email)
       ? 'superAdmin'
       : role;
-    if (nextRole !== undefined && isAdminRole(nextRole) && !requesterIsSuperAdmin) {
-      return res.status(403).json({ ok: false, error: 'super admin required to assign elevated roles' });
+    if (nextRole !== undefined && isSuperAdminRole(nextRole) && !requesterIsSuperAdmin) {
+      return res.status(403).json({ ok: false, error: 'super admin assignments are reserved for the raw-data account' });
     }
     if (!canManageTargetUser(req.user, targetScopedUser)) {
       return res.status(403).json({ ok: false, error: 'target user is outside your admin scope' });

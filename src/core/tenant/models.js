@@ -1,12 +1,12 @@
 export const USER_ROLES = Object.freeze({
   PARENT: 'parent',
-  FACULTY: 'faculty',
+  FACULTY: 'therapist',
   THERAPIST: 'therapist',
   BCBA: 'bcba',
   OFFICE: 'office',
-  RECEPTION: 'reception',
-  CAMPUS_ADMIN: 'campusAdmin',
-  ORG_ADMIN: 'orgAdmin',
+  RECEPTION: 'office',
+  CAMPUS_ADMIN: 'office',
+  ORG_ADMIN: 'admin',
   SUPER_ADMIN: 'superAdmin',
   ADMIN: 'admin',
 });
@@ -46,6 +46,15 @@ export const PROGRAM_TYPES = Object.freeze({
 export const CONTACT_RELATIONSHIP_TYPES = Object.freeze(['mother', 'father', 'guardian', 'caregiver', 'emergencyContact', 'pickupContact']);
 export const STAFF_RELATIONSHIP_TYPES = Object.freeze(['teacher', 'therapist', 'bcba', 'office', 'reception', 'campusAdmin', 'frontDesk']);
 
+export const CANONICAL_USER_ROLES = Object.freeze([
+  USER_ROLES.PARENT,
+  USER_ROLES.THERAPIST,
+  USER_ROLES.BCBA,
+  USER_ROLES.OFFICE,
+  USER_ROLES.ADMIN,
+  USER_ROLES.SUPER_ADMIN,
+]);
+
 function safeString(value) {
   try {
     if (value == null) return '';
@@ -81,17 +90,17 @@ export function normalizeUserRole(role) {
   const value = safeString(role).toLowerCase();
   if (!value) return USER_ROLES.PARENT;
   if (value === 'parent') return USER_ROLES.PARENT;
-  if (value === 'faculty') return USER_ROLES.FACULTY;
+  if (value === 'faculty') return USER_ROLES.THERAPIST;
   if (value === 'therapist' || value === 'abatech' || value === 'aba tech' || value === 'aba-tech' || value === 'aba_tech' || value === 'behavior technician') return USER_ROLES.THERAPIST;
   if (value === 'bcba') return USER_ROLES.BCBA;
   if (value === 'office' || value === 'officeadmin' || value === 'office admin' || value === 'office-admin' || value === 'office_admin' || value === 'office personnel' || value === 'officepersonnel') return USER_ROLES.OFFICE;
-  if (value === 'reception' || value === 'receptionist' || value === 'frontdesk' || value === 'front desk' || value === 'front-desk' || value === 'front_desk') return USER_ROLES.RECEPTION;
+  if (value === 'reception' || value === 'receptionist' || value === 'frontdesk' || value === 'front desk' || value === 'front-desk' || value === 'front_desk') return USER_ROLES.OFFICE;
   if (value === 'admin') return USER_ROLES.ADMIN;
   if (value === 'administrator') return USER_ROLES.ADMIN;
-  if (value === 'campusadmin' || value === 'campus_admin') return USER_ROLES.CAMPUS_ADMIN;
-  if (value === 'orgadmin' || value === 'org_admin' || value === 'organizationadmin') return USER_ROLES.ORG_ADMIN;
+  if (value === 'campusadmin' || value === 'campus_admin') return USER_ROLES.OFFICE;
+  if (value === 'orgadmin' || value === 'org_admin' || value === 'organizationadmin') return USER_ROLES.ADMIN;
   if (value === 'superadmin' || value === 'super_admin') return USER_ROLES.SUPER_ADMIN;
-  if (value === 'teacher' || value === 'staff') return USER_ROLES.FACULTY;
+  if (value === 'teacher' || value === 'staff') return USER_ROLES.THERAPIST;
   return safeString(role) || USER_ROLES.PARENT;
 }
 
@@ -193,7 +202,7 @@ export function buildStudentModel(value) {
 
 export function isAdminRole(role) {
   const value = normalizeUserRole(role);
-  return value === USER_ROLES.ADMIN || value === USER_ROLES.CAMPUS_ADMIN || value === USER_ROLES.ORG_ADMIN || value === USER_ROLES.SUPER_ADMIN;
+  return value === USER_ROLES.ADMIN || value === USER_ROLES.SUPER_ADMIN;
 }
 
 export function isBcbaRole(role) {
@@ -202,16 +211,15 @@ export function isBcbaRole(role) {
 
 export function isOfficeAdminRole(role) {
   const value = normalizeUserRole(role);
-  return value === USER_ROLES.OFFICE || isAdminRole(value);
+  return value === USER_ROLES.OFFICE || value === USER_ROLES.ADMIN;
 }
 
 export function isReceptionRole(role) {
-  return normalizeUserRole(role) === USER_ROLES.RECEPTION;
+  return false;
 }
 
 export function getAdminActorType(role) {
   if (isBcbaRole(role)) return 'bcba';
-  if (isReceptionRole(role)) return 'reception';
   if (isOfficeAdminRole(role)) return 'office';
   return 'none';
 }
@@ -240,12 +248,12 @@ export function isSuperAdminRole(role) {
 
 export function isScopedAdminRole(role) {
   const value = normalizeUserRole(role);
-  return value === USER_ROLES.CAMPUS_ADMIN || value === USER_ROLES.ORG_ADMIN || value === USER_ROLES.SUPER_ADMIN;
+  return value === USER_ROLES.ADMIN || value === USER_ROLES.SUPER_ADMIN;
 }
 
 export function isStaffRole(role) {
   const value = normalizeUserRole(role);
-  return value === USER_ROLES.FACULTY || value === USER_ROLES.THERAPIST || value === USER_ROLES.BCBA;
+  return value === USER_ROLES.THERAPIST || value === USER_ROLES.BCBA;
 }
 
 export function uniqueIds(values) {
