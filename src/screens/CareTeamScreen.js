@@ -5,52 +5,131 @@ import { useFocusEffect, useRoute } from '@react-navigation/native';
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { useAuth } from '../AuthContext';
 import { useData } from '../DataContext';
+import { useTenant } from '../core/tenant/TenantContext';
+import { USER_ROLES, isBcbaRole, isOfficeAdminRole, normalizeUserRole } from '../core/tenant/models';
 import { avatarSourceFor } from '../utils/idVisibility';
 import { maskEmailDisplay, maskPhoneDisplay } from '../utils/inputFormat';
 import { THERAPY_ROLE_LABELS, getAssignmentRoleLabel, getDisplayRoleLabel } from '../utils/roleTerminology';
+import { childHasParent, findLinkedParentId } from '../utils/directoryLinking';
 
-function getRelevantChildren(userId, children) {
+function getRelevantChildren(parentId, children) {
   const all = Array.isArray(children) ? children : [];
-  if (!userId) return [];
-  return all.filter(
-    (c) => Array.isArray(c?.parents) && c.parents.some((p) => p?.id === userId)
-  );
+  if (!parentId) return [];
+  return all.filter((child) => childHasParent(child, parentId));
 }
 
-function dedupeMembers(children) {
+function addMember(map, entry, role, childLabel) {
+  if (!entry || typeof entry === 'string') return;
+  const id = entry.id || entry.email || entry.name;
+  if (!id) return;
+  const existing = map.get(id);
+  const roles = new Set(existing?.roles || []);
+  roles.add(getAssignmentRoleLabel(entry.role || role));
+  const childrenLabels = new Set(existing?.childrenLabels || []);
+  if (childLabel) childrenLabels.add(childLabel);
+  map.set(id, {
+    id,
+    name: entry.name || 'Care Team Member',
+    avatar: entry.avatar || entry.photoURL,
+    phone: entry.phone,
+    email: entry.email,
+    roles: Array.from(roles),
+    childrenLabels: Array.from(childrenLabels),
+    raw: entry,
+  });
+}
+
+function dedupeMembers(children, therapists, options = {}) {
+  const parentScoped = options.parentScoped === true;
+  const therapistById = new Map((Array.isArray(therapists) ? therapists : []).map((item) => [String(item?.id || '').trim(), item]));
   const map = new Map();
   children.forEach((child) => {
     const childLabel = child?.name || child?.firstName || '';
-    const slots = [
-      { entry: child?.amTherapist, role: THERAPY_ROLE_LABELS.amTherapist },
-      { entry: child?.pmTherapist, role: THERAPY_ROLE_LABELS.pmTherapist },
-      { entry: child?.bcaTherapist, role: 'BCBA' },
-    ];
+    const campusId = String(child?.campusId || '').trim();
+    const slots = parentScoped
+      ? [{ entry: child?.bcaTherapist, role: 'BCBA' }]
+      : [
+        { entry: child?.amTherapist, role: THERAPY_ROLE_LABELS.amTherapist },
+        { entry: child?.pmTherapist, role: THERAPY_ROLE_LABELS.pmTherapist },
+        { entry: child?.bcaTherapist, role: 'BCBA' },
+      ];
     slots.forEach(({ entry, role }) => {
-      if (!entry || typeof entry === 'string') return;
-      const id = entry.id || entry.email || entry.name;
-      if (!id) return;
-      const existing = map.get(id);
-      const roles = new Set(existing?.roles || []);
-      roles.add(getAssignmentRoleLabel(entry.role || role));
-      const childrenLabels = new Set(existing?.childrenLabels || []);
-      if (childLabel) childrenLabels.add(childLabel);
-      map.set(id, {
-        id,
-        name: entry.name || 'Care Team Member',
-        avatar: entry.avatar || entry.photoURL,
-        phone: entry.phone,
-        email: entry.email,
-        roles: Array.from(roles),
-        childrenLabels: Array.from(childrenLabels),
-        raw: entry,
-      });
+      addMember(map, entry, role, childLabel);
     });
+
+    if (!parentScoped) {
+      (Array.isArray(child?.assignedABA) ? child.assignedABA : []).forEach((staffId) => {
+        const resolved = therapistById.get(String(staffId || '').trim());
+        addMember(map, resolved, THERAPY_ROLE_LABELS.therapist, childLabel);
+      });
+    }
+
+    (Array.isArray(therapists) ? therapists : [])
+      .filter((staff) => (parentScoped ? isOfficeAdminRole(staff?.role) : ['office', 'admin', 'reception', 'campusAdmin'].includes(String(staff?.role || '').trim())))
+      .filter((staff) => matchesCampus(staff, campusId))
+      .forEach((staff) => addMember(map, staff, staff.role, childLabel));
   });
   return Array.from(map.values());
 }
 
-function ContactCard({ member }) {
+function matchesCampus(staff, campusId) {
+  const normalizedCampusId = String(campusId || '').trim();
+  if (!normalizedCampusId) return true;
+  const directCampusId = String(staff?.campusId || '').trim();
+  if (directCampusId && directCampusId === normalizedCampusId) return true;
+  return Array.isArray(staff?.campusIds) && staff.campusIds.map(String).includes(normalizedCampusId);
+}
+
+function buildCampusContacts(children, tenant) {
+  const campuses = Array.isArray(tenant?.campuses) ? tenant.campuses : [];
+  const campusById = new Map(campuses.map((campus) => [String(campus?.id || '').trim(), campus]));
+  const contacts = new Map();
+
+  (Array.isArray(children) ? children : []).forEach((child) => {
+    const campusId = String(child?.campusId || '').trim();
+    const campus = campusById.get(campusId) || (String(tenant?.currentCampus?.id || '').trim() === campusId ? tenant.currentCampus : null);
+    const key = String(campus?.id || campusId || child?.campusName || '').trim();
+    if (!key || contacts.has(key)) return;
+    contacts.set(key, {
+      id: key,
+      name: String(campus?.name || child?.campusName || 'Campus').trim(),
+      phone: String(campus?.phone || '').trim(),
+      email: String(campus?.email || '').trim(),
+      address: [
+        campus?.address1,
+        campus?.address2,
+        [campus?.city, campus?.state].filter(Boolean).join(', '),
+        campus?.zipCode,
+      ].filter(Boolean).join(' '),
+      roles: ['Campus Contact'],
+      childrenLabels: [],
+      raw: { name: String(campus?.name || child?.campusName || 'Campus').trim() },
+    });
+  });
+
+  if (!contacts.size && tenant?.currentCampus) {
+    const campus = tenant.currentCampus;
+    contacts.set(String(campus?.id || 'current-campus').trim(), {
+      id: String(campus?.id || 'current-campus').trim(),
+      name: String(campus?.name || 'Campus').trim(),
+      phone: String(campus?.phone || '').trim(),
+      email: String(campus?.email || '').trim(),
+      address: [
+        campus?.address1,
+        campus?.address2,
+        [campus?.city, campus?.state].filter(Boolean).join(', '),
+        campus?.zipCode,
+      ].filter(Boolean).join(' '),
+      roles: ['Campus Contact'],
+      childrenLabels: [],
+      raw: { name: String(campus?.name || 'Campus').trim() },
+    });
+  }
+
+  return Array.from(contacts.values());
+}
+
+function ContactCard({ member, showContactInfo = true }) {
   const phone = member.phone;
   const email = member.email;
   const onCall = () => {
@@ -77,9 +156,12 @@ function ContactCard({ member }) {
           {member.childrenLabels.length ? (
             <Text style={styles.subtle} numberOfLines={1}>For {member.childrenLabels.join(', ')}</Text>
           ) : null}
+          {showContactInfo && member.address ? (
+            <Text style={styles.subtle}>{member.address}</Text>
+          ) : null}
         </View>
       </View>
-      <View style={styles.actions}>
+      {showContactInfo ? <View style={styles.actions}>
         <TouchableOpacity
           style={[styles.actionBtn, !phone && styles.actionBtnDisabled]}
           onPress={onCall}
@@ -104,7 +186,7 @@ function ContactCard({ member }) {
             {maskEmailDisplay(email) || 'No email'}
           </Text>
         </TouchableOpacity>
-      </View>
+      </View> : null}
     </View>
   );
 }
@@ -112,7 +194,10 @@ function ContactCard({ member }) {
 export default function CareTeamScreen() {
   const route = useRoute();
   const { user } = useAuth();
-  const { children = [], fetchAndSync } = useData();
+  const { children = [], parents = [], therapists = [], fetchAndSync } = useData();
+  const tenant = useTenant() || {};
+  const isParent = normalizeUserRole(user?.role) === USER_ROLES.PARENT;
+  const linkedParentId = findLinkedParentId(user, parents) || user?.id || null;
 
   useFocusEffect(
     React.useCallback(() => {
@@ -121,26 +206,34 @@ export default function CareTeamScreen() {
   );
 
   const relevantChildren = useMemo(() => {
-    const linkedChildren = getRelevantChildren(user?.id, children);
+    const linkedChildren = getRelevantChildren(linkedParentId, children);
     const requestedChildId = route?.params?.childId;
     if (!requestedChildId) return linkedChildren;
     return linkedChildren.filter((child) => child?.id === requestedChildId);
-  }, [children, route?.params?.childId, user?.id]);
-  const members = useMemo(() => dedupeMembers(relevantChildren), [relevantChildren]);
+  }, [children, linkedParentId, route?.params?.childId]);
+  const members = useMemo(() => dedupeMembers(relevantChildren, therapists, { parentScoped: isParent }), [isParent, relevantChildren, therapists]);
+  const campusContacts = useMemo(() => (isParent ? [] : buildCampusContacts(relevantChildren, tenant)), [isParent, relevantChildren, tenant]);
 
   return (
     <ScreenWrapper bannerTitle="My Care Team" style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {members.length === 0 ? (
+        {members.length === 0 && campusContacts.length === 0 ? (
           <View style={styles.empty}>
             <MaterialIcons name="groups" size={36} color="#9ca3af" />
             <Text style={styles.emptyTitle}>No care team yet</Text>
             <Text style={styles.emptyText}>
-              {THERAPY_ROLE_LABELS.therapists} and teachers connected to your child will appear here with their contact info.
+              {isParent
+                ? 'Your linked BCBA and office admin will appear here once they are connected to your child.'
+                : `${THERAPY_ROLE_LABELS.therapists}, BCBA, and campus contacts connected to your child will appear here with their contact info.`}
             </Text>
           </View>
         ) : (
-          members.map((m) => <ContactCard key={m.id} member={m} />)
+          <>
+            {members.length ? <Text style={styles.sectionTitle}>Staff</Text> : null}
+            {members.map((m) => <ContactCard key={m.id} member={m} showContactInfo={!isParent} />)}
+            {campusContacts.length ? <Text style={styles.sectionTitle}>Campus Contact</Text> : null}
+            {campusContacts.map((contact) => <ContactCard key={contact.id} member={contact} />)}
+          </>
         )}
       </ScrollView>
     </ScreenWrapper>
@@ -150,6 +243,7 @@ export default function CareTeamScreen() {
 const styles = StyleSheet.create({
   container: { backgroundColor: '#f5f6f8' },
   content: { padding: 16, paddingBottom: 16 },
+  sectionTitle: { marginBottom: 10, fontSize: 15, fontWeight: '700', color: '#334155' },
   card: {
     backgroundColor: '#ffffff',
     borderRadius: 14,

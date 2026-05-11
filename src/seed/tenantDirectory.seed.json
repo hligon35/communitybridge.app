@@ -2,11 +2,11 @@
   "organizations": [
     {
       "id": "communitybridge-care-network",
-      "name": "CommunityBridge Care Network",
-      "directoryName": "CommunityBridge Care Network HQ",
+      "name": "CommunityBridge Healthcare",
+      "directoryName": "CommunityBridge Healthcare HQ",
       "slug": "communitybridge-care-network",
       "type": "Corporate",
-      "shortCode": "CBRIDGE",
+      "shortCode": "CBHEALTH",
       "phone": "317-555-1000",
       "email": "info@communitybridge.app",
       "address1": "1201 N Meridian St Suite 200",
@@ -21,10 +21,10 @@
     {
       "id": "center-based-aba",
       "organizationId": "communitybridge-care-network",
-      "name": "Center-Based ABA",
+      "name": "CB Autism",
       "slug": "center-based-aba",
       "type": "Center Based ABA",
-      "description": "Center-based ABA services coordinated through CommunityBridge.",
+      "description": "CB Autism center-based ABA services coordinated through CommunityBridge Healthcare.",
       "active": true
     },
     {
@@ -42,7 +42,7 @@
       "id": "center-based-aba-downtown-46204",
       "organizationId": "communitybridge-care-network",
       "programId": "center-based-aba",
-      "name": "Center-Based ABA - Downtown Indianapolis",
+      "name": "CB Autism - Downtown Indianapolis",
       "slug": "center-based-aba-downtown-indianapolis",
       "phone": "317-555-1001",
       "email": "info@communitybridge.app",
@@ -59,7 +59,7 @@
       "id": "center-based-aba-north-46240",
       "organizationId": "communitybridge-care-network",
       "programId": "center-based-aba",
-      "name": "Center-Based ABA - North Indianapolis",
+      "name": "CB Autism - North Indianapolis",
       "slug": "center-based-aba-north-indianapolis",
       "phone": "317-555-1002",
       "email": "info@communitybridge.app",

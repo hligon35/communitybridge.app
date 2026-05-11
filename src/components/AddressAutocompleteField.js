@@ -4,6 +4,9 @@ import { GOOGLE_PLACES_API_KEY } from '../config';
 
 const MIN_QUERY_LENGTH = 3;
 const SEARCH_DELAY_MS = 250;
+const GOOGLE_MAPS_SCRIPT_ID = 'buddyboard-google-maps-places';
+
+let googleMapsScriptPromise = null;
 
 function normalizePredictions(payload) {
   const items = Array.isArray(payload?.predictions) ? payload.predictions : [];
@@ -17,7 +20,86 @@ function normalizePredictions(payload) {
     .filter((item) => item.id && item.description);
 }
 
+function normalizeWebPredictions(items) {
+  const predictions = Array.isArray(items) ? items : [];
+  return predictions
+    .map((item) => ({
+      id: String(item?.place_id || '').trim(),
+      primaryText: String(item?.structured_formatting?.main_text || item?.description || '').trim(),
+      secondaryText: String(item?.structured_formatting?.secondary_text || '').trim(),
+      description: String(item?.description || '').trim(),
+    }))
+    .filter((item) => item.id && item.description);
+}
+
+function getWebGoogleMaps() {
+  return globalThis?.google?.maps?.places ? globalThis.google.maps : null;
+}
+
+function loadGoogleMapsPlacesScript() {
+  if (Platform.OS !== 'web') return Promise.resolve(null);
+  const maps = getWebGoogleMaps();
+  if (maps) return Promise.resolve(maps);
+  if (!String(GOOGLE_PLACES_API_KEY || '').trim()) {
+    return Promise.reject(new Error('Google Places API key is missing.'));
+  }
+  if (googleMapsScriptPromise) return googleMapsScriptPromise;
+  googleMapsScriptPromise = new Promise((resolve, reject) => {
+    const doc = globalThis?.document;
+    if (!doc?.createElement) {
+      reject(new Error('Document is not available for address autocomplete.'));
+      return;
+    }
+
+    const existing = doc.getElementById(GOOGLE_MAPS_SCRIPT_ID);
+    if (existing) {
+      existing.addEventListener('load', () => resolve(getWebGoogleMaps()), { once: true });
+      existing.addEventListener('error', () => reject(new Error('Could not load Google Maps script.')), { once: true });
+      return;
+    }
+
+    const script = doc.createElement('script');
+    script.id = GOOGLE_MAPS_SCRIPT_ID;
+    script.async = true;
+    script.defer = true;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(String(GOOGLE_PLACES_API_KEY || '').trim())}&libraries=places`;
+    script.onload = () => {
+      const nextMaps = getWebGoogleMaps();
+      if (nextMaps) {
+        resolve(nextMaps);
+        return;
+      }
+      reject(new Error('Google Maps Places library did not initialize.'));
+    };
+    script.onerror = () => reject(new Error('Could not load Google Maps script.'));
+    doc.head?.appendChild(script);
+  }).catch((error) => {
+    googleMapsScriptPromise = null;
+    throw error;
+  });
+  return googleMapsScriptPromise;
+}
+
 async function fetchAddressPredictions(query) {
+  if (Platform.OS === 'web') {
+    const maps = await loadGoogleMapsPlacesScript();
+    return new Promise((resolve, reject) => {
+      const service = new maps.places.AutocompleteService();
+      service.getPlacePredictions(
+        {
+          input: String(query || '').trim(),
+          types: ['address'],
+        },
+        (items, status) => {
+          if (status === maps.places.PlacesServiceStatus.OK || status === maps.places.PlacesServiceStatus.ZERO_RESULTS) {
+            resolve(normalizeWebPredictions(items));
+            return;
+          }
+          reject(new Error(`Address lookup returned ${status || 'an unknown error'}.`));
+        }
+      );
+    });
+  }
   const params = new URLSearchParams({
     input: String(query || '').trim(),
     types: 'address',
@@ -33,6 +115,27 @@ async function fetchAddressPredictions(query) {
 }
 
 async function fetchAddressDetails(placeId, fallbackText) {
+  if (Platform.OS === 'web') {
+    const maps = await loadGoogleMapsPlacesScript();
+    return new Promise((resolve, reject) => {
+      const doc = globalThis?.document;
+      const host = doc?.createElement ? doc.createElement('div') : null;
+      const service = new maps.places.PlacesService(host || undefined);
+      service.getDetails(
+        {
+          placeId: String(placeId || '').trim(),
+          fields: ['formatted_address'],
+        },
+        (result, status) => {
+          if (status === maps.places.PlacesServiceStatus.OK) {
+            resolve(String(result?.formatted_address || fallbackText || '').trim());
+            return;
+          }
+          reject(new Error(`Address lookup returned ${status || 'an unknown error'}.`));
+        }
+      );
+    });
+  }
   const params = new URLSearchParams({
     place_id: String(placeId || '').trim(),
     fields: 'formatted_address',
@@ -76,7 +179,7 @@ export default function AddressAutocompleteField({
   autoCapitalize = 'sentences',
   maxLength,
 }) {
-  const enabled = Platform.OS !== 'web' && Boolean(String(GOOGLE_PLACES_API_KEY || '').trim());
+  const enabled = Boolean(String(GOOGLE_PLACES_API_KEY || '').trim());
   const [predictions, setPredictions] = React.useState([]);
   const [focused, setFocused] = React.useState(false);
   const [loading, setLoading] = React.useState(false);

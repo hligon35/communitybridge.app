@@ -7,6 +7,8 @@ import { useAuth } from '../AuthContext';
 import * as Api from '../Api';
 import { ADMIN_SECTION_KEYS, canAccessAdminSection, hasFullAdminSectionAccess } from '../core/tenant/models';
 import { shouldShowSubscreenBack } from '../utils/backNavigation';
+import { formatAddressInput } from '../utils/addressInput';
+import { formatPhoneInput } from '../utils/inputFormat';
 
 const { SUPPORT_EMAIL, SUPPORT_URL } = require('../config/brand');
 
@@ -189,9 +191,9 @@ export default function AdminSettingsWorkspaceScreen() {
           <View style={styles.editorGrid}>
             <Field label="Organization name" value={form.organizationName} onChangeText={(value) => updateField('organizationName', value)} placeholder="AlphaZone Labs" />
             <Field label="Support email" value={form.supportEmail} onChangeText={(value) => updateField('supportEmail', value)} placeholder={SUPPORT_EMAIL} keyboardType="email-address" autoCapitalize="none" />
-            <Field label="Support phone" value={form.supportPhone} onChangeText={(value) => updateField('supportPhone', value)} placeholder="(555) 123-4567" keyboardType="phone-pad" autoCapitalize="none" />
+            <Field label="Support phone" value={form.supportPhone} onChangeText={(value) => updateField('supportPhone', formatPhoneInput(value))} placeholder="(555) 123-4567" keyboardType="phone-pad" autoCapitalize="none" />
           </View>
-          <AddressAutocompleteField label="Organization address" value={form.address} onChangeText={(value) => updateField('address', value)} placeholder="123 Main St, City, ST 00000" />
+          <AddressAutocompleteField label="Organization address" value={form.address} onChangeText={(value) => updateField('address', formatAddressInput(value))} placeholder="123 Main St, City, ST 00000" />
           <View style={styles.editorGrid}>
             <Field label="Arrival action radius (miles)" value={form.dropZoneMiles} onChangeText={(value) => updateField('dropZoneMiles', value)} placeholder="0.25" keyboardType="decimal-pad" autoCapitalize="none" />
             <View style={styles.switchCard}>
@@ -207,7 +209,7 @@ export default function AdminSettingsWorkspaceScreen() {
           <Field label="Payment portal URL" value={form.paymentPortalUrl} onChangeText={(value) => updateField('paymentPortalUrl', value)} placeholder="https://payments.example.org/portal" autoCapitalize="none" />
           <View style={styles.editorGrid}>
             <Field label="Billing contact email" value={form.billingContactEmail} onChangeText={(value) => updateField('billingContactEmail', value)} placeholder="billing@communitybridge.app" keyboardType="email-address" autoCapitalize="none" />
-            <Field label="Billing contact phone" value={form.billingContactPhone} onChangeText={(value) => updateField('billingContactPhone', value)} placeholder="(555) 123-4567" keyboardType="phone-pad" autoCapitalize="none" />
+            <Field label="Billing contact phone" value={form.billingContactPhone} onChangeText={(value) => updateField('billingContactPhone', formatPhoneInput(value))} placeholder="(555) 123-4567" keyboardType="phone-pad" autoCapitalize="none" />
           </View>
           <View style={styles.editorGrid}>
             <View style={styles.switchCard}>

@@ -70,7 +70,9 @@ export function configureNotificationHandling() {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
       shouldShowAlert: true,
-      shouldPlaySound: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
       shouldSetBadge: true,
     }),
   });

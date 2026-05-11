@@ -113,7 +113,7 @@
   },
   "organization": {
     "id": "org-demo-001",
-    "name": "CommunityBridge Therapy Center",
+    "name": "CommunityBridge Healthcare",
     "status": "active",
     "supportEmail": "support@communitybridge.app",
     "supportPhone": "317-555-6000",
@@ -124,7 +124,7 @@
     {
       "id": "program-aba-001",
       "organizationId": "org-demo-001",
-      "name": "Center-Based ABA",
+      "name": "CB Autism",
       "type": "centerBasedAba",
       "status": "active",
       "createdAt": "2026-04-27T08:00:00"
@@ -167,7 +167,7 @@
       "id": "campus-main-001",
       "organizationId": "org-demo-001",
       "programId": "program-aba-001",
-      "name": "Main Campus",
+      "name": "CB Autism",
       "status": "active",
       "enrollmentCode": "DEMO2026",
       "address": "100 Bridge Way, Indianapolis, IN 46201",

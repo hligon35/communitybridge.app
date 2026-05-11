@@ -66,8 +66,10 @@ export function findLinkedTherapistId(user, therapists) {
 export function childHasParent(child, parentId) {
   const pid = parentId != null ? String(parentId) : '';
   if (!pid) return false;
-  const list = Array.isArray(child?.parents) ? child.parents : [];
-  return list.some((p) => {
+  const inlineParents = Array.isArray(child?.parents) ? child.parents : [];
+  const parentIds = Array.isArray(child?.parentIds) ? child.parentIds : [];
+  if (parentIds.some((value) => String(value) === pid)) return true;
+  return inlineParents.some((p) => {
     if (!p) return false;
     if (typeof p === 'string' || typeof p === 'number') return String(p) === pid;
     if (typeof p === 'object' && p.id != null) return String(p.id) === pid;

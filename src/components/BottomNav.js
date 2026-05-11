@@ -12,6 +12,31 @@ const controlsIcon = require('../../assets/icons/dashboard.png');
 const settingsIcon = require('../../assets/icons/settings.png');
 const myChildIcon = require('../../assets/icons/mychild.png');
 
+const TAB_TARGETS = Object.freeze({
+  Home: Object.freeze({ root: 'Home', screen: 'CommunityMain' }),
+  Chats: Object.freeze({ root: 'Chats', screen: 'ChatsList' }),
+  Controls: Object.freeze({ root: 'Controls', screen: 'ControlsMain' }),
+  MyChild: Object.freeze({ root: 'MyChild', screen: 'MyChildMain' }),
+  MyClass: Object.freeze({ root: 'MyClass', screen: 'MyClassMain' }),
+  Settings: Object.freeze({ root: 'Settings', screen: 'SettingsMain' }),
+});
+
+const TAB_ROUTE_GROUPS = Object.freeze({
+  Home: new Set(['Home', 'CommunityMain', 'AnnouncementFeedScreen', 'InsuranceBilling', 'TherapistItemsNeeded', 'CareTeam', 'ScheduleCalendar', 'ChildDetail', 'TapTracker', 'TapLogs', 'SummaryReview', 'Reports', 'ChildProgressInsights', 'TherapistDocumentationDashboard', 'BcbaSessionReviewQueue', 'LearnerClinicalProfile', 'ParentDetail', 'FacultyDetail']),
+  Chats: new Set(['Chats', 'ChatsList', 'NewThread', 'ChatThread']),
+  Controls: new Set(['Controls', 'ControlsMain', 'StudentDirectory', 'FacultyDirectory', 'ParentDirectory', 'ParentDetail', 'ChildDetail', 'TapTracker', 'TapLogs', 'SummaryReview', 'Reports', 'ChildProgressInsights', 'TherapistDocumentationDashboard', 'OrganizationInsightsDashboard', 'FacultyDetail', 'AdminMemos', 'AdminChatMonitor', 'AdminSettings', 'OrganizationSettings', 'BrandingSettings', 'UserMonitor', 'ManagePermissions', 'PrivacyDefaults', 'AdminAlerts', 'InsuranceBilling', 'ImportCenter', 'ExportData', 'Attendance', 'ScheduleCalendar', 'ProgramDirectory', 'BcbaSessionReviewQueue', 'LearnerClinicalProfile', 'CampusDirectory', 'ProgramDocuments', 'CampusDocuments']),
+  MyChild: new Set(['MyChild', 'MyChildMain', 'ChildProgressInsights', 'RecentApprovedSessions']),
+  MyClass: new Set(['MyClass', 'MyClassMain']),
+  Settings: new Set(['Settings', 'SettingsMain', 'EditProfile', 'Help']),
+});
+
+function resolveActiveTab(routeName, tabs) {
+  const normalizedRoute = String(routeName || '').trim();
+  const tabKeys = (Array.isArray(tabs) ? tabs : []).map((tab) => tab.key);
+  const direct = tabKeys.find((tabKey) => TAB_ROUTE_GROUPS[tabKey]?.has(normalizedRoute));
+  return direct || normalizedRoute;
+}
+
 function NavImageIcon({ source, active, size = 24 }) {
   return (
     <Image
@@ -47,18 +72,19 @@ export default function BottomNav({ navigationRef, currentRoute }) {
     tabs.push({ key: 'MyChild', label: labels.myChild || 'My Child', icon: (active) => (<NavImageIcon source={myChildIcon} active={active} />), count: parentPendingCount });
   }
   tabs.push({ key: 'Settings', label: 'Settings', icon: (active) => (<NavImageIcon source={settingsIcon} active={active} />) });
+  const activeTab = resolveActiveTab(currentRoute, tabs);
+
   function go(name) {
     logPress('BottomNav:tab', { to: name, from: currentRoute });
     try {
       if (!navigationRef || typeof navigationRef.isReady !== 'function' || !navigationRef.isReady()) return;
       if (typeof navigationRef.navigate !== 'function') return;
-      // Tab targets (Home/Chats/MyChild/Controls/MyClass/Settings) live inside
-      // the nested `RootStack` rendered by `MainShell -> MainRoutes`, which is
-      // itself the `Main` screen of the outer `AppStack`. Calling
-      // `navigate(name)` at the container level is ambiguous (React Navigation
-      // may not find the nested route if the user is currently on `Login` or
-      // `TwoFactor`). Use the explicit nested form so it is always deterministic.
-      navigationRef.navigate('Main', { screen: name });
+      const target = TAB_TARGETS[name];
+      if (!target) return;
+      navigationRef.navigate('Main', {
+        screen: target.root,
+        params: { screen: target.screen },
+      });
     } catch (_) {
       // ignore
     }
@@ -88,8 +114,8 @@ export default function BottomNav({ navigationRef, currentRoute }) {
       <View style={styles.inner}>
         {tabs.map(t => (
           <TouchableOpacity key={t.key} style={styles.button} onPress={() => go(t.key)}>
-            {t.icon(currentRoute === t.key)}
-            <Text style={[styles.label, currentRoute === t.key && styles.active]}>{t.label}</Text>
+            {t.icon(activeTab === t.key)}
+            <Text style={[styles.label, activeTab === t.key && styles.active]}>{t.label}</Text>
             {t.count > 0 ? (
               <Animated.View style={[styles.badge, { transform: [{ scale }] }]}>
                 <Text style={styles.badgeText}>{t.count}</Text>

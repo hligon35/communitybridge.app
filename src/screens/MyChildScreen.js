@@ -8,7 +8,6 @@ import { useAuth } from '../AuthContext';
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import MoodTrackerCard from '../components/MoodTrackerCard';
 import ImageToggle from '../components/ImageToggle';
-import SessionSummarySnapshot from '../components/SessionSummarySnapshot';
 import LatestSummaryCard from '../features/sessionInsights/components/LatestSummaryCard';
 import { childHasParent, findLinkedParentId } from '../utils/directoryLinking';
 import { avatarSourceFor } from '../utils/idVisibility';
@@ -33,13 +32,14 @@ export default function MyChildScreen() {
   const role = (user?.role || '').toString().toLowerCase();
   const isParent = role.includes('parent');
   const canRecordMood = isAdminRole(user?.role) || isStaffRole(user?.role);
-  const linkedParentId = isParent ? (findLinkedParentId(user, parents) || null) : null;
+  const linkedParentId = isParent ? (findLinkedParentId(user, parents) || user?.id || null) : null;
 
   // Only show linked children for parents; keep existing behavior for other roles.
   const baseChildList = (Array.isArray(children) && children.length) ? children : [];
-  const childList = isParent
-    ? (linkedParentId ? baseChildList.filter((c) => childHasParent(c, linkedParentId)) : [])
-    : baseChildList;
+  const childList = useMemo(() => {
+    if (!isParent) return baseChildList;
+    return linkedParentId ? baseChildList.filter((c) => childHasParent(c, linkedParentId)) : [];
+  }, [baseChildList, isParent, linkedParentId]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   useEffect(() => {
     if (selectedIndex >= childList.length) setSelectedIndex(0);
@@ -48,15 +48,9 @@ export default function MyChildScreen() {
     const requestedChildId = route?.params?.childId;
     if (!requestedChildId) return;
     const nextIndex = childList.findIndex((entry) => entry?.id === requestedChildId);
-    if (nextIndex >= 0 && nextIndex !== selectedIndex) {
-      setSelectedIndex(nextIndex);
-    }
-  }, [childList, route?.params?.childId, selectedIndex]);
-  // If there are multiple children, default to showing the second child now
-  useEffect(() => {
-    if (route?.params?.childId) return;
-    if (childList.length > 1 && selectedIndex === 0) setSelectedIndex(1);
-  }, [childList.length, route?.params?.childId, selectedIndex]);
+    if (nextIndex >= 0) setSelectedIndex(nextIndex);
+    navigation.setParams?.({ childId: undefined });
+  }, [childList, navigation, route?.params?.childId]);
   const child = childList[selectedIndex] || { id: 'no-child', name: `No ${childProfileMode.collectionLabel || 'children'} added`, age: '', room: '', avatar: null, carePlan: '', notes: '' };
 
   // const provided above via single useData call
@@ -83,7 +77,6 @@ export default function MyChildScreen() {
   const [approvedParentSummaries, setApprovedParentSummaries] = useState([]);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState('');
-  const [expandedHistorySessionId, setExpandedHistorySessionId] = useState('');
   const [artifactModalOpen, setArtifactModalOpen] = useState(false);
   const [artifactLoading, setArtifactLoading] = useState(false);
   const [artifactError, setArtifactError] = useState('');
@@ -255,7 +248,6 @@ export default function MyChildScreen() {
   }, [child?.id, seededSessionSummariesByChild]);
 
   useEffect(() => {
-    setExpandedHistorySessionId('');
     setArtifactModalOpen(false);
     setArtifactError('');
     setArtifactText('');
@@ -289,8 +281,16 @@ export default function MyChildScreen() {
     }
   }
 
+  function openRecentApprovedSessions(item) {
+    if (!child?.id) return;
+    navigation.navigate('RecentApprovedSessions', {
+      childId: child.id,
+      initialSessionId: String(item?.sessionId || item?.id || '').trim() || undefined,
+    });
+  }
+
   async function openSummaryArtifact(item) {
-    const sessionId = String(item?.sessionId || item?.id || '').trim();
+    const sessionId = String(item?.sessionId || '').trim();
     if (!sessionId) {
       Alert.alert('Artifact unavailable', 'This approved summary does not include a session artifact reference yet.');
       return;
@@ -384,17 +384,7 @@ export default function MyChildScreen() {
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 12 }}>
       {/* Developer action moved to DevRoleSwitcher */}
 
-      <View style={styles.card}>
-        <Image source={avatarSourceFor(child)} style={styles.avatar} />
-        <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={styles.name}>{shortName(child.name, 20)}</Text>
-          {(child.age || child.room) ? (
-            <Text style={styles.meta}>{[child.age, child.room].filter(Boolean).join(' • ')}</Text>
-          ) : null}
-        </View>
-      </View>
-
-      {childList.length ? (
+      {childList.length > 1 ? (
         <View style={styles.linkedChildrenWrap}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.linkedChildrenTrack} pagingEnabled={false}>
             {childList.map((c, i) => (
@@ -406,6 +396,16 @@ export default function MyChildScreen() {
           </ScrollView>
         </View>
       ) : null}
+
+      <View style={styles.card}>
+        <Image source={avatarSourceFor(child)} style={styles.avatar} />
+        <View style={{ flex: 1, marginLeft: 12 }}>
+          <Text style={styles.name}>{shortName(child.name, 20)}</Text>
+          {(child.age || child.room) ? (
+            <Text style={styles.meta}>{[child.age, child.room].filter(Boolean).join(' • ')}</Text>
+          ) : null}
+        </View>
+      </View>
 
       {/* Propose modal */}
       {showProposeModal && (
@@ -460,7 +460,7 @@ export default function MyChildScreen() {
         </Modal>
       )}
 
-      <View style={styles.scheduleWrap}>
+      <View>
         <View style={styles.scheduleHeaderRow}>
           <Text style={styles.scheduleGroupTitle}>Daily Review</Text>
           <View style={styles.headerActionsRow}>
@@ -489,7 +489,7 @@ export default function MyChildScreen() {
               <LatestSummaryCard
                 summary={latestApprovedSummary}
                 subtitle={latestApprovedSummarySubtitle}
-                onOpenInsights={child?.id ? () => navigation.navigate('ChildProgressInsights', { childId: child.id }) : null}
+                metricsTwoByTwo
                 onOpenArtifact={() => openSummaryArtifact(latestApprovedSummary).catch(() => {})}
                 artifactDisabled={!String(latestApprovedSummary?.sessionId || '').trim()}
               />
@@ -500,37 +500,19 @@ export default function MyChildScreen() {
                 <Text style={styles.summaryHistoryTitle}>Recent Approved Sessions</Text>
                 <Text style={styles.summaryHistorySubtitle}>Review prior approved session summaries for this learner without leaving the family progress screen.</Text>
                 {previousApprovedSummaries.map((item) => {
-                  const expanded = expandedHistorySessionId === item.id;
+                  const itemKey = item.id || item.sessionId;
                   return (
-                    <View key={item.id || item.sessionId} style={styles.summaryHistoryEntry}>
-                      <TouchableOpacity
-                        style={styles.summaryHistoryEntryHeader}
-                        onPress={() => setExpandedHistorySessionId((current) => (current === item.id ? '' : item.id))}
-                      >
+                    <TouchableOpacity key={itemKey} style={styles.summaryHistoryEntry} activeOpacity={0.88} onPress={() => openRecentApprovedSessions(item)}>
+                      <View style={styles.summaryHistoryEntryHeader}>
                         <View style={styles.summaryHistoryEntryTextWrap}>
                           <Text style={styles.summaryHistoryEntryTitle}>{formatSessionStamp(item)}</Text>
-                          <Text style={styles.summaryHistoryEntryPreview} numberOfLines={expanded ? 0 : 2}>
+                          <Text style={styles.summaryHistoryEntryPreview} numberOfLines={2}>
                             {item?.summary?.dailyRecap?.therapistNarrative || 'No recap note recorded.'}
                           </Text>
                         </View>
-                        <MaterialIcons name={expanded ? 'expand-less' : 'expand-more'} size={26} color="#334155" />
-                      </TouchableOpacity>
-                      <View style={styles.summaryHistoryActionsRow}>
-                        <TouchableOpacity style={styles.summaryHistoryAction} onPress={() => openSummaryArtifact(item).catch(() => {})}>
-                          <Text style={styles.summaryHistoryActionText}>Open SessionSummary.txt</Text>
-                        </TouchableOpacity>
+                        <MaterialIcons name="chevron-right" size={24} color="#64748b" />
                       </View>
-                      {expanded ? (
-                        <View style={styles.summaryHistoryEntryBody}>
-                          <SessionSummarySnapshot
-                            summary={item}
-                            title="Approved Session Summary"
-                            subtitle={formatSessionStamp(item)}
-                            emptyText="No approved session summary has been recorded yet."
-                          />
-                        </View>
-                      ) : null}
-                    </View>
+                    </TouchableOpacity>
                   );
                 })}
               </View>
@@ -904,10 +886,6 @@ const styles = StyleSheet.create({
   summaryHistoryEntryTextWrap: { flex: 1, paddingRight: 12 },
   summaryHistoryEntryTitle: { fontWeight: '800', color: '#111827' },
   summaryHistoryEntryPreview: { marginTop: 4, color: '#475569', lineHeight: 20 },
-  summaryHistoryActionsRow: { flexDirection: 'row', marginTop: 10 },
-  summaryHistoryAction: { borderRadius: 10, backgroundColor: '#eff6ff', paddingVertical: 10, paddingHorizontal: 12 },
-  summaryHistoryActionText: { color: '#1d4ed8', fontWeight: '800' },
-  summaryHistoryEntryBody: { marginTop: 10 },
   artifactModalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.42)', justifyContent: 'center', padding: 20 },
   artifactModalCard: { maxHeight: '80%', borderRadius: 18, backgroundColor: '#ffffff', padding: 18 },
   artifactModalTitle: { fontSize: 17, fontWeight: '800', color: '#111827' },

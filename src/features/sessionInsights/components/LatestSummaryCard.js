@@ -2,10 +2,10 @@ import React from 'react';
 import { TouchableOpacity, StyleSheet, Text, View } from 'react-native';
 import SessionSummarySnapshot from '../../../components/SessionSummarySnapshot';
 
-export default function LatestSummaryCard({ summary, subtitle = '', onOpenInsights, onOpenArtifact, artifactDisabled = false }) {
+export default function LatestSummaryCard({ summary, subtitle = '', onOpenInsights, onOpenArtifact, artifactDisabled = false, metricsTwoByTwo = false }) {
   return (
     <View style={styles.wrap}>
-      <SessionSummarySnapshot summary={summary} subtitle={subtitle} title="Latest Session Summary" emptyText="No approved session summary has been recorded yet." />
+      <SessionSummarySnapshot summary={summary} subtitle={subtitle} title="Latest Session Summary" emptyText="No approved session summary has been recorded yet." metricsTwoByTwo={metricsTwoByTwo} />
       {(onOpenInsights || onOpenArtifact) ? (
         <View style={styles.actionsRow}>
           {onOpenInsights ? (

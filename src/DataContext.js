@@ -31,6 +31,7 @@ import {
 } from './seed/screenshotSeedData';
 import { countUnreadVisibleThreads } from './utils/chatThreads';
 import { DEMO_ROLE_IDENTITIES, getEffectiveChatIdentity } from './utils/demoIdentity';
+import { isAdminRole, isBcbaRole, isOfficeAdminRole } from './core/tenant/models';
 import { attachTherapistsToChildren, mergeById } from './utils/directoryState';
 import { setApplicationBadgeCountAsync } from './utils/pushNotifications';
 import { buildScopedStorageKeys, getStorageScopeId } from './utils/storageScope';
@@ -514,7 +515,7 @@ export function DataProvider({ children: reactChildren }) {
       setDirectoryLoading(true);
       setDirectoryError('');
       try {
-        const isAdmin = (user && user.role) ? ['admin', 'administrator'].includes(String(user.role).toLowerCase()) : false;
+        const isAdmin = Boolean(user && (isAdminRole(user.role) || isBcbaRole(user.role) || isOfficeAdminRole(user.role)));
         let dir = isAdmin ? await Api.getDirectory() : await Api.getDirectoryMe();
         if (dir && dir.ok) {
           let remoteChildren = Array.isArray(dir.children) ? dir.children : [];

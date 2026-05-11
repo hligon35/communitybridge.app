@@ -9,6 +9,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { avatarSourceFor, formatIdForDisplay } from '../utils/idVisibility';
 import { THERAPY_ROLE_LABELS, getDisplayRoleLabel } from '../utils/roleTerminology';
+import { childHasParent } from '../utils/directoryLinking';
 
 export default function ParentDetailScreen() {
   const route = useRoute();
@@ -21,7 +22,7 @@ export default function ParentDetailScreen() {
   if (!parent) return (<View style={styles.empty}><Text style={{ color: '#666' }}>Parent not found</Text></View>);
 
   // children of this parent
-  const myChildren = (children || []).filter((c) => Array.isArray(c.parents) && c.parents.some((pp) => pp.id === parent.id));
+  const myChildren = (children || []).filter((child) => childHasParent(child, parent.id));
 
   const [showTimeModal, setShowTimeModal] = useState(false);
   const [selectedChild, setSelectedChild] = useState(myChildren[0] || null);

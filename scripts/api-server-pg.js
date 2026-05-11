@@ -2211,6 +2211,8 @@ function pickDirectoryRecordForUser(user, records) {
 function childHasParentId(child, parentId) {
   const pid = safeString(parentId).trim();
   if (!pid) return false;
+  const parentIds = Array.isArray(child && child.parentIds) ? child.parentIds : [];
+  if (parentIds.some((value) => safeString(value).trim() === pid)) return true;
   const list = Array.isArray(child && child.parents) ? child.parents : [];
   return list.some((p) => {
     if (!p) return false;

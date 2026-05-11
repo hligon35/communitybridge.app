@@ -5,8 +5,9 @@ import { ScreenWrapper, CenteredContainer } from '../components/ScreenWrapper';
 import { useAuth } from '../AuthContext';
 import { useData } from '../DataContext';
 import { logPress } from '../utils/logger';
-import { USER_ROLES, isAdminRole, normalizeUserRole } from '../core/tenant/models';
+import { USER_ROLES, isAdminRole, isBcbaRole, normalizeUserRole } from '../core/tenant/models';
 import { THERAPY_ROLE_LABELS, getDisplayRoleLabel } from '../utils/roleTerminology';
+import { childHasParent, findLinkedParentId } from '../utils/directoryLinking';
 
 function normalizeName(s) {
   return (s || '').toString().trim();
@@ -89,7 +90,7 @@ export default function NewThreadScreen({ navigation }) {
     const adminContacts = [{ id: 'admin-1', name: 'Office Admin', subtitle: 'Admin' }];
 
     const normalizedTherapists = (therapists || [])
-      .map((t) => ({ id: t.id, name: normalizeName(t.name), subtitle: getDisplayRoleLabel(normalizeName(t.role)) || THERAPY_ROLE_LABELS.therapist }))
+      .map((t) => ({ id: t.id, name: normalizeName(t.name), subtitle: getDisplayRoleLabel(normalizeName(t.role)) || THERAPY_ROLE_LABELS.therapist, role: t.role }))
       .filter((t) => t.id && t.name);
 
     const normalizedParents = (parents || [])
@@ -109,10 +110,7 @@ export default function NewThreadScreen({ navigation }) {
     // Parent connections: family parents + child therapists.
     if (isParent) {
       const rawParents = Array.isArray(parents) ? parents : [];
-      const myParentId = rawParents.find((p) => p && (p.id === user?.id))?.id
-        || rawParents.find((p) => p && sameEmail(p.email, user?.email))?.id
-        || rawParents.find((p) => p && sameName(fullNameFromParent(p), user?.name))?.id
-        || null;
+      const myParentId = findLinkedParentId(user, rawParents);
 
       const me = myParentId
         ? (normalizedParents.find((p) => p.id === myParentId) || null)
@@ -120,33 +118,24 @@ export default function NewThreadScreen({ navigation }) {
       if (!me) {
         return {
           admins: adminContacts,
-          connectedTherapists: normalizedTherapists,
-          connectedParents: normalizedParents,
-          note: 'Your account is not linked to a parent record yet; showing all contacts.',
+          connectedTherapists: [],
+          connectedParents: [],
+          note: 'Your account is not linked to a parent record yet; only office admin messaging is available.',
         };
       }
 
-      const myChildren = (children || []).filter((c) => (c.parents || []).some((pp) => pp?.id === me.id));
+      const myChildren = (children || []).filter((c) => childHasParent(c, me.id));
       const therapistIds = new Set();
       myChildren.forEach((c) => {
-        const candidates = [c.amTherapist, c.pmTherapist, c.bcaTherapist];
-        candidates.forEach((t) => {
-          if (t?.id) therapistIds.add(t.id);
-        });
-        const assigned = c.assignedABA || c.assigned_ABA || [];
-        (assigned || []).forEach((tid) => therapistIds.add(tid));
+        if (c?.bcaTherapist?.id) therapistIds.add(c.bcaTherapist.id);
       });
 
-      const familyParents = normalizedParents
-        .filter((p) => p.familyId && p.familyId === me.familyId)
-        .filter((p) => p.id !== me.id);
-
-      const myTherapists = normalizedTherapists.filter((t) => therapistIds.has(t.id));
+      const myTherapists = normalizedTherapists.filter((t) => therapistIds.has(t.id) && isBcbaRole(t.role));
 
       return {
         admins: adminContacts,
         connectedTherapists: myTherapists,
-        connectedParents: familyParents,
+        connectedParents: [],
         note: null,
       };
     }
@@ -237,8 +226,8 @@ export default function NewThreadScreen({ navigation }) {
           {note ? <Text style={{ marginTop: 8, color: '#6b7280' }}>{note}</Text> : null}
 
           <RoleSection title="Admin" items={admins} selectedId={selected?.id} onPick={pick} />
-          <RoleSection title={THERAPY_ROLE_LABELS.therapists} items={connectedTherapists} selectedId={selected?.id} onPick={pick} />
-          <RoleSection title="Parents" items={connectedParents} selectedId={selected?.id} onPick={pick} />
+          <RoleSection title={isParent ? 'BCBA' : THERAPY_ROLE_LABELS.therapists} items={connectedTherapists} selectedId={selected?.id} onPick={pick} />
+          {!isParent ? <RoleSection title="Parents" items={connectedParents} selectedId={selected?.id} onPick={pick} /> : null}
 
           <TouchableOpacity
             onPress={start}

@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { StatusBar, Platform, AppState, StyleSheet, useWindowDimensions } from 'react-native';
+import { StatusBar, Platform, AppState, StyleSheet, TouchableOpacity, useWindowDimensions, View, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 // Temporarily remove TailwindProvider if not available at runtime
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { MaterialIcons } from '@expo/vector-icons';
 
 import { AuthProvider, useAuth } from './src/AuthContext';
 import { DataProvider } from './src/DataContext';
@@ -34,6 +35,7 @@ import EditProfileScreen from './src/screens/EditProfileScreen';
 import HelpScreen from './src/screens/HelpScreen';
 import MyClassScreen from './src/screens/MyClassScreen';
 import MyChildScreen from './src/screens/MyChildScreen';
+import RecentApprovedSessionsScreen from './src/screens/RecentApprovedSessionsScreen';
 import AdminControlsScreen from './src/screens/AdminControlsScreen';
 import AdminChatMonitorScreen from './src/screens/AdminChatMonitorScreen';
 import AnnouncementFeedScreen from './src/screens/AnnouncementFeedScreen';
@@ -65,7 +67,6 @@ import ChildProgressInsightsScreen from './src/features/sessionInsights/screens/
 import TherapistDocumentationDashboardScreen from './src/features/sessionInsights/screens/TherapistDocumentationDashboardScreen';
 import OrganizationInsightsDashboardScreen from './src/features/sessionInsights/screens/OrganizationInsightsDashboardScreen';
 import { HelpButton, BackButton } from './src/components/TopButtons';
-import { View, Text } from 'react-native';
 import LoginScreen from './screens/LoginScreen';
 import TwoFactorScreen from './screens/TwoFactorScreen';
 import CreatePasswordScreen from './screens/CreatePasswordScreen';
@@ -267,6 +268,7 @@ function MyChildStack() {
     >
       <MyChildStackNav.Screen name="MyChildMain" component={MyChildScreen} options={{ title: 'My Child' }} />
       <MyChildStackNav.Screen name="ChildProgressInsights" component={ChildProgressInsightsScreen} options={{ title: 'Progress Insights' }} />
+      <MyChildStackNav.Screen name="RecentApprovedSessions" component={RecentApprovedSessionsScreen} options={{ title: 'Recent Approved Sessions' }} />
     </MyChildStackNav.Navigator>
   );
 }
@@ -278,6 +280,7 @@ function ChatsStack() {
     <ChatsStackNav.Navigator
       screenOptions={({ navigation, route, back }) => {
         const showBack = Boolean(back) && shouldShowSubscreenBack(navigation, route?.name);
+        const canStartNewThread = ['ChatsList', 'ChatThread', 'NewThread'].includes(String(route?.name || ''));
         return {
           headerShown: SHOW_STACK_HEADERS && !isTabletLayout,
           title: humanizeScreenLabel(route?.name),
@@ -287,7 +290,20 @@ function ChatsStack() {
           headerBackVisible: showBack,
           headerBackTitleVisible: false,
           headerLeft: () => (showBack ? <BackButton onPress={() => navigation.goBack()} label={route?.name === 'ChatThread' ? 'Chats' : ''} /> : null),
-          headerRight: () => <HelpButton />,
+          headerRight: () => (
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              {canStartNewThread ? (
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('NewThread')}
+                  accessibilityLabel="Start a new chat"
+                  style={{ marginRight: 8, width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: '#eff6ff' }}
+                >
+                  <MaterialIcons name="add" size={22} color="#1d4ed8" />
+                </TouchableOpacity>
+              ) : null}
+              <HelpButton />
+            </View>
+          ),
         };
       }}
     >

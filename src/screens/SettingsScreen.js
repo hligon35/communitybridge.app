@@ -13,7 +13,7 @@ import * as Api from '../Api';
 import * as Updates from 'expo-updates';
 import Constants from 'expo-constants';
 import { SETTINGS_KEYS, readBooleanSetting, writeBooleanSetting } from '../utils/appSettings';
-import { isAdminRole } from '../core/tenant/models';
+import { isAdminRole, normalizeUserRole, USER_ROLES } from '../core/tenant/models';
 import useIsTabletLayout from '../hooks/useIsTabletLayout';
 
 const editIconImage = require('../../assets/icons/edit.png');
@@ -35,6 +35,25 @@ export default function SettingsScreen({ navigation }) {
   const { user, logout, setRole } = useAuth();
   const isWeb = Platform.OS === 'web';
   const isTabletLayout = useIsTabletLayout();
+  const isParentMobileSettings = !isWeb && !isTabletLayout && normalizeUserRole(user?.role) === USER_ROLES.PARENT;
+
+  const openEditProfile = React.useCallback(() => {
+    const parentNavigation = navigation?.getParent?.();
+    const state = navigation?.getState?.();
+    const routeNames = Array.isArray(state?.routeNames) ? state.routeNames : [];
+
+    if (routeNames.includes('EditProfile')) {
+      navigation.navigate('EditProfile');
+      return;
+    }
+
+    if (parentNavigation?.navigate) {
+      parentNavigation.navigate('Settings', { screen: 'EditProfile' });
+      return;
+    }
+
+    navigation.navigate('Settings', { screen: 'EditProfile' });
+  }, [navigation]);
 
   const appVersion = Constants?.expoConfig?.version || Constants?.manifest?.version || '';
   const iosBuildNumber = Constants?.expoConfig?.ios?.buildNumber || '';
@@ -391,7 +410,7 @@ export default function SettingsScreen({ navigation }) {
         ) : null}
         <View style={{ width: '100%', maxWidth: isWeb ? 980 : 720, borderRadius: 14, backgroundColor: '#fff', padding: 20, elevation: 3, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, marginTop: 8 }}>
         <TouchableOpacity
-          onPress={() => navigation.navigate('EditProfile')}
+          onPress={openEditProfile}
           accessibilityLabel="Edit Profile"
           style={{
             position: 'absolute',
@@ -417,6 +436,17 @@ export default function SettingsScreen({ navigation }) {
 
         {!isWeb ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16, paddingRight: 56 }}>
+            {isParentMobileSettings ? (
+              <TouchableOpacity
+                onPress={() => logout?.()}
+                style={{ marginRight: 12, paddingVertical: 4, paddingHorizontal: 2, flexDirection: 'row', alignItems: 'center' }}
+                activeOpacity={0.7}
+                accessibilityLabel="Logout"
+              >
+                <MaterialIcons name="logout" size={22} color="#b91c1c" />
+                <Text style={{ color: '#b91c1c', fontWeight: '700', marginLeft: 4 }}>Logout</Text>
+              </TouchableOpacity>
+            ) : null}
             <Text style={{ fontSize: 22, fontWeight: '800', color: '#0f172a' }}>Profile Settings</Text>
           </View>
         ) : null}

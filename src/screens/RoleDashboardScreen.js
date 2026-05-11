@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Image, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { Alert, Image, Linking, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View, useWindowDimensions } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { MaterialIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import AnnouncementFeed from '../components/AnnouncementFeed';
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import TenantSwitcher from '../components/TenantSwitcher';
@@ -11,6 +12,7 @@ import { useTenant } from '../core/tenant/TenantContext';
 import { USER_ROLES, normalizeUserRole } from '../core/tenant/models';
 import { avatarSourceFor } from '../utils/idVisibility';
 import { THERAPY_ROLE_LABELS } from '../utils/roleTerminology';
+import { childHasParent } from '../utils/directoryLinking';
 import useIsTabletLayout from '../hooks/useIsTabletLayout';
 import { isPhoneViewport as resolvePhoneViewport, shouldHideTapToolsOnPhone } from '../utils/mobileRoleAccess';
 const { logPress } = require('../utils/logger');
@@ -30,6 +32,7 @@ const itemsNeededIcon = require('../../assets/icons/itemsNeeded.png');
 const careTeamIcon = require('../../assets/icons/careTeam.png');
 const insuranceBillingIcon = require('../../assets/icons/insuranceBilling.png');
 const parentResourcesIcon = require('../../assets/icons/parentResources.png');
+const ITEMS_NEEDED_READS_KEY_PREFIX = 'dashboard_items_needed_reads_v1';
 
 function formatSessionLabel(dateValue) {
   if (!dateValue) return 'No session scheduled';
@@ -72,7 +75,7 @@ function findRelevantChildren(role, userId, children, options = {}) {
     if (linkedChildren.length || !allowSpecialAccessFallback) return linkedChildren;
     return allChildren;
   }
-  return allChildren.filter((child) => Array.isArray(child?.parents) && child.parents.some((parent) => parent?.id === userId));
+  return allChildren.filter((child) => childHasParent(child, userId));
 }
 
 function childCarouselImageFor(child, index) {
@@ -92,6 +95,17 @@ function childCarouselImageFor(child, index) {
   if (/(girl|female|daughter|she|her)/.test(hints)) return defaultDaughterIcon;
   if (/(boy|male|son|he|him)/.test(hints)) return defaultSonIcon;
   return index % 2 === 0 ? defaultSonIcon : defaultDaughterIcon;
+}
+
+function isItemsNeededRequest(item) {
+  const subject = String(item?.subject || item?.title || '').trim().toLowerCase();
+  const body = String(item?.body || item?.message || '').trim().toLowerCase();
+  return subject.startsWith('items needed for') || body.startsWith('requested items:');
+}
+
+function isOpenItemsStatus(item) {
+  const status = String(item?.status || '').trim().toLowerCase();
+  return status === 'requested' || status === 'overdue' || status === 'sent' || !status;
 }
 
 export default function RoleDashboardScreen({ navigation }) {
@@ -114,6 +128,25 @@ export default function RoleDashboardScreen({ navigation }) {
   );
   const showDashboardPlaceholder = !directoryLoading && !directoryError && !relevantChildren.length;
   const [selectedChildId, setSelectedChildId] = useState(null);
+  const [itemsNeededOverlayOpen, setItemsNeededOverlayOpen] = useState(false);
+  const [readItemsNeededIds, setReadItemsNeededIds] = useState({});
+  const itemsNeededReadsStorageKey = useMemo(() => `${ITEMS_NEEDED_READS_KEY_PREFIX}:${String(effectiveUser?.id || user?.id || 'guest').trim() || 'guest'}`, [effectiveUser?.id, user?.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    AsyncStorage.getItem(itemsNeededReadsStorageKey)
+      .then((value) => {
+        if (cancelled) return;
+        const parsed = value ? JSON.parse(value) : {};
+        setReadItemsNeededIds(parsed && typeof parsed === 'object' ? parsed : {});
+      })
+      .catch(() => {
+        if (!cancelled) setReadItemsNeededIds({});
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [itemsNeededReadsStorageKey]);
 
   useEffect(() => {
     if (!relevantChildren.length) {
@@ -196,6 +229,53 @@ export default function RoleDashboardScreen({ navigation }) {
     if (!selectedChild?.id) return 0;
     return (urgentMemos || []).filter((memo) => memo?.childId === selectedChild.id && (!memo?.status || memo.status === 'pending')).length;
   }, [activeSeedPreset, isTherapist, seededItemsNeededByChild, selectedChild?.id, urgentMemos]);
+
+  const parentItemsNeededEntries = useMemo(() => {
+    if (isTherapist || !selectedChild?.id) return [];
+    if (activeSeedPreset === 'screenshot') {
+      return (Array.isArray(seededItemsNeededByChild?.[selectedChild.id]) ? seededItemsNeededByChild[selectedChild.id] : [])
+        .filter((item) => {
+          const status = String(item?.status || '').trim().toLowerCase();
+          return status === 'requested' || status === 'overdue';
+        })
+        .map((item, index) => ({
+          id: `seed:${selectedChild.id}:${String(item?.id || index)}`,
+          title: item?.item || 'Requested item',
+          detail: [item?.category || 'General', item?.dueDate ? `Due ${item.dueDate}` : '', item?.requestedByName ? `Requested by ${item.requestedByName}` : ''].filter(Boolean).join(' • '),
+          memoId: null,
+        }));
+    }
+    return (urgentMemos || [])
+      .filter((memo) => String(memo?.childId || '').trim() === String(selectedChild.id).trim())
+      .filter((memo) => String(memo?.type || '').trim().toLowerCase() === 'admin_memo')
+      .filter((memo) => isItemsNeededRequest(memo) && isOpenItemsStatus(memo))
+      .map((memo) => ({
+        id: `memo:${String(memo?.id || '').trim()}`,
+        title: String(memo?.body || '').replace(/^Requested items:\s*/i, '').trim() || String(memo?.subject || memo?.title || 'Requested items').trim(),
+        detail: [String(memo?.subject || memo?.title || '').trim(), memo?.createdAt ? new Date(memo.createdAt).toLocaleString() : ''].filter(Boolean).join(' • '),
+        memoId: String(memo?.id || '').trim() || null,
+      }));
+  }, [activeSeedPreset, isTherapist, seededItemsNeededByChild, selectedChild?.id, urgentMemos]);
+
+  const unreadItemsNeededCount = useMemo(() => parentItemsNeededEntries.filter((item) => !readItemsNeededIds?.[item.id]).length, [parentItemsNeededEntries, readItemsNeededIds]);
+
+  const markItemsNeededRead = async () => {
+    if (!parentItemsNeededEntries.length) {
+      setItemsNeededOverlayOpen(false);
+      return;
+    }
+    const next = { ...(readItemsNeededIds || {}) };
+    parentItemsNeededEntries.forEach((item) => {
+      next[item.id] = new Date().toISOString();
+    });
+    setReadItemsNeededIds(next);
+    setItemsNeededOverlayOpen(false);
+    try {
+      await AsyncStorage.setItem(itemsNeededReadsStorageKey, JSON.stringify(next));
+    } catch (_) {
+      // best-effort local persistence only
+    }
+  };
 
   const moodSummary = useMemo(() => {
     const scores = activeChildren
@@ -286,7 +366,7 @@ export default function RoleDashboardScreen({ navigation }) {
       imageSource: itemsNeededIcon,
       onPress: isTherapist
         ? () => navigation.navigate('TherapistItemsNeeded', { childId: firstRelevantChild?.id || null })
-        : undefined,
+        : () => setItemsNeededOverlayOpen(true),
     },
     reports: {
       key: 'reports',
@@ -451,7 +531,7 @@ export default function RoleDashboardScreen({ navigation }) {
             </>
           ) : (
             <>
-              {showDashboardPlaceholder ? renderPlaceholderFamilyCards(4) : (
+              {showDashboardPlaceholder ? renderPlaceholderFamilyCards(4) : relevantChildren.length > 1 ? (
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.familyCarouselTrack}>
                   {relevantChildren.map((child, index) => {
                     const isSelected = child?.id === selectedChild?.id;
@@ -468,14 +548,18 @@ export default function RoleDashboardScreen({ navigation }) {
                     );
                   })}
                 </ScrollView>
-              )}
+              ) : null}
             </>
           )}
         </View>
 
         <TenantSwitcher />
 
-        <AnnouncementFeed items={urgentMemos} />
+        <AnnouncementFeed
+          items={urgentMemos}
+          headerTapMode={!isTherapist && isPhoneWorkspace ? 'overlay' : 'screen'}
+          storageScopeKey={`${role}:${String(effectiveUser?.id || user?.id || 'guest').trim() || 'guest'}`}
+        />
 
         {!isTherapist ? <View style={[styles.grid, isTherapist ? styles.gridTherapist : null]}>
           {showDashboardPlaceholder ? dashboardCards.map((card) => renderPlaceholderDashboardCard(card.key)) : dashboardCards.map((card) => {
@@ -487,6 +571,11 @@ export default function RoleDashboardScreen({ navigation }) {
                   ) : (
                     <MaterialIcons name={card.icon} size={24} color="#2563eb" />
                   )}
+                  {!isTherapist && card.key === 'items-needed' && unreadItemsNeededCount > 0 ? (
+                    <View style={styles.cardBadge}>
+                      <Text style={styles.cardBadgeText}>{unreadItemsNeededCount}</Text>
+                    </View>
+                  ) : null}
                 </View>
                 <Text style={styles.cardTitle}>{card.title}</Text>
                 <Text style={styles.cardValue}>{card.value}</Text>
@@ -505,6 +594,37 @@ export default function RoleDashboardScreen({ navigation }) {
           })}
         </View> : null}
       </ScrollView>
+
+      <Modal transparent visible={itemsNeededOverlayOpen} animationType="fade" onRequestClose={() => setItemsNeededOverlayOpen(false)}>
+        <TouchableWithoutFeedback onPress={() => setItemsNeededOverlayOpen(false)}>
+          <View style={styles.itemsOverlayBackdrop}>
+            <TouchableWithoutFeedback>
+              <View style={styles.itemsOverlayCard}>
+                <Text style={styles.itemsOverlayTitle}>Items Needed</Text>
+                <Text style={styles.itemsOverlaySubtitle}>{selectedChild?.name ? `Requests for ${selectedChild.name}` : 'Current requested items'}</Text>
+                <ScrollView style={styles.itemsOverlayList} contentContainerStyle={styles.itemsOverlayListContent}>
+                  {parentItemsNeededEntries.length ? parentItemsNeededEntries.map((item) => (
+                    <View key={item.id} style={styles.itemsOverlayItem}>
+                      <Text style={styles.itemsOverlayItemTitle}>{item.title}</Text>
+                      {item.detail ? <Text style={styles.itemsOverlayItemDetail}>{item.detail}</Text> : null}
+                    </View>
+                  )) : (
+                    <Text style={styles.itemsOverlayEmpty}>No items are needed right now.</Text>
+                  )}
+                </ScrollView>
+                <View style={styles.itemsOverlayActions}>
+                  <TouchableOpacity style={styles.itemsOverlaySecondaryButton} onPress={() => setItemsNeededOverlayOpen(false)}>
+                    <Text style={styles.itemsOverlaySecondaryText}>Close</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.itemsOverlayPrimaryButton, !parentItemsNeededEntries.length ? styles.itemsOverlayPrimaryButtonDisabled : null]} onPress={markItemsNeededRead} disabled={!parentItemsNeededEntries.length}>
+                    <Text style={styles.itemsOverlayPrimaryText}>Mark as Read</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
 
     </ScreenWrapper>
   );
@@ -548,9 +668,27 @@ const styles = StyleSheet.create({
   cardFullWidth: { width: '100%' },
   placeholderCard: { minHeight: 138 },
   cardIconRow: { width: 46, height: 46, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#eff6ff' },
+  cardBadge: { position: 'absolute', top: -8, right: -10, minWidth: 20, height: 20, paddingHorizontal: 5, borderRadius: 10, backgroundColor: '#dc2626', alignItems: 'center', justifyContent: 'center' },
+  cardBadgeText: { color: '#ffffff', fontSize: 11, fontWeight: '800' },
   cardImageIcon: { width: 30, height: 30 },
   cardTitle: { marginTop: 8, fontSize: 13, fontWeight: '800', color: '#0f172a', lineHeight: 16 },
   cardValue: { marginTop: 4, fontSize: 11, fontWeight: '600', color: '#475569', lineHeight: 14 },
+  itemsOverlayBackdrop: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.42)', alignItems: 'center', justifyContent: 'center', padding: 20 },
+  itemsOverlayCard: { width: '100%', maxWidth: 420, maxHeight: '78%', backgroundColor: '#ffffff', borderRadius: 22, padding: 18 },
+  itemsOverlayTitle: { fontSize: 20, fontWeight: '800', color: '#0f172a' },
+  itemsOverlaySubtitle: { marginTop: 6, color: '#64748b', lineHeight: 20 },
+  itemsOverlayList: { marginTop: 16 },
+  itemsOverlayListContent: { paddingBottom: 4 },
+  itemsOverlayItem: { borderRadius: 14, borderWidth: 1, borderColor: '#e2e8f0', backgroundColor: '#f8fafc', padding: 12, marginBottom: 10 },
+  itemsOverlayItemTitle: { color: '#0f172a', fontWeight: '800', lineHeight: 20 },
+  itemsOverlayItemDetail: { marginTop: 4, color: '#64748b', lineHeight: 18 },
+  itemsOverlayEmpty: { color: '#64748b', lineHeight: 20 },
+  itemsOverlayActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 14 },
+  itemsOverlaySecondaryButton: { borderRadius: 12, backgroundColor: '#e2e8f0', paddingVertical: 10, paddingHorizontal: 14, marginRight: 10 },
+  itemsOverlaySecondaryText: { color: '#334155', fontWeight: '700' },
+  itemsOverlayPrimaryButton: { borderRadius: 12, backgroundColor: '#2563eb', paddingVertical: 10, paddingHorizontal: 14 },
+  itemsOverlayPrimaryButtonDisabled: { backgroundColor: '#94a3b8' },
+  itemsOverlayPrimaryText: { color: '#ffffff', fontWeight: '800' },
   placeholderBlock: { backgroundColor: '#e2e8f0' },
   placeholderAvatar: { backgroundColor: '#dbe4f0' },
   placeholderIconWrap: { backgroundColor: '#f8fafc' },

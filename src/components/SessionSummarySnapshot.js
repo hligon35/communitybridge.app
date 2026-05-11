@@ -39,6 +39,7 @@ export default function SessionSummarySnapshot({
   title = 'Session Summary',
   subtitle = '',
   emptyText = 'No approved session summary has been recorded yet.',
+  metricsTwoByTwo = false,
 }) {
   const payload = summary?.summary && typeof summary.summary === 'object' ? summary.summary : (summary && typeof summary === 'object' ? summary : null);
 
@@ -101,20 +102,20 @@ export default function SessionSummarySnapshot({
       <Text style={styles.title}>{title}</Text>
       {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
 
-      <View style={styles.metricsGrid}>
-        <View style={styles.metricChip}>
+      <View style={[styles.metricsGrid, metricsTwoByTwo ? styles.metricsGridTwoByTwo : null]}>
+        <View style={[styles.metricChip, metricsTwoByTwo ? styles.metricChipTwoByTwo : null]}>
           <Text style={styles.metricLabel}>Mood</Text>
           <Text style={styles.metricValue}>{moodValue} · {moodLabel}</Text>
         </View>
-        <View style={styles.metricChip}>
+        <View style={[styles.metricChip, metricsTwoByTwo ? styles.metricChipTwoByTwo : null]}>
           <Text style={styles.metricLabel}>Progress</Text>
           <Text style={styles.metricValue}>{progressLabel}</Text>
         </View>
-        <View style={styles.metricChip}>
+        <View style={[styles.metricChip, metricsTwoByTwo ? styles.metricChipTwoByTwo : null]}>
           <Text style={styles.metricLabel}>Independence</Text>
           <Text style={styles.metricValue}>{independenceLabel}</Text>
         </View>
-        <View style={styles.metricChip}>
+        <View style={[styles.metricChip, metricsTwoByTwo ? styles.metricChipTwoByTwo : null]}>
           <Text style={styles.metricLabel}>Behavior Level</Text>
           <Text style={styles.metricValue}>{behaviorLevel}</Text>
         </View>
@@ -159,11 +160,18 @@ const styles = StyleSheet.create({
     marginTop: 12,
     justifyContent: 'space-between',
   },
+  metricsGridTwoByTwo: {
+    flexWrap: 'wrap',
+  },
   metricChip: {
     width: '24%',
     backgroundColor: '#f8fafc',
     borderRadius: 12,
     padding: 10,
+  },
+  metricChipTwoByTwo: {
+    width: '48%',
+    marginBottom: 8,
   },
   metricLabel: {
     fontSize: 11,

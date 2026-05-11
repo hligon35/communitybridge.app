@@ -133,6 +133,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
   const canUseClockButton = isStaff || showAdminWorkspace;
   const isParentWorkspace = !showAdminWorkspace && !isStaff;
   const workspaceLabel = getWorkspaceLabel(user?.role);
+  const showChatComposerAction = ['ChatsList', 'ChatThread', 'NewThread', 'AdminChatMonitor'].includes(String(currentRoute || ''));
   const screenTitleMap = {
     CommunityMain: 'Home',
     ChatsList: 'Chats',
@@ -252,6 +253,10 @@ export default function TabletNavigationShell({ currentRoute, children }) {
     const ids = [...breakNotificationIdsRef.current];
     breakNotificationIdsRef.current = [];
     await Promise.all(ids.map((id) => Notifications.cancelScheduledNotificationAsync(id).catch(() => {})));
+  }
+
+  function openChatComposer() {
+    openTarget({ root: 'Chats', screen: 'NewThread' });
   }
 
   async function presentBreakCompletionNotification(minutes) {
@@ -778,6 +783,15 @@ export default function TabletNavigationShell({ currentRoute, children }) {
       <View style={styles.shellFrame}>
         <View style={[styles.shellHeader, { paddingTop: Platform.OS !== 'web' ? Math.max(insets.top, 12) : 12 }]}> 
           <Text style={styles.shellHeaderTitle} numberOfLines={1}>{currentScreenTitle}</Text>
+          {showChatComposerAction ? (
+            <TouchableOpacity
+              style={[styles.iconOnlyButton, styles.shellHeaderIconButton]}
+              onPress={openChatComposer}
+              accessibilityLabel="Start a new chat"
+            >
+              <MaterialIcons name="add" size={22} color="#1d4ed8" />
+            </TouchableOpacity>
+          ) : null}
         </View>
         <View style={styles.shell}>
           <ScrollView
@@ -926,6 +940,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   shellHeaderTitle: { color: '#0f172a', fontWeight: '800', fontSize: 24, lineHeight: 30, textAlign: 'center' },
+  shellHeaderIconButton: { position: 'absolute', right: 24, top: 14 },
   shell: { flex: 1, flexDirection: 'row', backgroundColor: '#e2e8f0' },
   drawer: { backgroundColor: '#0f172a', paddingHorizontal: 16, flexShrink: 0 },
   drawerCollapsed: { paddingHorizontal: 10 },
