@@ -123,7 +123,7 @@ export default function ScheduleCalendarScreen() {
   const useAdminDropdownShellLayout = Boolean(mobileAdminShell?.showMobileAdminShell && !isTherapist && !isParent);
   const useCompactSessionLayout = width < 900 && !useAdminDropdownShellLayout;
   const requestedChildId = route?.params?.childId ? String(route.params.childId) : '';
-  const requestedEditorMode = route?.params?.editorMode === 'assignment' || route?.params?.editorMode === 'session'
+  const requestedEditorMode = route?.params?.editorMode === 'session'
     ? route.params.editorMode
     : '';
   const [viewMode, setViewMode] = useState('day');
@@ -600,16 +600,6 @@ export default function ScheduleCalendarScreen() {
   ) : null;
   const headerActions = !isTherapist && !isParent ? (
     <View style={styles.headerActionRow}>
-      {canManageSchedule ? (
-        <TouchableOpacity
-          accessibilityLabel="Assign ABA Tech"
-          style={styles.headerAssignmentButton}
-          onPress={() => setEditorMode('assignment')}
-        >
-          <MaterialIcons name="add" size={18} color="#1d4ed8" />
-          <Text style={styles.headerAssignmentButtonText}>ABA</Text>
-        </TouchableOpacity>
-      ) : null}
       <TouchableOpacity
         accessibilityLabel="Add session"
         style={styles.headerActionButton}
@@ -678,8 +668,8 @@ export default function ScheduleCalendarScreen() {
 
         {editorMode ? (
           <View style={styles.editorCard}>
-            <Text style={styles.groupTitle}>{editorMode === 'session' ? 'Add Session' : 'Assign ABA Tech'}</Text>
-            <Text style={styles.groupSubtitle}>{editorMode === 'session' ? 'Choose a learner, set the session window, and save it to the selected calendar date.' : 'Choose a learner and assign an ABA tech to the AM or PM session.'}</Text>
+            <Text style={styles.groupTitle}>Add Session</Text>
+            <Text style={styles.groupSubtitle}>Choose a learner, set the session window, and save it to the selected calendar date.</Text>
 
             <Text style={styles.fieldLabel}>Learner</Text>
             <View style={styles.chipRow}>
@@ -699,37 +689,22 @@ export default function ScheduleCalendarScreen() {
               ))}
             </View>
 
-            {editorMode === 'session' ? (
-              <>
-                <View style={styles.fieldRow}>
-                  <View style={styles.fieldHalf}>
-                    <Text style={styles.fieldLabel}>Start time</Text>
-                    <TimeField value={draftStart} onChangeText={setDraftStart} placeholder="09:00" inputStyle={styles.input} accessibilityLabel="Session start time" />
-                  </View>
-                  <View style={styles.fieldHalf}>
-                    <Text style={styles.fieldLabel}>End time</Text>
-                    <TimeField value={draftEnd} onChangeText={setDraftEnd} placeholder="10:00" inputStyle={styles.input} accessibilityLabel="Session end time" />
-                  </View>
-                </View>
-                <Text style={styles.fieldLabel}>Room</Text>
-                <TextInput value={draftRoom} onChangeText={setDraftRoom} placeholder="Room 4" style={styles.input} />
-              </>
-            ) : (
-              <>
-                <Text style={styles.fieldLabel}>ABA Tech</Text>
-                <View style={styles.chipRow}>
-                  {abaTechOptions.map((staff) => (
-                    <TouchableOpacity key={staff.id} style={[styles.chip, draftAssignedStaffId === staff.id ? styles.chipActive : null]} onPress={() => setDraftAssignedStaffId(staff.id)}>
-                      <Text style={[styles.chipText, draftAssignedStaffId === staff.id ? styles.chipTextActive : null]}>{staff.name || staff.email || 'Staff'}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </>
-            )}
+            <View style={styles.fieldRow}>
+              <View style={styles.fieldHalf}>
+                <Text style={styles.fieldLabel}>Start time</Text>
+                <TimeField value={draftStart} onChangeText={setDraftStart} placeholder="09:00" inputStyle={styles.input} accessibilityLabel="Session start time" />
+              </View>
+              <View style={styles.fieldHalf}>
+                <Text style={styles.fieldLabel}>End time</Text>
+                <TimeField value={draftEnd} onChangeText={setDraftEnd} placeholder="10:00" inputStyle={styles.input} accessibilityLabel="Session end time" />
+              </View>
+            </View>
+            <Text style={styles.fieldLabel}>Room</Text>
+            <TextInput value={draftRoom} onChangeText={setDraftRoom} placeholder="Room 4" style={styles.input} />
 
             <View style={styles.actionRow}>
-              <TouchableOpacity style={[styles.primaryButton, saving ? styles.buttonDisabled : null]} onPress={editorMode === 'session' ? saveSessionDraft : saveAssignmentDraft} disabled={saving}>
-                <Text style={styles.primaryButtonText}>{saving ? 'Saving...' : editorMode === 'session' ? 'Save Session' : 'Save Assignment'}</Text>
+              <TouchableOpacity style={[styles.primaryButton, saving ? styles.buttonDisabled : null]} onPress={saveSessionDraft} disabled={saving}>
+                <Text style={styles.primaryButtonText}>{saving ? 'Saving...' : 'Save Session'}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.secondaryButton, saving ? styles.buttonDisabled : null]} onPress={() => setEditorMode('')} disabled={saving}>
                 <Text style={styles.secondaryButtonText}>Cancel</Text>

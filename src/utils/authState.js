@@ -16,6 +16,9 @@ const DEMO_REVIEWER_EMAILS = new Set([
   'abatech3@communitybridge.app',
   'abatech4@communitybridge.app',
 ]);
+const RESERVED_SUPER_ADMIN_EMAILS = new Set([
+  'alphazonelabsllc@gmail.com',
+]);
 const DEFAULT_MFA_WINDOW_MS = 24 * 60 * 60 * 1000;
 const DEV_MFA_WINDOW_MS = 4 * 60 * 60 * 1000;
 
@@ -45,6 +48,11 @@ function isSpecialAccessUser(email) {
   return isDevSwitcherUser(email) || isDemoReviewerUser(email);
 }
 
+/** @param {string | null | undefined} email */
+function isReservedSuperAdminEmail(email) {
+  return RESERVED_SUPER_ADMIN_EMAILS.has(String(email || '').trim().toLowerCase());
+}
+
 /** @param {{ email?: string | null | undefined, devUser?: boolean | null | undefined } | null | undefined} profile */
 function getMfaFreshnessWindowMs(profile) {
   const email = String(profile?.email || '').trim().toLowerCase();
@@ -61,5 +69,6 @@ module.exports = {
   isDevSwitcherUser,
   isDemoReviewerUser,
   isSpecialAccessUser,
+  isReservedSuperAdminEmail,
   getMfaFreshnessWindowMs,
 };

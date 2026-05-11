@@ -50,6 +50,12 @@ function buildThreads(messages = []) {
   return Array.from(map.values());
 }
 
+function buildThreadMessages(messages = [], threadId) {
+  return (messages || [])
+    .filter((message) => String(message?.threadId || message?.id || '') === String(threadId || ''))
+    .sort((left, right) => new Date(left?.createdAt || 0).getTime() - new Date(right?.createdAt || 0).getTime());
+}
+
 export default function AdminChatMonitorScreen() {
   const navigation = useNavigation();
   const { user } = useAuth();
@@ -63,6 +69,7 @@ export default function AdminChatMonitorScreen() {
   const [announcementBody, setAnnouncementBody] = useState('');
   const [announcementImage, setAnnouncementImage] = useState('');
   const [sendingAnnouncement, setSendingAnnouncement] = useState(false);
+  const [selectedInboxThreadId, setSelectedInboxThreadId] = useState('');
 
   const openNewStaffChat = () => {
     navigation.navigate('Chats', { screen: 'NewThread' });
@@ -89,6 +96,8 @@ export default function AdminChatMonitorScreen() {
     if (!normalized) return threads;
     return threads.filter((thread) => JSON.stringify(thread.last || {}).toLowerCase().includes(normalized));
   }, [query, threads]);
+  const selectedInboxThread = useMemo(() => threads.find((thread) => thread.id === selectedInboxThreadId) || null, [selectedInboxThreadId, threads]);
+  const selectedInboxMessages = useMemo(() => buildThreadMessages(messages, selectedInboxThreadId), [messages, selectedInboxThreadId]);
   const attachments = useMemo(() => [
     { id: 'pdf', label: 'PDFs', count: Math.max(1, filteredThreads.length) },
     { id: 'notes', label: 'Notes', count: Math.max(1, therapists.length) },
@@ -169,6 +178,14 @@ export default function AdminChatMonitorScreen() {
     }
   }
 
+  function openInboxThread(threadId) {
+    setSelectedInboxThreadId(String(threadId || ''));
+  }
+
+  function closeInboxThread() {
+    setSelectedInboxThreadId('');
+  }
+
   return (
     <ScreenWrapper
       style={styles.container}
@@ -204,13 +221,42 @@ export default function AdminChatMonitorScreen() {
 
         {tab === 'inbox' ? (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Inbox</Text>
-            {filteredThreads.length ? filteredThreads.slice(0, 8).map((thread) => (
-              <TouchableOpacity key={thread.id} style={styles.threadRow} onPress={() => navigation.navigate('ChatThread', { threadId: thread.id })}>
-                <Text style={styles.threadTitle}>{thread.last?.subject || thread.last?.body || 'Thread'}</Text>
-                <Text style={styles.rowText}>{thread.count} message{thread.count === 1 ? '' : 's'}</Text>
-              </TouchableOpacity>
-            )) : <Text style={styles.rowText}>No communication threads available.</Text>}
+            {selectedInboxThread ? (
+              <>
+                <View style={styles.inboxThreadHeader}>
+                  <TouchableOpacity style={styles.inboxBackButton} onPress={closeInboxThread} accessibilityLabel="Back to conversation list">
+                    <MaterialIcons name="arrow-back" size={18} color="#1d4ed8" />
+                    <Text style={styles.inboxBackText}>Inbox</Text>
+                  </TouchableOpacity>
+                  <View style={styles.inboxThreadHeaderText}>
+                    <Text style={styles.cardTitle}>{selectedInboxThread.last?.subject || selectedInboxThread.last?.body || 'Conversation thread'}</Text>
+                    <Text style={styles.rowText}>{selectedInboxThread.count} message{selectedInboxThread.count === 1 ? '' : 's'}</Text>
+                  </View>
+                </View>
+                {selectedInboxMessages.length ? selectedInboxMessages.map((message, index) => {
+                  const isMine = String(message?.sender?.id || '') === String(user?.id || '');
+                  return (
+                    <View key={String(message?.id || `${selectedInboxThread.id}-${index}`)} style={[styles.chatMessageRow, isMine ? styles.chatMessageRowMine : null]}>
+                      <View style={[styles.chatMessageBubble, isMine ? styles.chatMessageBubbleMine : styles.chatMessageBubbleOther]}>
+                        {!isMine ? <Text style={styles.chatMessageSender}>{message?.sender?.name || 'Unknown sender'}</Text> : null}
+                        <Text style={[styles.chatMessageBody, isMine ? styles.chatMessageBodyMine : null]}>{message?.body || message?.subject || 'No message body provided.'}</Text>
+                        <Text style={styles.chatMessageStamp}>{formatActivityTimestamp(message?.createdAt)}</Text>
+                      </View>
+                    </View>
+                  );
+                }) : <Text style={styles.rowText}>No messages are available for this thread.</Text>}
+              </>
+            ) : (
+              <>
+                <Text style={styles.cardTitle}>Inbox</Text>
+                {filteredThreads.length ? filteredThreads.slice(0, 8).map((thread) => (
+                  <TouchableOpacity key={thread.id} style={styles.threadRow} onPress={() => openInboxThread(thread.id)}>
+                    <Text style={styles.threadTitle}>{thread.last?.subject || thread.last?.body || 'Thread'}</Text>
+                    <Text style={styles.rowText}>{thread.count} message{thread.count === 1 ? '' : 's'}</Text>
+                  </TouchableOpacity>
+                )) : <Text style={styles.rowText}>No communication threads available.</Text>}
+              </>
+            )}
           </View>
         ) : null}
 
@@ -348,6 +394,19 @@ const styles = StyleSheet.create({
   sectionLabel: { fontWeight: '800', color: '#0f172a', marginBottom: 8 },
   threadRow: { paddingVertical: 10, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
   threadTitle: { fontWeight: '800', color: '#0f172a' },
+  inboxThreadHeader: { marginBottom: 4 },
+  inboxBackButton: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', marginBottom: 8, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 999, backgroundColor: '#eff6ff' },
+  inboxBackText: { marginLeft: 6, color: '#1d4ed8', fontWeight: '800' },
+  inboxThreadHeaderText: { marginBottom: 6 },
+  chatMessageRow: { paddingVertical: 6, flexDirection: 'row', justifyContent: 'flex-start' },
+  chatMessageRowMine: { justifyContent: 'flex-end' },
+  chatMessageBubble: { maxWidth: '82%', borderRadius: 14, paddingVertical: 10, paddingHorizontal: 12 },
+  chatMessageBubbleOther: { backgroundColor: '#f3f4f6' },
+  chatMessageBubbleMine: { backgroundColor: '#dbeafe' },
+  chatMessageSender: { marginBottom: 4, fontSize: 12, fontWeight: '700', color: '#475569' },
+  chatMessageBody: { color: '#111827', lineHeight: 20 },
+  chatMessageBodyMine: { color: '#0f172a' },
+  chatMessageStamp: { marginTop: 6, fontSize: 11, color: '#94a3b8' },
   activityStamp: { color: '#94a3b8', fontSize: 12 },
   attachmentsRow: { flexDirection: 'row', justifyContent: 'space-between' },
   attachmentCard: { width: '32%', borderRadius: 16, backgroundColor: '#f8fafc', padding: 14 },

@@ -180,9 +180,7 @@ export default function ReportsScreen({ route }) {
   const [jobs, setJobs] = useState([]);
   const [jobsError, setJobsError] = useState('');
   const [transferBusy, setTransferBusy] = useState(false);
-  const [pendingRecentTransfersScroll, setPendingRecentTransfersScroll] = useState(false);
   const scrollViewRef = useRef(null);
-  const recentTransfersSectionY = useRef(0);
   const roomOptions = useMemo(() => ['all', ...Array.from(new Set(reportChildren.map((child) => String(child?.room || '').trim()).filter(Boolean)))], [reportChildren]);
   const filteredReportChildren = useMemo(() => {
     if (selectedRoom === 'all') return reportChildren;
@@ -214,18 +212,6 @@ export default function ReportsScreen({ route }) {
     if (selectedChildId === requestedChildId) return;
     setSelectedChildId(requestedChildId);
   }, [filteredReportChildren, requestedChildId, selectedChildId]);
-
-  useEffect(() => {
-    if (!pendingRecentTransfersScroll || tab !== 'export') return;
-    const handle = requestAnimationFrame(() => {
-      scrollViewRef.current?.scrollTo?.({
-        y: Math.max(0, recentTransfersSectionY.current - 16),
-        animated: true,
-      });
-      setPendingRecentTransfersScroll(false);
-    });
-    return () => cancelAnimationFrame(handle);
-  }, [pendingRecentTransfersScroll, tab]);
 
   useEffect(() => {
     let mounted = true;
@@ -498,18 +484,6 @@ export default function ReportsScreen({ route }) {
     }
   }
 
-  function jumpToRecentTransfers() {
-    if (tab !== 'export') {
-      setTab('export');
-      setPendingRecentTransfersScroll(true);
-      return;
-    }
-    scrollViewRef.current?.scrollTo?.({
-      y: Math.max(0, recentTransfersSectionY.current - 16),
-      animated: true,
-    });
-  }
-
   return (
     <ScreenWrapper
       style={styles.container}
@@ -522,12 +496,9 @@ export default function ReportsScreen({ route }) {
           <View style={styles.chipRow}>
             {(isBcba ? ['clinical', 'export'] : ['operational', 'export']).map((key) => (
               <TouchableOpacity key={key} style={[styles.tabButton, tab === key ? styles.tabButtonActive : null]} onPress={() => setTab(key)}>
-                <Text style={[styles.tabButtonText, tab === key ? styles.tabButtonTextActive : null]}>{key === 'clinical' ? 'Clinical Reports' : key === 'operational' ? 'Operational Reports' : 'Transfer Center'}</Text>
+                <Text style={[styles.tabButtonText, tab === key ? styles.tabButtonTextActive : null]}>{key === 'clinical' ? 'Clinical Reports' : key === 'operational' ? 'Operational Reports' : 'Import/Export Center'}</Text>
               </TouchableOpacity>
             ))}
-            <TouchableOpacity style={[styles.filterChip, tab === 'export' ? styles.filterChipActive : null]} onPress={jumpToRecentTransfers}>
-              <Text style={[styles.filterChipText, tab === 'export' ? styles.filterChipTextActive : null]}>Recent Transfers</Text>
-            </TouchableOpacity>
           </View>
         </ScrollView>
 
@@ -587,7 +558,7 @@ export default function ReportsScreen({ route }) {
 
         {tab === 'export' ? (
           <>
-            <SectionCard title="Transfer Center">
+            <SectionCard title="Import/Export Center">
               <View style={[styles.transferIntroRow, isWideLayout ? styles.transferIntroRowWide : null]}>
                 <Text style={styles.transferIntroText}>Move reports out as handoff-ready files or bring outside files into the workspace queue for review.</Text>
                 {transferBusy ? <ActivityIndicator color="#2563eb" /> : null}
@@ -601,9 +572,7 @@ export default function ReportsScreen({ route }) {
                 ].map((format) => <View key={format.label} style={styles.exportCard}><Text style={styles.exportTitle}>{format.label}</Text><Text style={styles.exportText}>{format.detail}</Text><TouchableOpacity style={[styles.transferButton, transferBusy ? styles.transferButtonDisabled : null]} disabled={transferBusy} onPress={() => handleTransferAction(format.label)}><Text style={styles.transferButtonText}>{format.label === 'Import' ? 'Import' : 'Transfer'}</Text></TouchableOpacity></View>)}
               </View>
             </SectionCard>
-            <View onLayout={(event) => {
-              recentTransfersSectionY.current = event?.nativeEvent?.layout?.y || 0;
-            }}>
+            <View>
               <SectionCard title="Recent transfer jobs">
               {jobsError ? (
                 <View style={styles.errorCard}>

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useLayoutEffect, useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { ScreenWrapper, CenteredContainer } from '../components/ScreenWrapper';
@@ -80,6 +80,21 @@ export default function NewThreadScreen({ navigation }) {
   const { user } = useAuth();
   const { parents = [], therapists = [], children = [] } = useData();
   const [selected, setSelected] = useState(null);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerLeft: () => (
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          accessibilityLabel="Go back"
+          style={{ marginLeft: 12, width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: '#eff6ff' }}
+        >
+          <MaterialIcons name="arrow-back" size={20} color="#1d4ed8" />
+        </TouchableOpacity>
+      ),
+      headerRight: () => null,
+    });
+  }, [navigation]);
 
   const role = normalizeUserRole(user?.role);
   const isAdmin = isAdminRole(role);

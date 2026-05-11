@@ -6,7 +6,7 @@ import { ScreenWrapper } from '../components/ScreenWrapper';
 import AddressAutocompleteField from '../components/AddressAutocompleteField';
 import ImageToggle from '../components/ImageToggle';
 import { useAuth } from '../AuthContext';
-import { isSuperAdminRole, normalizeUserRole } from '../core/tenant/models';
+import { buildTenantProfile, isSuperAdminRole, normalizeUserRole, uniqueIds } from '../core/tenant/models';
 import { listActiveOrganizations } from '../core/tenant/OrganizationRepository';
 import { listProgramsByOrganization } from '../core/tenant/ProgramRepository';
 import { listCampusesByOrganization } from '../core/tenant/CampusRepository';
@@ -174,6 +174,22 @@ export default function ManagePermissionsScreen(){
   const [programsByOrg, setProgramsByOrg] = useState({});
   const [campusesByOrg, setCampusesByOrg] = useState({});
   const canManagePermissions = isSuperAdminRole(user?.role);
+  const actorTenantProfile = useMemo(() => buildTenantProfile(user || {}), [user]);
+  const actorOrganizationIds = useMemo(() => {
+    if (canManagePermissions) return [];
+    return uniqueIds([
+      actorTenantProfile.organizationId,
+      ...actorTenantProfile.memberships.map((membership) => String(membership?.organizationId || '').trim()),
+    ]);
+  }, [actorTenantProfile, canManagePermissions]);
+  const actorProgramIds = useMemo(() => {
+    if (canManagePermissions) return [];
+    return uniqueIds(actorTenantProfile.programIds);
+  }, [actorTenantProfile.programIds, canManagePermissions]);
+  const actorCampusIds = useMemo(() => {
+    if (canManagePermissions) return [];
+    return uniqueIds(actorTenantProfile.campusIds);
+  }, [actorTenantProfile.campusIds, canManagePermissions]);
   const canManageUsers = useMemo(() => {
     if (canManagePermissions) return true;
     const roleKey = capabilityRoleKey(user?.role);
@@ -242,16 +258,30 @@ export default function ManagePermissionsScreen(){
   }
 
   useEffect(() => {
+    let active = true;
     (async () => {
+      if (!canManagePermissions && !actorOrganizationIds.length) {
+        if (active) setOrganizations([]);
+        return;
+      }
       try {
         const items = await listActiveOrganizations();
-        setOrganizations(Array.isArray(items) ? items : []);
+        const nextItems = (Array.isArray(items) ? items : []).filter((item) => {
+          if (canManagePermissions) return true;
+          return actorOrganizationIds.includes(String(item?.id || '').trim());
+        });
+        if (active) setOrganizations(nextItems);
       } catch (_) {
-        setOrganizations([]);
-        setUsersError((current) => current || 'Could not load organization directory options.');
+        if (active) {
+          setOrganizations([]);
+          setUsersError((current) => current || 'Could not load organization directory options.');
+        }
       }
     })();
-  }, []);
+    return () => {
+      active = false;
+    };
+  }, [actorOrganizationIds, canManagePermissions]);
 
   useEffect(() => {
     (async () => {
@@ -359,6 +389,18 @@ export default function ManagePermissionsScreen(){
   async function sendInvite() {
     const email = String(inviteDraft.email || '').trim().toLowerCase();
     const role = normalizeUserRole(inviteDraft.role);
+    const inviteOrganizationId = !canManagePermissions ? String(actorOrganizationIds[0] || '').trim() : '';
+    const inviteProgramIds = !canManagePermissions ? actorProgramIds : [];
+    const inviteCampusIds = !canManagePermissions ? actorCampusIds : [];
+    const inviteMemberships = !canManagePermissions
+      ? (actorTenantProfile.memberships || []).map((membership) => ({
+          organizationId: String(membership?.organizationId || '').trim(),
+          programId: String(membership?.programId || '').trim(),
+          campusId: String(membership?.campusId || '').trim(),
+          role,
+          programType: String(membership?.programType || '').trim(),
+        })).filter((membership) => membership.organizationId)
+      : [];
     if (!isValidEmail(email)) {
       Alert.alert('Valid email required', 'Enter a valid staff email before sending the invite.');
       return;
@@ -367,11 +409,22 @@ export default function ManagePermissionsScreen(){
       Alert.alert('Role required', 'Choose a role before sending the invite.');
       return;
     }
+    if (!canManagePermissions && !inviteOrganizationId) {
+      Alert.alert('Organization scope required', 'Your account needs an organization scope before you can invite managed users.');
+      return;
+    }
 
     try {
       setInviteBusy(true);
       setUsersError('');
-      const result = await Api.sendManagedUserInvite({ email, role });
+      const payload = { email, role };
+      if (!canManagePermissions) {
+        payload.organizationId = inviteOrganizationId;
+        if (inviteProgramIds.length) payload.programIds = inviteProgramIds;
+        if (inviteCampusIds.length) payload.campusIds = inviteCampusIds;
+        if (inviteMemberships.length) payload.memberships = inviteMemberships;
+      }
+      const result = await Api.sendManagedUserInvite(payload);
       if (result?.user) upsertManagedUser(normalizeManagedUsers([result.user])[0] || result.user);
       setInviteDraft((current) => ({ ...current, email: '' }));
       showToast({ title: 'Invite sent', message: `A one-time access code was emailed to ${email}.`, tone: 'success' });
@@ -422,7 +475,12 @@ export default function ManagePermissionsScreen(){
     if (!orgId || programsByOrg[orgId]) return;
     try {
       const items = await listProgramsByOrganization(orgId);
-      setProgramsByOrg((current) => ({ ...current, [orgId]: Array.isArray(items) ? items : [] }));
+      const nextItems = (Array.isArray(items) ? items : []).filter((item) => {
+        if (canManagePermissions) return true;
+        if (actorProgramIds.length) return actorProgramIds.includes(String(item?.id || '').trim());
+        return actorOrganizationIds.includes(orgId);
+      });
+      setProgramsByOrg((current) => ({ ...current, [orgId]: nextItems }));
     } catch (_) {
       setProgramsByOrg((current) => ({ ...current, [orgId]: [] }));
       setUsersError((current) => current || 'Could not load programs for the selected organization.');
@@ -434,7 +492,12 @@ export default function ManagePermissionsScreen(){
     if (!orgId || campusesByOrg[orgId]) return;
     try {
       const items = await listCampusesByOrganization(orgId, '');
-      setCampusesByOrg((current) => ({ ...current, [orgId]: Array.isArray(items) ? items : [] }));
+      const nextItems = (Array.isArray(items) ? items : []).filter((item) => {
+        if (canManagePermissions) return true;
+        if (actorCampusIds.length) return actorCampusIds.includes(String(item?.id || '').trim());
+        return actorOrganizationIds.includes(orgId);
+      });
+      setCampusesByOrg((current) => ({ ...current, [orgId]: nextItems }));
     } catch (_) {
       setCampusesByOrg((current) => ({ ...current, [orgId]: [] }));
       setUsersError((current) => current || 'Could not load campuses for the selected organization.');
@@ -686,13 +749,15 @@ export default function ManagePermissionsScreen(){
 
             <Text style={styles.fieldLabel}>Organization scope</Text>
             <View style={styles.roleChipWrap}>
-              <TouchableOpacity
-                onPress={() => setUserOrganization(userItem.id, '')}
-                style={[styles.roleChip, !draft.organizationId ? styles.roleChipSelected : null]}
-                disabled={busy}
-              >
-                <Text style={[styles.roleChipLabel, !draft.organizationId ? styles.roleChipLabelSelected : null]}>No org scope</Text>
-              </TouchableOpacity>
+              {canManagePermissions || !actorOrganizationIds.length ? (
+                <TouchableOpacity
+                  onPress={() => setUserOrganization(userItem.id, '')}
+                  style={[styles.roleChip, !draft.organizationId ? styles.roleChipSelected : null]}
+                  disabled={busy}
+                >
+                  <Text style={[styles.roleChipLabel, !draft.organizationId ? styles.roleChipLabelSelected : null]}>No org scope</Text>
+                </TouchableOpacity>
+              ) : null}
               {organizations.map((organization) => {
                 const selected = String(draft.organizationId || '') === String(organization.id || '');
                 return (

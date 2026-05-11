@@ -5,6 +5,8 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import AppDropdown from '../components/AppDropdown';
 import AppIconButton from '../components/AppIconButton';
+import DateField from '../components/DateField';
+import SessionSummarySnapshot from '../components/SessionSummarySnapshot';
 import { useAuth } from '../AuthContext';
 import { useData } from '../DataContext';
 import { useTenant } from '../core/tenant/TenantContext';
@@ -13,6 +15,13 @@ import { avatarSourceFor } from '../utils/idVisibility';
 import { THERAPY_ROLE_LABELS, getDisplayRoleLabel } from '../utils/roleTerminology';
 import { maskPhoneDisplay } from '../utils/inputFormat';
 import { getPhoneAccessProfile, isPhoneViewport as resolvePhoneViewport } from '../utils/mobileRoleAccess';
+import { buildVisibleThreads } from '../utils/chatThreads';
+import useChildProgressInsights from '../features/sessionInsights/hooks/useChildProgressInsights';
+import InsightStatCard from '../features/sessionInsights/components/InsightStatCard';
+import TrendMiniChart from '../features/sessionInsights/components/TrendMiniChart';
+import EmptyInsightsState from '../features/sessionInsights/components/EmptyInsightsState';
+import LatestSummaryCard from '../features/sessionInsights/components/LatestSummaryCard';
+import BehaviorTrendList from '../features/sessionInsights/components/BehaviorTrendList';
 import * as Api from '../Api';
 
 const GUARDIAN_RELATIONSHIP_OPTIONS = [
@@ -247,37 +256,202 @@ function normalizeAttendanceStatus(status) {
   return { key: 'unknown', label: 'Unknown', value: 1, color: '#94a3b8' };
 }
 
-function buildAttendanceTrendItems(items = [], limit = 5) {
-  const seenDates = new Set();
-  const latestByDay = [];
-  const sorted = [...(Array.isArray(items) ? items : [])]
+function getAttendanceStatusIcon(status) {
+  const normalized = normalizeAttendanceStatus(status);
+  if (normalized.key === 'present') return { ...normalized, icon: 'check-circle' };
+  if (normalized.key === 'tardy') return { ...normalized, icon: 'check-circle' };
+  if (normalized.key === 'absent') return { ...normalized, icon: 'cancel' };
+  return { ...normalized, icon: 'help' };
+}
+
+function getDateTimestamp(value) {
+  const parsed = Date.parse(String(value || ''));
+  return Number.isFinite(parsed) ? parsed : NaN;
+}
+
+function getAttendanceTimestamp(item) {
+  return getDateTimestamp(item?.recordedAt || item?.checkInAt || item?.dateKey || item?.recordedFor || item?.date || item?.createdAt || item?.updatedAt || '');
+}
+
+function getSummaryTimestamp(item) {
+  return getDateTimestamp(item?.approvedAt || item?.updatedAt || item?.generatedAt || item?.createdAt || '');
+}
+
+function getMonthKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function formatMonthLabel(monthKey) {
+  const [year, month] = String(monthKey || '').split('-').map((value) => Number(value));
+  const parsed = new Date(year, Math.max(0, (month || 1) - 1), 1);
+  return Number.isFinite(parsed.getTime()) ? parsed.toLocaleDateString([], { month: 'long', year: 'numeric' }) : 'Select month';
+}
+
+function buildMonthOptions(items = [], getTimestamp) {
+  const seen = new Set();
+  return [...items]
+    .map((item) => getTimestamp(item))
+    .filter((timestamp) => Number.isFinite(timestamp))
+    .sort((left, right) => right - left)
+    .reduce((options, timestamp) => {
+      const monthKey = getMonthKey(new Date(timestamp));
+      if (seen.has(monthKey)) return options;
+      seen.add(monthKey);
+      options.push({ value: monthKey, label: formatMonthLabel(monthKey) });
+      return options;
+    }, []);
+}
+
+function startOfWeek(date) {
+  const next = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  next.setDate(next.getDate() - next.getDay());
+  next.setHours(0, 0, 0, 0);
+  return next;
+}
+
+function buildWeeklyAttendanceCards(items = [], monthKey) {
+  const filtered = [...items]
     .map((item) => {
-      const rawDate = item?.dateKey || item?.date || item?.recordedAt || item?.createdAt || item?.updatedAt || null;
-      const parsed = Date.parse(String(rawDate || ''));
-      if (!Number.isFinite(parsed)) return null;
-      return { item, parsed };
+      const timestamp = getAttendanceTimestamp(item);
+      if (!Number.isFinite(timestamp)) return null;
+      const date = new Date(timestamp);
+      if (getMonthKey(date) !== monthKey) return null;
+      return { item, date, timestamp };
     })
     .filter(Boolean)
-    .sort((left, right) => right.parsed - left.parsed);
+    .sort((left, right) => left.timestamp - right.timestamp);
 
-  sorted.forEach(({ item, parsed }) => {
-    if (latestByDay.length >= limit) return;
-    const date = new Date(parsed);
-    const dateKey = date.toISOString().slice(0, 10);
-    if (seenDates.has(dateKey)) return;
-    seenDates.add(dateKey);
-    const status = normalizeAttendanceStatus(item?.status);
-    latestByDay.push({
-      key: dateKey,
-      dayLabel: date.toLocaleDateString([], { weekday: 'short' }),
-      dateLabel: date.toLocaleDateString([], { month: 'numeric', day: 'numeric' }),
-      statusLabel: status.label,
-      value: status.value,
-      color: status.color,
+  const weekMap = new Map();
+  filtered.forEach(({ item, date, timestamp }) => {
+    const weekStart = startOfWeek(date);
+    const weekKey = weekStart.toISOString().slice(0, 10);
+    if (!weekMap.has(weekKey)) {
+      weekMap.set(weekKey, { weekKey, weekStart, days: [] });
+    }
+    weekMap.get(weekKey).days.push({
+      id: String(item?.id || `${weekKey}-${timestamp}`),
+      date,
+      status: getAttendanceStatusIcon(item?.status),
+      note: String(item?.note || '').trim(),
+      checkInAt: String(item?.checkInAt || '').trim(),
+      checkOutAt: String(item?.checkOutAt || '').trim(),
     });
   });
 
-  return latestByDay.reverse();
+  return Array.from(weekMap.values())
+    .sort((left, right) => left.weekStart.getTime() - right.weekStart.getTime())
+    .map((week) => ({
+      ...week,
+      title: `Week of ${week.weekStart.toLocaleDateString([], { month: 'short', day: 'numeric' })}`,
+    }));
+}
+
+function formatAttendanceTimeRange(item) {
+  const start = item?.checkInAt ? new Date(item.checkInAt) : null;
+  const end = item?.checkOutAt ? new Date(item.checkOutAt) : null;
+  if (start && Number.isFinite(start.getTime()) && end && Number.isFinite(end.getTime())) {
+    return `${start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} - ${end.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+  }
+  if (start && Number.isFinite(start.getTime())) return `Checked in ${start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+  return '';
+}
+
+function formatSessionStamp(item) {
+  const timestamp = getSummaryTimestamp(item);
+  if (!Number.isFinite(timestamp)) return 'Approved summary';
+  return new Date(timestamp).toLocaleString();
+}
+
+function escapeRegExp(value) {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function buildStudentMentionMatchers(child) {
+  const fullName = String(child?.name || '').trim();
+  const parts = fullName.split(/\s+/).filter(Boolean);
+  const firstName = parts[0] || '';
+  const lastName = parts.slice(1).join(' ');
+  const tokens = [fullName, firstName, lastName]
+    .map((value) => String(value || '').trim())
+    .filter((value, index, array) => value && array.indexOf(value) === index);
+  return tokens.map((token) => new RegExp(`\\b${escapeRegExp(token)}(?:'s)?\\b`, 'i'));
+}
+
+function messageRefersToStudent(message, child, matchers) {
+  const childId = String(child?.id || '').trim();
+  if (!message || !childId) return false;
+  const directIds = [message?.childId, message?.studentId, message?.learnerId]
+    .map((value) => String(value || '').trim())
+    .filter(Boolean);
+  if (directIds.includes(childId)) return true;
+
+  const haystack = [
+    message?.subject,
+    message?.title,
+    message?.body,
+    message?.note,
+    message?.text,
+  ]
+    .map((value) => String(value || '').trim())
+    .filter(Boolean)
+    .join(' ');
+
+  return matchers.some((matcher) => matcher.test(haystack));
+}
+
+function formatChatStamp(value) {
+  const timestamp = Date.parse(String(value || ''));
+  if (!Number.isFinite(timestamp)) return 'Recently updated';
+  return new Date(timestamp).toLocaleString();
+}
+
+function resolveAssignedStaffId(child, sessionKey) {
+  if (!child) return '';
+  if (sessionKey === 'PM' && child?.pmTherapist) {
+    return typeof child.pmTherapist === 'object' ? String(child.pmTherapist.id || '') : String(child.pmTherapist || '');
+  }
+  if (sessionKey === 'AM' && child?.amTherapist) {
+    return typeof child.amTherapist === 'object' ? String(child.amTherapist.id || '') : String(child.amTherapist || '');
+  }
+  if (Array.isArray(child?.assignedABA) && child.assignedABA.length) return String(child.assignedABA[0] || '');
+  if (Array.isArray(child?.assigned_ABA) && child.assigned_ABA.length) return String(child.assigned_ABA[0] || '');
+  return '';
+}
+
+function toIsoDateString(date) {
+  if (!(date instanceof Date) || !Number.isFinite(date.getTime())) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function resolveChildScheduleDate(child) {
+  const candidates = [child?.dropoffTimeISO, child?.pickupTimeISO, child?.date, child?.scheduledDate];
+  for (const candidate of candidates) {
+    const parsed = new Date(candidate);
+    if (Number.isFinite(parsed.getTime())) return toIsoDateString(parsed);
+  }
+  return '';
+}
+
+function resolveChildSessionKey(child) {
+  return String(child?.session || '').trim().toUpperCase() === 'PM' ? 'PM' : 'AM';
+}
+
+function resolveAssignedStaffIdsForSession(child, sessionKey) {
+  const ids = new Set();
+  const preferred = sessionKey === 'PM' ? child?.pmTherapist : child?.amTherapist;
+  const fallbackEntries = [
+    ...(Array.isArray(child?.assignedABA) ? child.assignedABA : []),
+    ...(Array.isArray(child?.assigned_ABA) ? child.assigned_ABA : []),
+  ];
+  [preferred, ...fallbackEntries].forEach((entry) => {
+    const id = typeof entry === 'object' ? entry?.id : entry;
+    const normalized = String(id || '').trim();
+    if (normalized) ids.add(normalized);
+  });
+  return ids;
 }
 
 function TabButton({ label, active, onPress }) {
@@ -288,11 +462,11 @@ function TabButton({ label, active, onPress }) {
   );
 }
 
-function ActionChip({ label, icon, onPress }) {
+function ActionChip({ label, icon, onPress, active = false }) {
   return (
-    <TouchableOpacity style={styles.actionChipButton} onPress={onPress}>
-      <MaterialIcons name={icon} size={16} color="#1d4ed8" />
-      <Text style={styles.actionChipButtonText}>{label}</Text>
+    <TouchableOpacity style={[styles.actionChipButton, active ? styles.actionChipButtonActive : null]} onPress={onPress}>
+      <MaterialIcons name={icon} size={16} color={active ? '#ffffff' : '#1d4ed8'} />
+      <Text style={[styles.actionChipButtonText, active ? styles.actionChipButtonTextActive : null]}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -341,7 +515,7 @@ export default function StudentDirectoryScreen() {
   const navigation = useNavigation();
   const { width, height } = useWindowDimensions();
   const { user } = useAuth();
-  const { children = [], parents = [], therapists = [], urgentMemos = [], fetchAndSync, activeSeedPreset = '', seededAttendanceHistoryByChild = {}, seededPickupQueueByChild = {} } = useData();
+  const { children = [], parents = [], therapists = [], urgentMemos = [], messages = [], fetchAndSync, activeSeedPreset = '', seededAttendanceHistoryByChild = {}, seededPickupQueueByChild = {}, seededSessionSummariesByChild = {} } = useData();
   const { currentOrganization, currentProgram, currentCampus } = useTenant() || {};
   const isBcba = isBcbaRole(user?.role);
   const isOffice = isOfficeAdminRole(user?.role);
@@ -359,11 +533,21 @@ export default function StudentDirectoryScreen() {
   const [sortKey, setSortKey] = useState('name');
   const [selectedChildId, setSelectedChildId] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
+  const [assignAbaOpen, setAssignAbaOpen] = useState(false);
+  const [assignAbaSaving, setAssignAbaSaving] = useState(false);
+  const [assignAbaDate, setAssignAbaDate] = useState('');
+  const [assignAbaSession, setAssignAbaSession] = useState('AM');
+  const [assignAbaStaffId, setAssignAbaStaffId] = useState('');
   const [enrollOpen, setEnrollOpen] = useState(false);
   const [enrollSaving, setEnrollSaving] = useState(false);
   const [attendanceHistory, setAttendanceHistory] = useState([]);
   const [attendanceHistoryLoading, setAttendanceHistoryLoading] = useState(false);
   const [attendanceHistoryError, setAttendanceHistoryError] = useState('');
+  const [selectedAttendanceMonth, setSelectedAttendanceMonth] = useState('');
+  const [reportsItems, setReportsItems] = useState([]);
+  const [reportsLoading, setReportsLoading] = useState(false);
+  const [reportsError, setReportsError] = useState('');
+  const [selectedReportsMonth, setSelectedReportsMonth] = useState('');
   const [enrollDraft, setEnrollDraft] = useState({
     name: '',
     enrollmentCode: '',
@@ -443,7 +627,55 @@ export default function StudentDirectoryScreen() {
     });
   }, [enrollmentCodeLocked, scopedEnrollmentCode]);
 
+  useEffect(() => {
+    if (!selectedChild || assignAbaOpen) return;
+    const nextSession = String(selectedChild?.session || 'AM').trim().toUpperCase() === 'PM' ? 'PM' : 'AM';
+    const nextDate = resolveChildScheduleDate(selectedChild) || toIsoDateString(new Date());
+    setAssignAbaDate(nextDate);
+    setAssignAbaSession(nextSession);
+    setAssignAbaStaffId(resolveAssignedStaffId(selectedChild, nextSession));
+  }, [assignAbaOpen, selectedChild]);
+
   const selectedChild = useMemo(() => filteredChildren.find((child) => child?.id === selectedChildId) || null, [filteredChildren, selectedChildId]);
+  const abaTechOptions = useMemo(() => (therapists || [])
+    .filter((staff) => {
+      const normalizedStaffRole = String(staff?.role || '').trim().toLowerCase();
+      return staff?.id && !normalizedStaffRole.includes('admin') && !normalizedStaffRole.includes('bcba');
+    })
+    .map((staff) => ({ value: String(staff.id), label: staff.name || staff.displayName || staff.email || 'ABA Tech', staff })), [therapists]);
+  const availableAssignAbaOptions = useMemo(() => {
+    const selectedDate = String(assignAbaDate || '').trim();
+    const selectedSession = String(assignAbaSession || 'AM').trim().toUpperCase() === 'PM' ? 'PM' : 'AM';
+    if (!selectedDate) return abaTechOptions;
+
+    const scheduledStaffIds = new Set();
+    const blockedStaffIds = new Set();
+    (Array.isArray(children) ? children : []).forEach((child) => {
+      const childDate = resolveChildScheduleDate(child);
+      if (!childDate || childDate !== selectedDate) return;
+
+      resolveAssignedStaffIdsForSession(child, 'AM').forEach((id) => scheduledStaffIds.add(id));
+      resolveAssignedStaffIdsForSession(child, 'PM').forEach((id) => scheduledStaffIds.add(id));
+
+      if (resolveChildSessionKey(child) !== selectedSession) return;
+      if (String(child?.id || '') === String(selectedChild?.id || '')) return;
+      resolveAssignedStaffIdsForSession(child, selectedSession).forEach((id) => blockedStaffIds.add(id));
+    });
+
+    return abaTechOptions.filter((option) => {
+      const optionId = String(option.value || '').trim();
+      return scheduledStaffIds.has(optionId) && !blockedStaffIds.has(optionId);
+    });
+  }, [abaTechOptions, assignAbaDate, assignAbaSession, children, selectedChild]);
+  const selectedAssignAbaStaff = useMemo(() => {
+    return availableAssignAbaOptions.find((option) => option.value === assignAbaStaffId)?.staff
+      || abaTechOptions.find((option) => option.value === assignAbaStaffId)?.staff
+      || null;
+  }, [abaTechOptions, assignAbaStaffId, availableAssignAbaOptions]);
+  const sessionChoices = useMemo(() => ([
+    { value: 'AM', label: 'AM' },
+    { value: 'PM', label: 'PM' },
+  ]), []);
   const linkedParents = useMemo(() => normalizeInlineParents(selectedChild, parents), [parents, selectedChild]);
   const careTeam = useMemo(() => {
     if (!selectedChild) return { bcba: null, amTherapist: null, pmTherapist: null };
@@ -461,7 +693,40 @@ export default function StudentDirectoryScreen() {
       pmTherapist: resolveStaff(selectedChild?.pmTherapist),
     };
   }, [selectedChild, therapists]);
-  const attendanceTrendItems = useMemo(() => buildAttendanceTrendItems(attendanceHistory, 5), [attendanceHistory]);
+  const attendanceMonthOptions = useMemo(() => buildMonthOptions(attendanceHistory, getAttendanceTimestamp), [attendanceHistory]);
+  const weeklyAttendanceCards = useMemo(() => buildWeeklyAttendanceCards(attendanceHistory, selectedAttendanceMonth), [attendanceHistory, selectedAttendanceMonth]);
+  const reportsMonthOptions = useMemo(() => buildMonthOptions(reportsItems, getSummaryTimestamp), [reportsItems]);
+  const scopedReports = useMemo(() => {
+    return [...reportsItems]
+      .filter((item) => {
+        const timestamp = getSummaryTimestamp(item);
+        if (!Number.isFinite(timestamp)) return false;
+        return getMonthKey(new Date(timestamp)) === selectedReportsMonth;
+      })
+      .sort((left, right) => getSummaryTimestamp(right) - getSummaryTimestamp(left));
+  }, [reportsItems, selectedReportsMonth]);
+  const relatedChatThreads = useMemo(() => {
+    if (!selectedChild) return [];
+    const matchers = buildStudentMentionMatchers(selectedChild);
+    const visibleThreads = buildVisibleThreads(messages, {}, user, []);
+    return visibleThreads
+      .map((thread) => {
+        const threadMessages = (Array.isArray(messages) ? messages : [])
+          .filter((message) => String(message?.threadId || message?.id || '') === String(thread?.id || ''))
+          .filter((message) => messageRefersToStudent(message, selectedChild, matchers))
+          .sort((left, right) => new Date(left?.createdAt || 0) - new Date(right?.createdAt || 0));
+        if (!threadMessages.length) return null;
+        const lastMessage = threadMessages[threadMessages.length - 1] || thread?.last || null;
+        return {
+          ...thread,
+          last: lastMessage,
+          messages: threadMessages,
+        };
+      })
+      .filter(Boolean)
+      .sort((left, right) => new Date(right?.last?.createdAt || 0) - new Date(left?.last?.createdAt || 0));
+  }, [messages, selectedChild, user]);
+  const childInsights = useChildProgressInsights(selectedChild?.id || '', { limit: 20 });
   const phoneAttendanceSummary = useMemo(() => filteredChildren.reduce((summary, child) => {
     const status = String(child?.attendanceStatus || child?.scheduleStatus || child?.status || 'scheduled').trim().toLowerCase();
     summary.total += 1;
@@ -507,7 +772,7 @@ export default function StudentDirectoryScreen() {
 
     setAttendanceHistoryLoading(true);
     setAttendanceHistoryError('');
-    Api.getAttendanceHistory(selectedChild.id, 10)
+    Api.getAttendanceHistory(selectedChild.id, 365)
       .then((result) => {
         if (cancelled) return;
         setAttendanceHistory(Array.isArray(result?.items) ? result.items : []);
@@ -526,6 +791,62 @@ export default function StudentDirectoryScreen() {
       cancelled = true;
     };
   }, [activeSeedPreset, activeTab, seededAttendanceHistoryByChild, selectedChild?.id]);
+
+  useEffect(() => {
+    if (!attendanceMonthOptions.length) {
+      setSelectedAttendanceMonth('');
+      return;
+    }
+    if (attendanceMonthOptions.some((option) => option.value === selectedAttendanceMonth)) return;
+    setSelectedAttendanceMonth(attendanceMonthOptions[0].value);
+  }, [attendanceMonthOptions, selectedAttendanceMonth]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (activeTab !== 'reports' || !selectedChild?.id) return () => {
+      cancelled = true;
+    };
+
+    if (activeSeedPreset === 'screenshot') {
+      const seededItems = Array.isArray(seededSessionSummariesByChild?.[selectedChild.id]) ? seededSessionSummariesByChild[selectedChild.id] : [];
+      setReportsItems(seededItems.filter((item) => String(item?.status || '').trim().toLowerCase() === 'approved'));
+      setReportsLoading(false);
+      setReportsError('');
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setReportsLoading(true);
+    setReportsError('');
+    Api.getChildSessionSummaries(selectedChild.id, 40)
+      .then((result) => {
+        if (cancelled) return;
+        const approved = (Array.isArray(result?.items) ? result.items : []).filter((item) => String(item?.status || '').trim().toLowerCase() === 'approved');
+        setReportsItems(approved);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setReportsItems([]);
+        setReportsError(String(error?.message || error || 'Could not load scoped reports.'));
+      })
+      .finally(() => {
+        if (!cancelled) setReportsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeSeedPreset, activeTab, seededSessionSummariesByChild, selectedChild?.id]);
+
+  useEffect(() => {
+    if (!reportsMonthOptions.length) {
+      setSelectedReportsMonth('');
+      return;
+    }
+    if (reportsMonthOptions.some((option) => option.value === selectedReportsMonth)) return;
+    setSelectedReportsMonth(reportsMonthOptions[0].value);
+  }, [reportsMonthOptions, selectedReportsMonth]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -627,11 +948,91 @@ export default function StudentDirectoryScreen() {
   }
 
   function openRelatedChats() {
-    const firstParent = (selectedChild?.parents || [])[0];
-    const firstTherapist = selectedChild?.amTherapist || selectedChild?.pmTherapist || selectedChild?.bcaTherapist;
-    const targetId = firstParent?.id || firstTherapist?.id || null;
-    if (!targetId) return;
-    navigation.navigate('AdminChatMonitor', { initialUserId: targetId });
+    setActiveTab('relatedChats');
+  }
+
+  function openAssignAbaModal() {
+    if (!selectedChild?.id) {
+      Alert.alert('Select a student', 'Choose a student before assigning an ABA tech.');
+      return;
+    }
+    const nextSession = String(selectedChild?.session || 'AM').trim().toUpperCase() === 'PM' ? 'PM' : 'AM';
+    const nextDate = resolveChildScheduleDate(selectedChild) || toIsoDateString(new Date());
+    setAssignAbaDate(nextDate);
+    setAssignAbaSession(nextSession);
+    setAssignAbaStaffId(resolveAssignedStaffId(selectedChild, nextSession));
+    setAssignAbaOpen(true);
+  }
+
+  function closeAssignAbaModal() {
+    if (assignAbaSaving) return;
+    setAssignAbaOpen(false);
+  }
+
+  async function performAssignAbaSave() {
+    if (!selectedChild?.id) return;
+    const assignedStaff = availableAssignAbaOptions.find((option) => option.value === assignAbaStaffId)?.staff || null;
+    if (!assignedStaff?.id) {
+      Alert.alert('Select ABA tech', 'Choose an ABA tech before saving the assignment.');
+      return;
+    }
+    const existingAssigned = Array.isArray(selectedChild?.assignedABA)
+      ? selectedChild.assignedABA
+      : Array.isArray(selectedChild?.assigned_ABA)
+        ? selectedChild.assigned_ABA
+        : [];
+    const assignedIds = Array.from(new Set([...existingAssigned.map((item) => String(item)), String(assignedStaff.id)]));
+    const scheduleApproval = {
+      status: 'pending',
+      submittedAt: new Date().toISOString(),
+      submittedById: String(user?.id || '').trim() || null,
+      submittedByName: String(user?.name || user?.displayName || user?.email || '').trim() || 'Staff',
+      approvedAt: null,
+      approvedById: null,
+      approvedByName: null,
+    };
+    setAssignAbaSaving(true);
+    try {
+      await Api.updateChildSchedule(selectedChild.id, {
+        session: assignAbaSession,
+        assignedABA: assignedIds,
+        assigned_ABA: assignedIds,
+        amTherapist: assignAbaSession === 'AM' ? assignedStaff : undefined,
+        pmTherapist: assignAbaSession === 'PM' ? assignedStaff : undefined,
+        scheduleApproval,
+      });
+      await fetchAndSync?.({ force: true });
+      setAssignAbaOpen(false);
+      Alert.alert('ABA tech assigned', `${assignedStaff.name || 'Selected staff'} was assigned to ${selectedChild?.name || 'the student'} for the ${assignAbaSession} session pending office approval.`);
+    } catch (error) {
+      Alert.alert(error?.httpStatus === 409 ? 'Scheduling conflict' : 'Assignment not saved', String(error?.message || error || 'We could not save this assignment.'));
+    } finally {
+      setAssignAbaSaving(false);
+    }
+  }
+
+  function confirmAssignAbaSave() {
+    if (!selectedChild?.id) {
+      Alert.alert('Select a student', 'Choose a student before assigning an ABA tech.');
+      return;
+    }
+    if (!assignAbaStaffId) {
+      Alert.alert('Select ABA tech', 'Choose an ABA tech before saving the assignment.');
+      return;
+    }
+    const assignedStaff = availableAssignAbaOptions.find((option) => option.value === assignAbaStaffId)?.staff || null;
+    if (!assignedStaff?.id) {
+      Alert.alert('Select ABA tech', 'The selected ABA tech is no longer available.');
+      return;
+    }
+    Alert.alert(
+      'Confirm student schedule change',
+      `Assign ${assignedStaff.name || 'this ABA tech'} to ${selectedChild?.name || 'this student'} for the ${assignAbaSession} session? This change will be saved as pending office approval.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Save', onPress: () => { void performAssignAbaSave(); } },
+      ]
+    );
   }
 
   function updateEnrollDraft(key, value) {
@@ -853,46 +1254,178 @@ export default function StudentDirectoryScreen() {
       return (
         <>
           <Text style={styles.sectionTitle}>Attendance</Text>
-          <Text style={styles.detailText}>Last 5 recorded attendance days for this student.</Text>
-          <View style={styles.attendanceChartCard}>
+          <Text style={styles.detailText}>Weekly attendance for the selected month.</Text>
+          <View style={styles.sectionDropdownWrap}>
+            <AppDropdown
+              containerStyle={styles.sectionDropdownContainer}
+              buttonStyle={styles.sectionDropdownButton}
+              minMenuWidth={220}
+              onSelect={setSelectedAttendanceMonth}
+              options={attendanceMonthOptions}
+              placeholder="Select month"
+              selectedValue={selectedAttendanceMonth}
+              textStyle={styles.sectionDropdownText}
+              value={attendanceMonthOptions.find((option) => option.value === selectedAttendanceMonth)?.label || ''}
+              width={220}
+            />
+          </View>
+          <View style={styles.scopedCardsWrap}>
             {attendanceHistoryLoading ? (
-              <Text style={styles.detailText}>Loading attendance trend...</Text>
-            ) : attendanceTrendItems.length ? (
-              <>
-                <View style={styles.attendanceChartRow}>
-                  {attendanceTrendItems.map((item) => (
-                    <View key={item.key} style={styles.attendanceChartItem}>
-                      <View style={styles.attendanceChartTrack}>
-                        <View style={[styles.attendanceChartBar, { height: `${Math.max(22, (item.value / 3) * 100)}%`, backgroundColor: item.color }]} />
+              <View style={styles.attendanceChartCard}><Text style={styles.detailText}>Loading attendance history...</Text></View>
+            ) : weeklyAttendanceCards.length ? (
+              weeklyAttendanceCards.map((week) => (
+                <View key={week.weekKey} style={styles.attendanceChartCard}>
+                  <Text style={styles.weekCardTitle}>{week.title}</Text>
+                  <View style={styles.attendanceIconRow}>
+                    {week.days.map((item) => (
+                      <View key={item.id} style={styles.attendanceIconItem}>
+                        <MaterialIcons name={item.status.icon} size={28} color={item.status.color} />
+                        <Text style={styles.attendanceChartDay}>{item.date.toLocaleDateString([], { weekday: 'short' })}</Text>
+                        <Text style={styles.attendanceChartDate}>{item.date.toLocaleDateString([], { month: 'numeric', day: 'numeric' })}</Text>
+                        <Text style={styles.attendanceChartStatus}>{item.status.label}</Text>
+                        {formatAttendanceTimeRange(item) ? <Text style={styles.attendanceChartMeta}>{formatAttendanceTimeRange(item)}</Text> : null}
+                        {item.note ? <Text style={styles.attendanceChartMeta}>{item.note}</Text> : null}
                       </View>
-                      <Text style={styles.attendanceChartDay}>{item.dayLabel}</Text>
-                      <Text style={styles.attendanceChartDate}>{item.dateLabel}</Text>
-                      <Text style={styles.attendanceChartStatus}>{item.statusLabel}</Text>
-                    </View>
-                  ))}
-                </View>
-                <View style={styles.attendanceLegendRow}>
-                  <View style={styles.attendanceLegendItem}>
-                    <View style={[styles.attendanceLegendDot, { backgroundColor: '#16a34a' }]} />
-                    <Text style={styles.attendanceLegendText}>Present</Text>
-                  </View>
-                  <View style={styles.attendanceLegendItem}>
-                    <View style={[styles.attendanceLegendDot, { backgroundColor: '#f59e0b' }]} />
-                    <Text style={styles.attendanceLegendText}>Tardy</Text>
-                  </View>
-                  <View style={styles.attendanceLegendItem}>
-                    <View style={[styles.attendanceLegendDot, { backgroundColor: '#dc2626' }]} />
-                    <Text style={styles.attendanceLegendText}>Absent</Text>
+                    ))}
                   </View>
                 </View>
-              </>
+              ))
             ) : (
-              <Text style={styles.detailText}>{attendanceHistoryError || 'No recent attendance data recorded yet.'}</Text>
+              <View style={styles.attendanceChartCard}>
+                <Text style={styles.detailText}>{attendanceHistoryError || 'No attendance records were found for this month.'}</Text>
+              </View>
             )}
           </View>
-          <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate('Attendance')}>
-            <Text style={styles.secondaryButtonText}>Open Attendance</Text>
-          </TouchableOpacity>
+        </>
+      );
+    }
+    if (activeTab === 'reports') {
+      return (
+        <>
+          <Text style={styles.sectionTitle}>Reports</Text>
+          <Text style={styles.detailText}>Approved session summaries for the selected month.</Text>
+          <View style={styles.sectionDropdownWrap}>
+            <AppDropdown
+              containerStyle={styles.sectionDropdownContainer}
+              buttonStyle={styles.sectionDropdownButton}
+              minMenuWidth={220}
+              onSelect={setSelectedReportsMonth}
+              options={reportsMonthOptions}
+              placeholder="Select month"
+              selectedValue={selectedReportsMonth}
+              textStyle={styles.sectionDropdownText}
+              value={reportsMonthOptions.find((option) => option.value === selectedReportsMonth)?.label || ''}
+              width={220}
+            />
+          </View>
+          <View style={styles.scopedCardsWrap}>
+            {reportsLoading ? (
+              <View style={styles.attendanceChartCard}><Text style={styles.detailText}>Loading scoped reports...</Text></View>
+            ) : scopedReports.length ? (
+              scopedReports.map((item, index) => (
+                <SessionSummarySnapshot
+                  key={String(item?.sessionId || item?.id || `report-${index}`)}
+                  summary={item}
+                  title="Approved Session Summary"
+                  subtitle={formatSessionStamp(item)}
+                  emptyText="No approved session summary has been recorded yet."
+                  metricsTwoByTwo
+                />
+              ))
+            ) : (
+              <View style={styles.attendanceChartCard}>
+                <Text style={styles.detailText}>{reportsError || 'No approved session summaries were found for this month.'}</Text>
+              </View>
+            )}
+          </View>
+        </>
+      );
+    }
+    if (activeTab === 'insights') {
+      return (
+        <>
+          <View style={styles.insightsHero}>
+            <Text style={styles.insightsEyebrow}>Progress Insights</Text>
+            <Text style={styles.insightsTitle}>{selectedChild?.name || 'Student progress'}</Text>
+            <Text style={styles.detailText}>Approved session summaries are translated into simple progress, behavior, and participation trends for families and care teams.</Text>
+          </View>
+
+          {childInsights.loading ? (
+            <View style={styles.attendanceChartCard}>
+              <Text style={styles.detailText}>Loading progress insights...</Text>
+            </View>
+          ) : null}
+
+          {!childInsights.loading && childInsights.error ? (
+            <EmptyInsightsState title="Could not load insights" message={childInsights.error} />
+          ) : null}
+
+          {!childInsights.loading && !childInsights.error && (!childInsights.data || !childInsights.data.stats || !childInsights.data.stats.sessions) ? (
+            <EmptyInsightsState />
+          ) : null}
+
+          {!childInsights.loading && !childInsights.error && childInsights.data?.stats?.sessions ? (
+            <>
+              <View style={styles.insightsStatsRow}>
+                <InsightStatCard label="Sessions" value={childInsights.data.stats.sessions} hint="Approved session records in range." />
+                <InsightStatCard label="Approved summaries" value={childInsights.data.stats.approvedSummaries} hint="Therapist-approved progress outputs." accent="#16a34a" />
+                <InsightStatCard label="Average mood" value={childInsights.data.stats.averageMood == null ? '—' : childInsights.data.stats.averageMood} hint="Average mood score across approved sessions." accent="#f59e0b" />
+                <InsightStatCard label="Behavior events" value={childInsights.data.stats.behaviorEventsCount} hint="Count of summarized behavior events." accent="#dc2626" />
+                <InsightStatCard label="Milestones met" value={childInsights.data.stats.successCriteriaCount} hint="Tracked success criteria across approved sessions." />
+                <InsightStatCard label="Programs worked" value={childInsights.data.stats.programsWorkedOnCount} hint="Programs or goals touched in the selected range." accent="#7c3aed" />
+              </View>
+
+              <TrendMiniChart title="Mood over time" items={childInsights.data?.trends?.mood || []} color="#0ea5e9" />
+              <TrendMiniChart title="Behavior frequency" items={childInsights.data?.trends?.behaviorFrequency || []} color="#dc2626" />
+              <TrendMiniChart title="Independence trend" items={childInsights.data?.trends?.independence || []} color="#16a34a" />
+              <TrendMiniChart title="Progress trend" items={childInsights.data?.trends?.progressLevel || []} color="#7c3aed" />
+
+              <BehaviorTrendList items={childInsights.data?.latestSummary?.interferingBehaviors || []} />
+              <LatestSummaryCard
+                summary={childInsights.data?.latestSummary}
+                subtitle={childInsights.data?.latestSummary?.approvedAt ? `Approved ${new Date(childInsights.data.latestSummary.approvedAt).toLocaleString()}` : ''}
+              />
+            </>
+          ) : null}
+        </>
+      );
+    }
+    if (activeTab === 'relatedChats') {
+      return (
+        <>
+          <Text style={styles.sectionTitle}>Related Chats</Text>
+          <Text style={styles.detailText}>Read-only threads that mention or reference the selected student.</Text>
+          <View style={styles.scopedCardsWrap}>
+            {relatedChatThreads.length ? relatedChatThreads.map((thread) => (
+              <View key={thread.id} style={styles.chatThreadCard}>
+                <View style={styles.chatThreadHeader}>
+                  <View style={styles.chatThreadHeaderText}>
+                    <Text style={styles.chatThreadTitle}>{thread.title || 'Conversation'}</Text>
+                    <Text style={styles.chatThreadMeta}>{formatChatStamp(thread.last?.createdAt)}</Text>
+                  </View>
+                  <View style={styles.chatThreadCountBadge}>
+                    <Text style={styles.chatThreadCountText}>{thread.messages.length}</Text>
+                  </View>
+                </View>
+                {thread.messages.map((message, index) => {
+                  const isMine = String(message?.sender?.id || '') === String(user?.id || '');
+                  return (
+                    <View key={String(message?.id || `${thread.id}-${index}`)} style={[styles.chatBubbleRow, isMine ? styles.chatBubbleRowMine : null]}>
+                      <View style={[styles.chatBubble, isMine ? styles.chatBubbleMine : styles.chatBubbleOther]}>
+                        <Text style={styles.chatSender}>{message?.sender?.name || 'Unknown sender'}</Text>
+                        <Text style={[styles.chatBody, isMine ? styles.chatBodyMine : null]}>{message?.body || message?.text || ''}</Text>
+                        <Text style={styles.chatStamp}>{formatChatStamp(message?.createdAt)}</Text>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            )) : (
+              <View style={styles.attendanceChartCard}>
+                <Text style={styles.detailText}>No visible chat threads currently reference this student.</Text>
+              </View>
+            )}
+          </View>
         </>
       );
     }
@@ -1014,7 +1547,7 @@ export default function StudentDirectoryScreen() {
                         accessibilityLabel={`Assign BCBA / ${THERAPY_ROLE_LABELS.therapist}`}
                         name="person-add-alt-1"
                         style={styles.profileHeaderIconButton}
-                        onPress={() => navigation.navigate('ScheduleCalendar', { childId: selectedChild.id, editorMode: 'assignment' })}
+                        onPress={openAssignAbaModal}
                       />
                     </View>
                   ) : null}
@@ -1027,9 +1560,9 @@ export default function StudentDirectoryScreen() {
                   style={styles.chipCarousel}
                 >
                   {visibleTabs.map((tab) => <TabButton key={tab.key} label={tab.label} active={activeTab === tab.key} onPress={() => setActiveTab(tab.key)} />)}
-                  <ActionChip label="Reports" icon="query-stats" onPress={() => navigation.navigate('Reports', { childId: selectedChild.id })} />
-                  <ActionChip label="Insights" icon="insights" onPress={() => navigation.navigate('ChildProgressInsights', { childId: selectedChild.id })} />
-                  {canOpenRelatedChats ? <ActionChip label="Related Chats" icon="forum" onPress={openRelatedChats} /> : null}
+                  <ActionChip label="Reports" icon="query-stats" onPress={() => setActiveTab('reports')} active={activeTab === 'reports'} />
+                  <ActionChip label="Insights" icon="insights" onPress={() => setActiveTab('insights')} active={activeTab === 'insights'} />
+                  {canOpenRelatedChats ? <ActionChip label="Related Chats" icon="forum" onPress={openRelatedChats} active={activeTab === 'relatedChats'} /> : null}
                 </ScrollView>
 
                 <View style={styles.tabContent}>{renderTabContent()}</View>
@@ -1046,6 +1579,73 @@ export default function StudentDirectoryScreen() {
           </View>
         </View>
       </ScrollView>
+
+      <Modal visible={assignAbaOpen} transparent animationType="fade" onRequestClose={closeAssignAbaModal}>
+        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Assign ABA Tech</Text>
+            <Text style={styles.modalBody}>Update the student session and assign the ABA tech in one step. Saving will submit the schedule change for office approval.</Text>
+
+            <Text style={styles.fieldLabel}>Date</Text>
+            <DateField
+              value={assignAbaDate}
+              onChangeText={setAssignAbaDate}
+              placeholder="Select date"
+              style={styles.assignmentDateWrap}
+              inputStyle={styles.input}
+              accessibilityLabel="Assignment date"
+            />
+
+            <View style={styles.assignmentTopRow}>
+              <View style={styles.assignmentStudentColumn}>
+                <Text style={styles.fieldLabel}>Student</Text>
+                <View style={styles.assignmentStudentPill}>
+                  <Text style={styles.assignmentStudentPillText}>{selectedChild?.name || 'No student selected'}</Text>
+                </View>
+              </View>
+
+              <View style={styles.assignmentSessionColumn}>
+                <Text style={styles.fieldLabel}>Session</Text>
+                <AppDropdown
+                  buttonStyle={styles.dropdownButton}
+                  containerStyle={styles.assignmentSessionDropdownWrap}
+                  disabled={assignAbaSaving}
+                  minMenuWidth={110}
+                  onSelect={setAssignAbaSession}
+                  options={sessionChoices}
+                  placeholder="Session"
+                  selectedValue={assignAbaSession}
+                  textStyle={styles.dropdownButtonText}
+                  value={assignAbaSession}
+                  width={110}
+                />
+              </View>
+            </View>
+
+            <Text style={styles.fieldLabel}>ABA Tech</Text>
+            <AppDropdown
+              buttonStyle={styles.dropdownButton}
+              disabled={assignAbaSaving}
+              onSelect={setAssignAbaStaffId}
+              options={availableAssignAbaOptions.map((option) => ({ value: option.value, label: option.label }))}
+              placeholder="Select ABA tech"
+              selectedValue={assignAbaStaffId}
+              textStyle={styles.dropdownButtonText}
+              value={selectedAssignAbaStaff?.name || selectedAssignAbaStaff?.displayName || selectedAssignAbaStaff?.email || ''}
+            />
+            {!availableAssignAbaOptions.length ? <Text style={styles.assignmentHelperText}>No ABA techs are scheduled for this date and still open for the selected session.</Text> : null}
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.secondaryButton} onPress={closeAssignAbaModal} disabled={assignAbaSaving}>
+                <Text style={styles.secondaryButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.primaryButton, assignAbaSaving ? styles.buttonDisabled : null]} onPress={confirmAssignAbaSave} disabled={assignAbaSaving}>
+                <Text style={styles.primaryButtonText}>{assignAbaSaving ? 'Saving...' : 'Save'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       <Modal visible={enrollOpen} transparent animationType="fade" onRequestClose={() => !enrollSaving && setEnrollOpen(false)}>
         <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}>
@@ -1139,6 +1739,8 @@ const styles = StyleSheet.create({
   tabButtonTextActive: { color: '#ffffff' },
   actionChipButton: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#dbeafe', marginRight: 8, marginBottom: 8 },
   actionChipButtonText: { color: '#1d4ed8', fontWeight: '800' },
+  actionChipButtonActive: { backgroundColor: '#2563eb' },
+  actionChipButtonTextActive: { color: '#ffffff' },
   inlineFilterWrap: { zIndex: 20 },
   inlineFilterButton: { borderRadius: 10, paddingHorizontal: 10 },
   inlineFilterValue: { flex: 0, color: '#0f172a', fontWeight: '600', fontSize: 14, marginRight: 4 },
@@ -1225,18 +1827,39 @@ const styles = StyleSheet.create({
   summaryCardLabel: { color: '#64748b', fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4 },
   summaryCardValue: { marginTop: 4, color: '#0f172a', fontSize: 18, fontWeight: '800' },
   summaryCardDetail: { marginTop: 4, color: '#475569', fontSize: 12, lineHeight: 16 },
+  insightsHero: { borderRadius: 22, backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe', padding: 18, marginBottom: 12 },
+  insightsEyebrow: { color: '#1d4ed8', fontWeight: '800', fontSize: 12, textTransform: 'uppercase' },
+  insightsTitle: { marginTop: 6, fontSize: 24, fontWeight: '800', color: '#0f172a' },
+  insightsStatsRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 12 },
+  sectionDropdownWrap: { alignItems: 'center', marginBottom: 12 },
+  sectionDropdownContainer: { alignItems: 'center' },
+  sectionDropdownButton: { backgroundColor: '#ffffff' },
+  sectionDropdownText: { textAlign: 'center', fontWeight: '700' },
+  scopedCardsWrap: { gap: 10 },
   attendanceChartCard: { marginBottom: 10, borderRadius: 16, borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#ffffff', padding: 14 },
-  attendanceChartRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
-  attendanceChartItem: { flex: 1, alignItems: 'center', marginHorizontal: 4 },
-  attendanceChartTrack: { width: 26, height: 116, borderRadius: 999, backgroundColor: '#e2e8f0', justifyContent: 'flex-end', overflow: 'hidden' },
-  attendanceChartBar: { width: '100%', borderRadius: 999 },
+  weekCardTitle: { color: '#0f172a', fontSize: 15, fontWeight: '800', marginBottom: 12 },
+  attendanceIconRow: { flexDirection: 'row', alignItems: 'stretch', justifyContent: 'space-between' },
+  attendanceIconItem: { flex: 1, alignItems: 'center', marginHorizontal: 4, borderRadius: 14, borderWidth: 1, borderColor: '#e2e8f0', backgroundColor: '#f8fafc', paddingVertical: 12, paddingHorizontal: 6 },
   attendanceChartDay: { marginTop: 10, color: '#0f172a', fontSize: 12, fontWeight: '800' },
   attendanceChartDate: { marginTop: 2, color: '#64748b', fontSize: 11 },
   attendanceChartStatus: { marginTop: 4, color: '#475569', fontSize: 11, fontWeight: '700', textAlign: 'center' },
-  attendanceLegendRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', marginTop: 14 },
-  attendanceLegendItem: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 8, marginTop: 4 },
-  attendanceLegendDot: { width: 10, height: 10, borderRadius: 5, marginRight: 6 },
-  attendanceLegendText: { color: '#475569', fontSize: 12, fontWeight: '700' },
+  attendanceChartMeta: { marginTop: 4, color: '#64748b', fontSize: 10, textAlign: 'center' },
+  chatThreadCard: { borderRadius: 16, borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#ffffff', padding: 14 },
+  chatThreadHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  chatThreadHeaderText: { flex: 1, paddingRight: 10 },
+  chatThreadTitle: { color: '#0f172a', fontWeight: '800', fontSize: 15 },
+  chatThreadMeta: { marginTop: 4, color: '#64748b', fontSize: 12 },
+  chatThreadCountBadge: { minWidth: 32, height: 32, borderRadius: 16, backgroundColor: '#dbeafe', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
+  chatThreadCountText: { color: '#1d4ed8', fontWeight: '800' },
+  chatBubbleRow: { flexDirection: 'row', justifyContent: 'flex-start', marginTop: 8 },
+  chatBubbleRowMine: { justifyContent: 'flex-end' },
+  chatBubble: { maxWidth: '82%', borderRadius: 14, paddingVertical: 10, paddingHorizontal: 12 },
+  chatBubbleOther: { backgroundColor: '#f3f4f6' },
+  chatBubbleMine: { backgroundColor: '#dbeafe' },
+  chatSender: { color: '#475569', fontSize: 11, fontWeight: '700', marginBottom: 4 },
+  chatBody: { color: '#111827', lineHeight: 20 },
+  chatBodyMine: { color: '#0f172a' },
+  chatStamp: { marginTop: 6, color: '#64748b', fontSize: 10 },
   sectionTitle: { fontSize: 15, fontWeight: '800', color: '#0f172a', marginBottom: 8, marginTop: 8 },
   detailText: { color: '#475569', lineHeight: 20, marginBottom: 6 },
   actionStrip: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 14 },
@@ -1244,6 +1867,7 @@ const styles = StyleSheet.create({
   primaryButtonText: { color: '#ffffff', fontWeight: '800' },
   secondaryButton: { borderRadius: 12, backgroundColor: '#e2e8f0', paddingVertical: 12, paddingHorizontal: 14, marginRight: 10, marginBottom: 10 },
   secondaryButtonText: { color: '#0f172a', fontWeight: '800' },
+  buttonDisabled: { opacity: 0.6 },
   empty: { color: '#64748b' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.42)', alignItems: 'center', justifyContent: 'center', padding: 16 },
   modalCard: { width: '100%', maxWidth: 520, borderRadius: 20, backgroundColor: '#ffffff', padding: 20 },
@@ -1252,6 +1876,14 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: 20, fontWeight: '800', color: '#0f172a' },
   modalBody: { marginTop: 8, color: '#475569', lineHeight: 20 },
   fieldLabel: { marginTop: 12, color: '#0f172a', fontWeight: '700' },
+  assignmentDateWrap: { marginTop: 8 },
+  assignmentTopRow: { flexDirection: 'row', alignItems: 'flex-end', marginTop: 4 },
+  assignmentStudentColumn: { flex: 1, marginRight: 12 },
+  assignmentSessionColumn: { width: 110 },
+  assignmentSessionDropdownWrap: { width: 110 },
+  assignmentStudentPill: { marginTop: 8, borderRadius: 12, borderWidth: 1, borderColor: '#dbeafe', backgroundColor: '#eff6ff', paddingVertical: 12, paddingHorizontal: 14 },
+  assignmentStudentPillText: { color: '#1e3a8a', fontWeight: '800' },
+  assignmentHelperText: { marginTop: 8, color: '#b45309', lineHeight: 18 },
   guardianCard: { marginTop: 12, borderRadius: 14, borderWidth: 1, borderColor: '#dbeafe', backgroundColor: '#f8fbff', padding: 12 },
   guardianCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
   guardianCardTitle: { fontSize: 14, fontWeight: '800', color: '#0f172a' },

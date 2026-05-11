@@ -7,8 +7,8 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { navigationRef, resetToLogin, resetToTwoFactor } from './navigationRef';
 import { logger, setDebugContext } from './utils/logger';
 import { reportErrorToSentry } from './utils/reportError';
-import { normalizeRoleOverride, isDevSwitcherUser, isDemoReviewerUser, isSpecialAccessUser, getMfaFreshnessWindowMs } from './utils/authState';
-import { syncLoggedInDevicePushRegistration, unregisterLoggedInDevicePushRegistration } from './utils/pushNotifications';
+import { normalizeRoleOverride, isDevSwitcherUser, isDemoReviewerUser, isSpecialAccessUser, isReservedSuperAdminEmail, getMfaFreshnessWindowMs } from './utils/authState';
+import { configureNotificationHandling, syncLoggedInDevicePushRegistration, unregisterLoggedInDevicePushRegistration } from './utils/pushNotifications';
 import { getDemoRoleIdentity } from './utils/demoIdentity';
 
 function getRootWorkspaceForRole(role) {
@@ -93,6 +93,10 @@ export function AuthProvider({ children }) {
   const mfaRequiredRef = useRef(false);
   // Mutex: coalesce concurrent refreshMfaState() calls so callers share a single token-refresh + profile-read pass.
   const inFlightRefreshRef = useRef(null);
+  useEffect(() => {
+    configureNotificationHandling();
+  }, []);
+
   useEffect(() => {
     mfaRequiredRef.current = Boolean(mfaRequired);
   }, [mfaRequired]);
@@ -374,7 +378,7 @@ export function AuthProvider({ children }) {
           id: fbUser.uid,
           name: fbUser.displayName || '',
           email: fbUser.email || '',
-          role: isSpecialAccessUser(fbUser.email) ? 'admin' : 'parent',
+          role: isReservedSuperAdminEmail(fbUser.email) ? 'superAdmin' : (isSpecialAccessUser(fbUser.email) ? 'admin' : 'parent'),
         };
         const storedOverride = isSpecialAccessUser(fbUser.email) ? await readDevRoleOverride() : '';
         const storedBehavior = isSpecialAccessUser(fbUser.email) ? await readDevRoleBehavior() : 'remember';
@@ -538,7 +542,7 @@ export function AuthProvider({ children }) {
       id: fbUser.uid,
       name: fbUser.displayName || '',
       email: fbUser.email || '',
-      role: isSpecialAccessUser(fbUser.email) ? 'admin' : 'parent',
+      role: isReservedSuperAdminEmail(fbUser.email) ? 'superAdmin' : (isSpecialAccessUser(fbUser.email) ? 'admin' : 'parent'),
     };
     const override = isSpecialAccessUser(nextUser?.email) ? await readDevRoleOverride() : '';
     const behavior = isSpecialAccessUser(nextUser?.email) ? await readDevRoleBehavior() : 'remember';

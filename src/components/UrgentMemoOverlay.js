@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, View, Text, Button, ScrollView, TouchableOpacity, StyleSheet, TouchableWithoutFeedback } from 'react-native';
+import { Modal, View, Text, Button, ScrollView, TouchableOpacity, StyleSheet, TouchableWithoutFeedback, Platform, useWindowDimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../AuthContext';
 import { useData } from '../DataContext';
@@ -8,9 +8,14 @@ import * as Api from '../Api';
 export default function UrgentMemoOverlay() {
   const { user, needsMfa, refreshMfaState } = useAuth();
   const data = useData();
+  const { width, height } = useWindowDimensions();
   const urgentMemos = Array.isArray(data?.urgentMemos) ? data.urgentMemos : [];
   const [memos, setMemos] = useState([]);
   const [visible, setVisible] = useState(false);
+  const isLargeViewport = Platform.OS === 'web' || Math.min(width, height) >= 768;
+  const cardStyle = isLargeViewport
+    ? [styles.card, styles.cardLarge, { maxWidth: Math.min(Math.max(width - 48, 320), 560) }]
+    : styles.card;
 
   useEffect(() => {
     (async () => {
@@ -74,11 +79,11 @@ export default function UrgentMemoOverlay() {
   return (
     <>
       <Modal visible={visible} animationType="slide" transparent>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center' }}>
+        <View style={styles.backdrop}>
           <TouchableWithoutFeedback onPress={() => setVisible(false)}>
-            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
+            <View style={styles.dismissZone} />
           </TouchableWithoutFeedback>
-          <View style={{ margin: 20, backgroundColor: 'white', borderRadius: 8, padding: 16, maxHeight: '80%' }}>
+          <View style={cardStyle}>
             <Text style={{ fontSize: 18, fontWeight: '600' }}>Urgent Memos</Text>
             <ScrollView style={{ marginTop: 12 }}>
               {memos.map((m) => (
@@ -102,5 +107,31 @@ export default function UrgentMemoOverlay() {
 }
 
 const styles = StyleSheet.create({
-  // debug button removed
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dismissZone: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  card: {
+    margin: 20,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 16,
+    maxHeight: '80%',
+    width: '100%',
+    maxWidth: 560,
+  },
+  cardLarge: {
+    width: 'auto',
+    minWidth: 360,
+    alignSelf: 'center',
+  },
 });

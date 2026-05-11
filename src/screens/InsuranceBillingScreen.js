@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
-import * as FileSystem from 'expo-file-system';
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import AppDropdown from '../components/AppDropdown';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../AuthContext';
 import { useData } from '../DataContext';
-import { isBcbaRole, normalizeUserRole, USER_ROLES } from '../core/tenant/models';
+import { useTenant } from '../core/tenant/TenantContext';
+import { isAdminRole, isBcbaRole, normalizeUserRole, USER_ROLES } from '../core/tenant/models';
 import { childHasParent, findLinkedParentId } from '../utils/directoryLinking';
 import * as Api from '../Api';
 
@@ -19,53 +19,65 @@ function Block({ title, children, style }) {
   );
 }
 
-function HeaderLearnerPicker({ children, selectedLearnerId, onSelect, onOpenChange }) {
-  const items = Array.isArray(children) ? children.filter(Boolean) : [];
-  const selectedLearner = items.find((child) => child?.id === selectedLearnerId) || items[0] || null;
-  const buttonLabel = selectedLearner?.name || 'Select learner';
-  const disabled = items.length <= 1;
+function normalizeStatus(value, fallback = 'pending') {
+  const normalized = String(value || '').trim().toLowerCase();
+  return normalized || fallback;
+}
 
-  return (
-    <AppDropdown
-      accessibilityLabel={selectedLearner ? `Selected learner ${buttonLabel}` : 'Select learner'}
-      containerStyle={styles.headerPickerWrap}
-      disabled={!items.length || disabled}
-      minMenuWidth={188}
-      onOpenChange={onOpenChange}
-      onSelect={onSelect}
-      options={items.map((child) => ({ value: child?.id, label: child?.name || 'Learner' }))}
-      placeholder="Learner"
-      selectedValue={selectedLearner?.id || ''}
-      textStyle={styles.headerPickerValue}
-      value={buttonLabel}
-      width={188}
-    />
-  );
+function summarizeAuthorization(children = []) {
+  return (Array.isArray(children) ? children : []).reduce((summary, child) => {
+    const insurance = child?.insurance && typeof child.insurance === 'object' ? child.insurance : {};
+    const approvedHours = Number(insurance.approvedHours || 0);
+    const remainingHours = Number(insurance.remainingHours || 0);
+    const status = normalizeStatus(insurance.authorizationStatus || child?.insuranceStatus, 'pending review');
+    summary.total += 1;
+    summary.approvedHours += Number.isFinite(approvedHours) ? approvedHours : 0;
+    summary.remainingHours += Number.isFinite(remainingHours) ? remainingHours : 0;
+    if (status.includes('approved') || status.includes('active')) summary.approved += 1;
+    else if (status.includes('expired')) summary.expired += 1;
+    else summary.pending += 1;
+    const expirationDate = Date.parse(String(insurance.expirationDate || insurance.effectiveDate || ''));
+    if (Number.isFinite(expirationDate) && expirationDate <= Date.now() + (1000 * 60 * 60 * 24 * 30)) {
+      summary.expiringSoon += 1;
+    }
+    return summary;
+  }, { total: 0, approvedHours: 0, remainingHours: 0, approved: 0, pending: 0, expired: 0, expiringSoon: 0 });
+}
+
+function summarizeVerification(children = []) {
+  return (Array.isArray(children) ? children : []).reduce((summary, child) => {
+    const insurance = child?.insurance && typeof child.insurance === 'object' ? child.insurance : {};
+    const timesheetStatus = normalizeStatus(insurance.timesheetStatus, 'pending verification');
+    const parentSignatureStatus = normalizeStatus(insurance.parentSignatureStatus, 'pending');
+    const sessionStatus = normalizeStatus(insurance.sessionStatus, 'pending verification');
+    summary.total += 1;
+    if (timesheetStatus.includes('verified')) summary.timesheetsVerified += 1;
+    if (parentSignatureStatus.includes('received') || parentSignatureStatus.includes('verified') || parentSignatureStatus.includes('signed')) summary.signaturesReceived += 1;
+    if (sessionStatus.includes('verified') || sessionStatus.includes('approved')) summary.sessionsVerified += 1;
+    if (timesheetStatus.includes('pending') || parentSignatureStatus.includes('pending') || sessionStatus.includes('pending')) summary.pending += 1;
+    return summary;
+  }, { total: 0, timesheetsVerified: 0, signaturesReceived: 0, sessionsVerified: 0, pending: 0 });
 }
 
 export default function InsuranceBillingScreen() {
   const navigation = useNavigation();
   const { width } = useWindowDimensions();
   const { user } = useAuth();
+  const tenant = useTenant() || {};
   const {
     children = [],
     parents = [],
     setChildren,
     seededOrgSettings = {},
-    seededExportJobs = [],
-    seededAuditLogs = [],
   } = useData();
   const role = normalizeUserRole(user?.role);
   const isBcba = isBcbaRole(user?.role);
+  const isAdmin = isAdminRole(user?.role);
   const isParent = role === USER_ROLES.PARENT;
-  const [selectedFormat, setSelectedFormat] = useState('csv');
-  const [jobs, setJobs] = useState([]);
-  const [auditItems, setAuditItems] = useState([]);
-  const [loadError, setLoadError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [selectedLearnerId, setSelectedLearnerId] = useState('');
+  const [selectedCampusId, setSelectedCampusId] = useState('');
+  const [selectedScope, setSelectedScope] = useState('all');
   const [orgSettings, setOrgSettings] = useState({});
-  const [mobileFilterCarouselLocked, setMobileFilterCarouselLocked] = useState(false);
 
   const linkedParentId = useMemo(() => {
     if (!isParent) return null;
@@ -77,11 +89,45 @@ export default function InsuranceBillingScreen() {
     return (Array.isArray(children) ? children : []).find((child) => childHasParent(child, linkedParentId)) || null;
   }, [children, isParent, linkedParentId]);
 
+  const campusOptions = useMemo(() => {
+    const campuses = Array.isArray(tenant?.campuses) ? tenant.campuses : [];
+    return campuses.map((campus) => ({ value: String(campus?.id || '').trim(), label: campus?.name || 'Campus' })).filter((item) => item.value);
+  }, [tenant]);
+  const currentCampusId = String(tenant?.currentCampus?.id || user?.campusId || '').trim();
+  const effectiveCampusId = isParent ? '' : (isAdmin ? selectedCampusId : currentCampusId);
+  const campusScopedChildren = useMemo(() => {
+    if (isParent) return [];
+    if (!effectiveCampusId) return Array.isArray(children) ? children : [];
+    return (Array.isArray(children) ? children : []).filter((child) => String(child?.campusId || '').trim() === effectiveCampusId);
+  }, [children, effectiveCampusId, isParent]);
+  const roomOptions = useMemo(() => Array.from(new Set(campusScopedChildren.map((child) => String(child?.room || '').trim()).filter(Boolean))).sort((left, right) => left.localeCompare(right)), [campusScopedChildren]);
+  const scopeOptions = useMemo(() => {
+    const roomItems = roomOptions.map((room) => ({ value: `room:${room}`, label: `Room: ${room}` }));
+    const studentItems = campusScopedChildren
+      .map((child) => ({ value: `student:${String(child?.id || '').trim()}`, label: child?.name || 'Learner' }))
+      .filter((item) => item.value !== 'student:')
+      .sort((left, right) => left.label.localeCompare(right.label));
+    return [{ value: 'all', label: 'All students' }, ...roomItems, ...studentItems];
+  }, [campusScopedChildren, roomOptions]);
+  const selectedScopeOption = useMemo(() => scopeOptions.find((item) => item.value === selectedScope) || scopeOptions[0] || { value: 'all', label: 'All students' }, [scopeOptions, selectedScope]);
+  const scopedChildren = useMemo(() => {
+    if (isParent) return linkedChild ? [linkedChild] : [];
+    if (selectedScope === 'all') return campusScopedChildren;
+    if (selectedScope.startsWith('room:')) {
+      const room = selectedScope.slice(5);
+      return campusScopedChildren.filter((child) => String(child?.room || '').trim() === room);
+    }
+    if (selectedScope.startsWith('student:')) {
+      const childId = selectedScope.slice(8);
+      return campusScopedChildren.filter((child) => String(child?.id || '').trim() === childId);
+    }
+    return campusScopedChildren;
+  }, [campusScopedChildren, isParent, linkedChild, selectedScope]);
   const selectedLearner = useMemo(() => {
     if (isParent) return linkedChild;
-    const match = (Array.isArray(children) ? children : []).find((child) => child?.id === selectedLearnerId);
-    return match || (Array.isArray(children) ? children[0] : null) || null;
-  }, [children, isParent, linkedChild, selectedLearnerId]);
+    if (!selectedScope.startsWith('student:')) return null;
+    return scopedChildren[0] || null;
+  }, [isParent, linkedChild, scopedChildren, selectedScope]);
 
   const insurance = useMemo(() => {
     const childInsuranceSource = isParent ? linkedChild : selectedLearner;
@@ -93,12 +139,14 @@ export default function InsuranceBillingScreen() {
   }, [isParent, linkedChild, selectedLearner, user]);
 
   const childName = useMemo(() => {
+    if (!isParent && selectedScope === 'all') return `${scopedChildren.length} student${scopedChildren.length === 1 ? '' : 's'}`;
+    if (!isParent && selectedScope.startsWith('room:')) return `${selectedScope.slice(5)} room`;
     const targetChild = isParent ? linkedChild : selectedLearner;
     if (targetChild?.name) return String(targetChild.name);
     const firstName = String(targetChild?.firstName || '').trim();
     const lastName = String(targetChild?.lastName || '').trim();
     return `${firstName} ${lastName}`.trim() || 'Your child';
-  }, [isParent, linkedChild, selectedLearner]);
+  }, [isParent, linkedChild, scopedChildren.length, selectedLearner, selectedScope]);
 
   const billingConfig = useMemo(() => {
     return orgSettings?.billing && typeof orgSettings.billing === 'object' ? orgSettings.billing : {};
@@ -119,15 +167,22 @@ export default function InsuranceBillingScreen() {
   }, [billingConfig]);
 
   useEffect(() => {
-    if (isParent) return;
-    if (!selectedLearnerId && children[0]?.id) {
-      setSelectedLearnerId(children[0].id);
+    if (isParent || !isAdmin) return;
+    if (!selectedCampusId && (currentCampusId || campusOptions[0]?.value)) {
+      setSelectedCampusId(currentCampusId || campusOptions[0]?.value || '');
       return;
     }
-    if (selectedLearnerId && !children.some((child) => child?.id === selectedLearnerId)) {
-      setSelectedLearnerId(children[0]?.id || '');
+    if (selectedCampusId && !campusOptions.some((item) => item.value === selectedCampusId)) {
+      setSelectedCampusId(currentCampusId || campusOptions[0]?.value || '');
     }
-  }, [children, isParent, selectedLearnerId]);
+  }, [campusOptions, currentCampusId, isAdmin, isParent, selectedCampusId]);
+
+  useEffect(() => {
+    if (isParent) return;
+    if (!scopeOptions.some((item) => item.value === selectedScope)) {
+      setSelectedScope(scopeOptions[0]?.value || 'all');
+    }
+  }, [isParent, scopeOptions, selectedScope]);
 
   useEffect(() => {
     let mounted = true;
@@ -148,167 +203,6 @@ export default function InsuranceBillingScreen() {
       mounted = false;
     };
   }, [seededOrgSettings]);
-
-  const filteredAuditItems = useMemo(() => {
-    const billingItems = (auditItems || []).filter((item) => {
-      const text = `${item?.action || ''} ${item?.summary || ''}`.toLowerCase();
-      return text.includes('billing') || text.includes('authorization') || text.includes('export') || text.includes('verification');
-    });
-    return billingItems.length ? billingItems : (auditItems || []);
-  }, [auditItems]);
-
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      if (isParent) {
-        setJobs([]);
-        setAuditItems([]);
-        setLoadError('');
-        return;
-      }
-      if (Array.isArray(seededExportJobs) && seededExportJobs.length) {
-        if (mounted) {
-          setLoadError('');
-          setJobs(seededExportJobs.filter((item) => String(item?.category || '').trim() === 'billing'));
-          setAuditItems(Array.isArray(seededAuditLogs) ? seededAuditLogs : []);
-        }
-        return;
-      }
-      try {
-        setLoadError('');
-        const [jobResult, auditResult] = await Promise.all([
-          Api.listExportJobs(10),
-          Api.getAuditLogs(10).catch(() => ({ items: [] })),
-        ]);
-        if (!mounted) return;
-        setJobs((jobResult?.items || []).filter((item) => String(item?.category || '').trim() === 'billing'));
-        setAuditItems(Array.isArray(auditResult?.items) ? auditResult.items : []);
-      } catch (error) {
-        if (mounted) {
-          setLoadError(String(error?.message || error || 'Could not load billing workflow data.'));
-          setJobs([]);
-          setAuditItems([]);
-        }
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, [isParent, seededAuditLogs, seededExportJobs]);
-
-  function toCSV(rows) {
-    if (!rows || !rows.length) return '';
-    const keys = Object.keys(rows[0]);
-    const header = keys.join(',');
-    const lines = rows.map((row) => keys.map((key) => `"${String(row[key] ?? '')}"`).join(','));
-    return [header, ...lines].join('\n');
-  }
-
-  function buildRows() {
-    return (children || []).map((child) => ({
-      learner: child?.name || 'Learner',
-      session: child?.session || 'Unscheduled',
-      room: child?.room || 'Room TBD',
-      attendanceStatus: child?.attendanceStatus || 'pending',
-      authorizationStatus: child?.insuranceStatus || insurance.authorizationStatus || 'pending review',
-      assignedStaff: [child?.amTherapist?.name, child?.pmTherapist?.name, child?.bcaTherapist?.name].filter(Boolean).join(' | '),
-    }));
-  }
-
-  function getExportContent(rows) {
-    if (selectedFormat === 'pdf') {
-      const summary = rows.map((row) => Object.entries(row).map(([key, value]) => `${key}: ${value ?? ''}`).join('\n')).join('\n\n');
-      return {
-        extension: 'html',
-        mimeType: 'text/html',
-        body: `<!doctype html><html><head><meta charset="utf-8" /><title>Billing Export</title><style>body{font-family:Georgia,serif;padding:24px;color:#0f172a;}h1{font-size:24px;}pre{white-space:pre-wrap;font-family:Georgia,serif;line-height:1.5;}</style></head><body><h1>Billing Export</h1><p>Generated ${new Date().toLocaleString()}</p><pre>${summary.replace(/[<>&]/g, (character) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[character]))}</pre></body></html>`,
-      };
-    }
-    return {
-      extension: 'csv',
-      mimeType: 'text/csv',
-      body: toCSV(rows),
-    };
-  }
-
-  async function createArtifactFile(fileName, body, mimeType) {
-    if (Platform.OS === 'web') {
-      const blob = new Blob([body], { type: mimeType });
-      const uri = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = uri;
-      anchor.download = fileName;
-      document.body.appendChild(anchor);
-      anchor.click();
-      document.body.removeChild(anchor);
-      return { uri, cleanup: () => URL.revokeObjectURL(uri) };
-    }
-
-    const baseDir = `${FileSystem.cacheDirectory || FileSystem.documentDirectory}exports`;
-    await FileSystem.makeDirectoryAsync(baseDir, { intermediates: true }).catch(() => {});
-    const fileUri = `${baseDir}/${fileName}`;
-    await FileSystem.writeAsStringAsync(fileUri, body, { encoding: FileSystem.EncodingType.UTF8 });
-    return { uri: fileUri, cleanup: async () => {} };
-  }
-
-  async function queueBillingExport() {
-    try {
-      setBusy(true);
-      const rows = buildRows();
-      const content = getExportContent(rows);
-      const fileName = `billing-${Date.now()}.${content.extension}`;
-      const job = await Api.createExportJob({
-        title: 'Billing Export',
-        category: 'billing',
-        format: selectedFormat,
-        scope: isBcba ? 'bcba-review' : 'office',
-        recordsCount: rows.length,
-        summary: 'Billing export queued from Billing & Authorizations.',
-      });
-      const artifact = await createArtifactFile(fileName, content.body, content.mimeType);
-      try {
-        const formData = new FormData();
-        formData.append('file', {
-          uri: artifact.uri,
-          name: fileName,
-          type: content.mimeType,
-        });
-        const uploaded = await Api.uploadMedia(formData);
-        await Api.updateExportJob(job?.item?.id, {
-          status: 'completed',
-          summary: 'Billing export generated successfully.',
-          artifactName: fileName,
-          artifactMimeType: content.mimeType,
-          artifactUrl: uploaded?.url || '',
-          artifactPath: uploaded?.path || '',
-          generatedAt: 'serverTimestamp',
-          recordsCount: rows.length,
-        });
-      } catch (error) {
-        await Api.updateExportJob(job?.item?.id, {
-          status: 'failed',
-          summary: String(error?.message || error || 'Billing export failed.'),
-        }).catch(() => {});
-        throw error;
-      } finally {
-        await artifact.cleanup?.();
-      }
-      const refreshed = await Api.listExportJobs(10);
-      setJobs((refreshed?.items || []).filter((item) => String(item?.category || '').trim() === 'billing'));
-      Alert.alert('Billing export ready', 'The billing export was generated and added to recent export jobs.');
-    } catch (error) {
-      Alert.alert('Export failed', String(error?.message || error || 'Could not generate the billing export.'));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  function openArtifact(url) {
-    if (!url) return;
-    Linking.openURL(url).catch(() => {
-      Alert.alert('Unable to open export', 'Your device could not open this export file.');
-    });
-  }
 
   function openEmailAddress(value) {
     const match = String(value || '').match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
@@ -420,29 +314,21 @@ export default function InsuranceBillingScreen() {
     await persistLearnerInsurance(nextInsurance, `${childName} verification was marked complete.`);
   }
 
-  const learnerPicker = !isParent ? (
-    <HeaderLearnerPicker
-      children={children}
-      onOpenChange={setMobileFilterCarouselLocked}
-      onSelect={setSelectedLearnerId}
-      selectedLearnerId={selectedLearner?.id || selectedLearnerId}
-    />
-  ) : null;
-  const mobileHeaderFilters = !isParent && Platform.OS !== 'web' ? <View style={styles.mobileHeaderFilterRow}>{learnerPicker}</View> : null;
   const useCompactContent = !isParent && Platform.OS !== 'web' && width < 900;
+  const authorizationSummary = useMemo(() => summarizeAuthorization(scopedChildren), [scopedChildren]);
+  const verificationSummary = useMemo(() => summarizeVerification(scopedChildren), [scopedChildren]);
+  const showStudentActions = !isParent && !isBcba && Boolean(selectedLearner?.id);
+  const selectedCampusLabel = useMemo(() => campusOptions.find((option) => option.value === effectiveCampusId)?.label || tenant?.currentCampus?.name || 'Current campus', [campusOptions, effectiveCampusId, tenant]);
 
   return (
     <ScreenWrapper
       bannerLeft={null}
       bannerRight={null}
-      bannerTitleLeft={learnerPicker}
-      mobileHeaderBelow={mobileHeaderFilters}
-      mobileHeaderBelowScrollEnabled={!mobileFilterCarouselLocked}
+      bannerTitleLeft={null}
+      mobileHeaderBelow={null}
       style={styles.container}
     >
       <ScrollView contentContainerStyle={[styles.content, useCompactContent ? styles.contentCompact : null]} showsVerticalScrollIndicator={false}>
-        {loadError ? <Text style={styles.errorText}>{loadError}</Text> : null}
-
         {isParent ? (
           <Block title="Digital Insurance Card">
             <View style={styles.digitalCard}>
@@ -487,57 +373,81 @@ export default function InsuranceBillingScreen() {
           </Block>
         ) : (
           <>
-            <View style={styles.splitRow}>
+            <View style={styles.filterPanel}>
+              <View style={[styles.filterRow, isAdmin ? styles.filterRowAdmin : null]}>
+                {isAdmin ? (
+                  <AppDropdown
+                    accessibilityLabel="Select campus"
+                    containerStyle={styles.centeredFilterWrap}
+                    minMenuWidth={220}
+                    onSelect={setSelectedCampusId}
+                    options={campusOptions}
+                    placeholder="Campus"
+                    selectedValue={selectedCampusId}
+                    textStyle={styles.filterDropdownValue}
+                    value={selectedCampusLabel}
+                    width={220}
+                  />
+                ) : null}
+                <AppDropdown
+                  accessibilityLabel="Filter by campus room or student"
+                  containerStyle={styles.centeredFilterWrap}
+                  minMenuWidth={260}
+                  onSelect={setSelectedScope}
+                  options={scopeOptions}
+                  placeholder="Scope"
+                  selectedValue={selectedScopeOption.value}
+                  textStyle={styles.filterDropdownValue}
+                  value={selectedScopeOption.label}
+                  width={260}
+                />
+              </View>
+              <Text style={styles.filterHintText}>{selectedScope === 'all' ? `Showing all students for ${selectedCampusLabel}.` : selectedScope.startsWith('room:') ? `Showing students assigned to ${selectedScope.slice(5)} at ${selectedCampusLabel}.` : `Showing the billing record for ${childName} at ${selectedCampusLabel}.`}</Text>
+            </View>
+
+            {!scopedChildren.length ? <Text style={styles.emptyText}>No students are available for the selected campus filter.</Text> : null}
+
+            <View style={[styles.splitRow, width < 900 ? styles.splitRowStacked : null]}>
               <Block title="Authorizations" style={styles.splitCard}>
-                <Text style={styles.rowText}>Hours approved: <Text style={styles.rowValue}>{insurance.approvedHours || 'N/A'}</Text></Text>
-                <Text style={styles.rowText}>Hours remaining: <Text style={styles.rowValue}>{insurance.remainingHours || 'N/A'}</Text></Text>
-                <Text style={styles.rowText}>Expiration date: <Text style={styles.rowValue}>{insurance.expirationDate || 'N/A'}</Text></Text>
-                <Text style={styles.rowText}>{isBcba ? `Reviewing persisted authorization status for ${childName}.` : `Update the selected learner authorization record for ${childName}.`}</Text>
-                {!isBcba ? <TouchableOpacity style={[styles.secondaryButton, styles.splitCardBottomButton, busy ? styles.secondaryButtonDisabled : null]} disabled={busy || !selectedLearner?.id} onPress={approveAuthorization}><Text style={[styles.secondaryButtonText, busy ? styles.secondaryButtonTextDisabled : null]}>Approve Authorization</Text></TouchableOpacity> : null}
+                {selectedLearner ? (
+                  <>
+                    <Text style={styles.rowText}>Hours approved: <Text style={styles.rowValue}>{insurance.approvedHours || 'N/A'}</Text></Text>
+                    <Text style={styles.rowText}>Hours remaining: <Text style={styles.rowValue}>{insurance.remainingHours || 'N/A'}</Text></Text>
+                    <Text style={styles.rowText}>Expiration date: <Text style={styles.rowValue}>{insurance.expirationDate || 'N/A'}</Text></Text>
+                    <Text style={styles.rowText}>{isBcba ? `Reviewing persisted authorization status for ${childName}.` : `Update the selected learner authorization record for ${childName}.`}</Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.rowText}>Students in scope: <Text style={styles.rowValue}>{authorizationSummary.total || 0}</Text></Text>
+                    <Text style={styles.rowText}>Authorizations approved: <Text style={styles.rowValue}>{authorizationSummary.approved}</Text></Text>
+                    <Text style={styles.rowText}>Pending review: <Text style={styles.rowValue}>{authorizationSummary.pending}</Text></Text>
+                    <Text style={styles.rowText}>Expiring within 30 days: <Text style={styles.rowValue}>{authorizationSummary.expiringSoon}</Text></Text>
+                    <Text style={styles.rowText}>Hours remaining across scope: <Text style={styles.rowValue}>{authorizationSummary.remainingHours}</Text></Text>
+                  </>
+                )}
+                {showStudentActions ? <TouchableOpacity style={[styles.secondaryButton, styles.splitCardBottomButton, busy ? styles.secondaryButtonDisabled : null]} disabled={busy || !selectedLearner?.id} onPress={approveAuthorization}><Text style={[styles.secondaryButtonText, busy ? styles.secondaryButtonTextDisabled : null]}>{busy ? 'Saving...' : 'Approve Authorization'}</Text></TouchableOpacity> : null}
               </Block>
 
               <Block title="Session verification" style={styles.splitCard}>
-                <Text style={styles.rowText}>Timesheets: <Text style={styles.rowValue}>{insurance.timesheetStatus || 'Pending verification'}</Text></Text>
-                <Text style={styles.rowText}>Parent signatures: <Text style={styles.rowValue}>{insurance.parentSignatureStatus || 'No signature on file'}</Text></Text>
-                <Text style={styles.rowText}>Session status: <Text style={styles.rowValue}>{insurance.sessionStatus || 'Pending verification'}</Text></Text>
-                <Text style={styles.rowText}>{isBcba ? `Reviewing persisted verification status for ${childName}.` : `Approve timesheet, signature, and session verification for ${childName}.`}</Text>
-                {!isBcba ? <TouchableOpacity style={[styles.primaryButton, styles.splitCardBottomButton, busy ? styles.primaryButtonDisabled : null]} disabled={busy || !selectedLearner?.id} onPress={approveVerification}><Text style={styles.primaryButtonText}>{busy ? 'Saving...' : 'Approve Verification'}</Text></TouchableOpacity> : null}
+                {selectedLearner ? (
+                  <>
+                    <Text style={styles.rowText}>Timesheets: <Text style={styles.rowValue}>{insurance.timesheetStatus || 'Pending verification'}</Text></Text>
+                    <Text style={styles.rowText}>Parent signatures: <Text style={styles.rowValue}>{insurance.parentSignatureStatus || 'No signature on file'}</Text></Text>
+                    <Text style={styles.rowText}>Session status: <Text style={styles.rowValue}>{insurance.sessionStatus || 'Pending verification'}</Text></Text>
+                    <Text style={styles.rowText}>{isBcba ? `Reviewing persisted verification status for ${childName}.` : `Approve timesheet, signature, and session verification for ${childName}.`}</Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.rowText}>Students in scope: <Text style={styles.rowValue}>{verificationSummary.total || 0}</Text></Text>
+                    <Text style={styles.rowText}>Timesheets verified: <Text style={styles.rowValue}>{verificationSummary.timesheetsVerified}</Text></Text>
+                    <Text style={styles.rowText}>Parent signatures received: <Text style={styles.rowValue}>{verificationSummary.signaturesReceived}</Text></Text>
+                    <Text style={styles.rowText}>Sessions verified: <Text style={styles.rowValue}>{verificationSummary.sessionsVerified}</Text></Text>
+                    <Text style={styles.rowText}>Pending verification items: <Text style={styles.rowValue}>{verificationSummary.pending}</Text></Text>
+                  </>
+                )}
+                {showStudentActions ? <TouchableOpacity style={[styles.primaryButton, styles.splitCardBottomButton, busy ? styles.primaryButtonDisabled : null]} disabled={busy || !selectedLearner?.id} onPress={approveVerification}><Text style={styles.primaryButtonText}>{busy ? 'Saving...' : 'Approve Verification'}</Text></TouchableOpacity> : null}
               </Block>
             </View>
-
-            <Block title="Billing exports">
-              <View style={styles.exportRow}>
-                {['csv', 'pdf'].map((format) => (
-                  <TouchableOpacity key={format} style={[styles.exportCard, selectedFormat === format ? styles.exportCardActive : null]} onPress={() => setSelectedFormat(format)}>
-                    <Text style={styles.exportTitle}>{format.toUpperCase()}</Text>
-                    <Text style={styles.exportText}>{format === 'pdf' ? 'Generate a printable billing handoff summary.' : 'Generate a billing handoff spreadsheet.'}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              {!isParent ? (
-                <View style={styles.exportActionRow}>
-                  <TouchableOpacity style={[styles.primaryButton, busy ? styles.primaryButtonDisabled : null]} onPress={queueBillingExport} disabled={busy}>
-                    <Text style={styles.primaryButtonText}>{busy ? 'Generating...' : 'Generate Billing Export'}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate('ExportData')}>
-                    <Text style={styles.secondaryButtonText}>Open Export Center</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : null}
-              {jobs.length ? jobs.map((job) => (
-                <View key={job.id} style={styles.jobRow}>
-                  <View style={{ flex: 1, paddingRight: 12 }}>
-                    <Text style={styles.rowText}>{job.title || 'Billing export'} • {String(job.status || 'ready').toUpperCase()}</Text>
-                    <Text style={styles.jobMeta}>{String(job.format || 'csv').toUpperCase()} • {job.recordsCount || 0} records • {job.createdAt ? new Date(job.createdAt).toLocaleString() : 'Recently created'}</Text>
-                  </View>
-                  {job.artifactUrl ? <TouchableOpacity style={styles.secondaryButton} onPress={() => openArtifact(job.artifactUrl)}><Text style={styles.secondaryButtonText}>Open</Text></TouchableOpacity> : null}
-                </View>
-              )) : <Text style={styles.rowText}>No billing exports queued yet.</Text>}
-            </Block>
-
-            <Block title="Audit log">
-              {filteredAuditItems.length ? filteredAuditItems.slice(0, 6).map((item, index) => <Text key={item?.id || index} style={styles.rowText}>{String(item?.action || 'audit.event')} • {item?.createdAt ? new Date(item.createdAt).toLocaleString() : 'Unknown time'}</Text>) : <Text style={styles.rowText}>No billing audit activity available yet.</Text>}
-            </Block>
           </>
         )}
       </ScrollView>
@@ -550,14 +460,19 @@ const styles = StyleSheet.create({
   content: { padding: 16 },
   contentCompact: { padding: 8 },
   errorText: { color: '#b91c1c', marginTop: 12 },
-  splitRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'stretch', marginTop: 12 },
+  filterPanel: { marginTop: 12, borderRadius: 18, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e5e7eb', padding: 16, alignItems: 'center' },
+  filterRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, flexWrap: 'wrap', width: '100%' },
+  filterRowAdmin: { justifyContent: 'center' },
+  centeredFilterWrap: { minWidth: 200, maxWidth: 280 },
+  filterDropdownValue: { flex: 1, color: '#0f172a', fontWeight: '700', fontSize: 15, textAlign: 'center' },
+  filterHintText: { marginTop: 10, color: '#64748b', textAlign: 'center', lineHeight: 20 },
+  emptyText: { marginTop: 14, color: '#64748b', textAlign: 'center' },
+  splitRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'stretch', marginTop: 12, gap: 12 },
+  splitRowStacked: { flexDirection: 'column' },
   card: { marginTop: 12, borderRadius: 18, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e5e7eb', padding: 12 },
-  splitCard: { width: '48%', marginTop: 0 },
+  splitCard: { flex: 1, marginTop: 0 },
   splitCardBottomButton: { marginTop: 'auto' },
   cardTitle: { fontSize: 16, fontWeight: '800', color: '#0f172a', marginBottom: 12 },
-  headerPickerWrap: { minWidth: 156, maxWidth: 176 },
-  headerPickerValue: { flex: 1, color: '#0f172a', fontWeight: '600', fontSize: 16 },
-  mobileHeaderFilterRow: { flexDirection: 'row', alignItems: 'center' },
   rowText: { color: '#475569', lineHeight: 20, marginBottom: 8 },
   rowValue: { fontWeight: '800' },
   digitalCard: { borderRadius: 18, backgroundColor: '#1e3a8a', padding: 18 },
@@ -570,12 +485,6 @@ const styles = StyleSheet.create({
   parentActionRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', marginTop: 12 },
   parentContactList: { marginTop: 10 },
   parentContactText: { color: '#475569', lineHeight: 20 },
-  exportRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  exportCard: { width: '48%', borderRadius: 16, backgroundColor: '#f8fafc', padding: 14, marginBottom: 10 },
-  exportTitle: { fontSize: 16, fontWeight: '800', color: '#0f172a' },
-  exportText: { marginTop: 6, color: '#64748b' },
-  exportCardActive: { borderWidth: 1, borderColor: '#93c5fd', backgroundColor: '#eff6ff' },
-  exportActionRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 10, rowGap: 10, marginBottom: 12 },
   primaryButton: { marginTop: 10, alignSelf: 'flex-start', borderRadius: 12, backgroundColor: '#2563eb', paddingVertical: 12, paddingHorizontal: 14 },
   primaryButtonDisabled: { opacity: 0.55 },
   primaryButtonText: { color: '#ffffff', fontWeight: '800' },
@@ -583,6 +492,4 @@ const styles = StyleSheet.create({
   secondaryButtonText: { color: '#0f172a', fontWeight: '800' },
   secondaryButtonDisabled: { opacity: 0.6 },
   secondaryButtonTextDisabled: { color: '#475569' },
-  jobRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8, borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 10 },
-  jobMeta: { color: '#64748b', marginBottom: 2 },
 });

@@ -752,6 +752,23 @@ const ALLOW_DEV_TOKEN = envFlag(process.env.CB_ALLOW_DEV_TOKEN || process.env.BB
 const ADMIN_EMAIL = process.env.CB_ADMIN_EMAIL || process.env.BB_ADMIN_EMAIL || '';
 const ADMIN_PASSWORD = process.env.CB_ADMIN_PASSWORD || process.env.BB_ADMIN_PASSWORD || '';
 const ADMIN_NAME = process.env.CB_ADMIN_NAME || process.env.BB_ADMIN_NAME || 'Admin';
+const RESERVED_SUPER_ADMIN_EMAILS = new Set([
+  String(ADMIN_EMAIL || '').trim().toLowerCase(),
+  'alphazonelabsllc@gmail.com',
+].filter(Boolean));
+
+function isReservedSuperAdminEmail(email) {
+  return RESERVED_SUPER_ADMIN_EMAILS.has(String(email || '').trim().toLowerCase());
+}
+
+function applyReservedSuperAdminRole(user) {
+  const item = user && typeof user === 'object' ? { ...user } : {};
+  if (!isReservedSuperAdminEmail(item.email)) return item;
+  return {
+    ...item,
+    role: 'superAdmin',
+  };
+}
 
 function userToClient(row) {
   if (!row) return null;
@@ -2146,7 +2163,7 @@ async function authMiddleware(req, res, next) {
     const row = await pgQueryOne('SELECT id,email,name,avatar,phone,address,role FROM users WHERE id = $1', [userId]);
     if (!row) return res.status(401).json({ ok: false, error: 'user not found' });
     const firebaseProfile = await getFirebaseManagedProfiles([userId]).catch(() => new Map());
-    req.user = normalizeScopedUser({ ...userToClient(row), ...(firebaseProfile.get(userId) || {}) });
+    req.user = normalizeScopedUser(applyReservedSuperAdminRole({ ...userToClient(row), ...(firebaseProfile.get(userId) || {}) }));
     return next();
   } catch (e) {
     return res.status(401).json({ ok: false, error: 'invalid token' });
@@ -4836,7 +4853,7 @@ app.get('/api/admin/users', authMiddleware, requireAdmin, requireCapability('use
 
 app.post('/api/admin/users/invite', authMiddleware, requireAdmin, requireCapability('users:manage'), async (req, res) => {
   const email = normalizeEmail(req.body && req.body.email);
-  const role = normalizeManagedInviteRole(req.body && req.body.role);
+  const requestedRole = normalizeManagedInviteRole(req.body && req.body.role);
   const name = safeString(req.body && req.body.name).trim();
   const phone = safeString(req.body && req.body.phone).trim();
   const address = safeString(req.body && req.body.address).trim();
@@ -4844,6 +4861,7 @@ app.post('/api/admin/users/invite', authMiddleware, requireAdmin, requireCapabil
   const programIds = normalizeManagedIdList(req.body && req.body.programIds);
   const campusIds = normalizeManagedIdList(req.body && req.body.campusIds);
   const memberships = Array.isArray(req.body?.memberships) ? req.body.memberships : [];
+  const role = isReservedSuperAdminEmail(email) ? 'superAdmin' : requestedRole;
 
   if (!email) return res.status(400).json({ ok: false, error: 'email required' });
   if (!role) return res.status(400).json({ ok: false, error: 'role required' });
@@ -4852,6 +4870,19 @@ app.post('/api/admin/users/invite', authMiddleware, requireAdmin, requireCapabil
   }
 
   try {
+    if (!isSuperAdminRole(req.user?.role)) {
+      const inviteTarget = normalizeScopedUser({
+        email,
+        role,
+        organizationId,
+        programIds,
+        campusIds,
+        memberships,
+      });
+      if (!canManageTargetUser(req.user, inviteTarget)) {
+        return res.status(403).json({ ok: false, error: 'target user is outside your admin scope' });
+      }
+    }
     const result = await createOrRefreshManagedAccessInvite({
       req,
       email,
@@ -4931,7 +4962,7 @@ app.put('/api/admin/users/:userId', authMiddleware, requireAdmin, requireCapabil
   }
 
   try {
-    const existingUser = await pgQueryOne('SELECT id,email,role FROM users WHERE id = $1', [userId]);
+    const existingUser = applyReservedSuperAdminRole(await pgQueryOne('SELECT id,email,role FROM users WHERE id = $1', [userId]));
     if (!existingUser) return res.status(404).json({ ok: false, error: 'user not found' });
 
     const requesterIsSuperAdmin = isSuperAdminRole(req.user?.role);
@@ -4941,11 +4972,27 @@ app.put('/api/admin/users/:userId', authMiddleware, requireAdmin, requireCapabil
     if (targetIsSuperAdmin && !requesterIsSuperAdmin) {
       return res.status(403).json({ ok: false, error: 'super admin required to manage this user' });
     }
-    if (role !== undefined && isAdminRole(role) && !requesterIsSuperAdmin) {
+    const nextRole = isReservedSuperAdminEmail(email !== undefined ? email : existingUser.email)
+      ? 'superAdmin'
+      : role;
+    if (nextRole !== undefined && isAdminRole(nextRole) && !requesterIsSuperAdmin) {
       return res.status(403).json({ ok: false, error: 'super admin required to assign elevated roles' });
     }
     if (!canManageTargetUser(req.user, targetScopedUser)) {
       return res.status(403).json({ ok: false, error: 'target user is outside your admin scope' });
+    }
+    const nextScopedUser = normalizeScopedUser({
+      ...existingUser,
+      ...(targetProfile.get(userId) || {}),
+      email: email !== undefined ? email : existingUser.email,
+      role: nextRole !== undefined ? nextRole : existingUser.role,
+      organizationId: organizationId !== undefined ? organizationId : targetScopedUser.organizationId,
+      programIds: programIds !== undefined ? programIds : targetScopedUser.programIds,
+      campusIds: campusIds !== undefined ? campusIds : targetScopedUser.campusIds,
+      memberships: memberships !== undefined ? memberships : targetScopedUser.memberships,
+    });
+    if (!requesterIsSuperAdmin && !canManageTargetUser(req.user, nextScopedUser)) {
+      return res.status(403).json({ ok: false, error: 'updated user would be outside your admin scope' });
     }
 
     if (email !== undefined) {
@@ -4956,7 +5003,7 @@ app.put('/api/admin/users/:userId', authMiddleware, requireAdmin, requireCapabil
     const firebaseFields = {};
     if (name !== undefined) firebaseFields.name = name;
     if (email !== undefined) firebaseFields.email = email;
-    if (role !== undefined) firebaseFields.role = role;
+    if (nextRole !== undefined) firebaseFields.role = nextRole;
     if (organizationId !== undefined) firebaseFields.organizationId = organizationId;
     if (programIds !== undefined) firebaseFields.programIds = programIds;
     if (campusIds !== undefined) firebaseFields.campusIds = campusIds;
@@ -4978,7 +5025,7 @@ app.put('/api/admin/users/:userId', authMiddleware, requireAdmin, requireCapabil
     if (avatar !== undefined) { sets.push(`avatar = $${i}`); values.push(avatar); i += 1; }
     if (phone !== undefined) { sets.push(`phone = $${i}`); values.push(phone); i += 1; }
     if (address !== undefined) { sets.push(`address = $${i}`); values.push(address); i += 1; }
-    if (role !== undefined) { sets.push(`role = $${i}`); values.push(role); i += 1; }
+    if (nextRole !== undefined) { sets.push(`role = $${i}`); values.push(nextRole); i += 1; }
     if (newPassword !== undefined) {
       const hash = bcrypt.hashSync(newPassword, 12);
       sets.push(`password_hash = $${i}`);
@@ -5002,7 +5049,7 @@ app.put('/api/admin/users/:userId', authMiddleware, requireAdmin, requireCapabil
     slog.info('admin', 'Managed user updated', {
       actorId: req.user?.id,
       targetUserId: userId,
-      roleChanged: role !== undefined,
+      roleChanged: nextRole !== undefined,
       scopeChanged: organizationId !== undefined || programIds !== undefined || campusIds !== undefined || memberships !== undefined,
     });
     await recordAuditLog({
@@ -5011,7 +5058,7 @@ app.put('/api/admin/users/:userId', authMiddleware, requireAdmin, requireCapabil
       targetType: 'user',
       targetId: userId,
       details: {
-        roleChanged: role !== undefined,
+        roleChanged: nextRole !== undefined,
         scopeChanged: organizationId !== undefined || programIds !== undefined || campusIds !== undefined || memberships !== undefined,
         passwordChanged: newPassword !== undefined,
       },
@@ -5023,7 +5070,7 @@ app.put('/api/admin/users/:userId', authMiddleware, requireAdmin, requireCapabil
       avatar: row.avatar || '',
       phone: row.phone || '',
       address: row.address || '',
-      role: row.role,
+      role: applyReservedSuperAdminRole(row).role,
       organizationId: scope.organizationId || '',
       programIds: scope.programIds || [],
       campusIds: scope.campusIds || [],
@@ -5042,7 +5089,7 @@ app.post('/api/admin/users/:userId/invite-resend', authMiddleware, requireAdmin,
   if (!userId) return res.status(400).json({ ok: false, error: 'userId required' });
 
   try {
-    const existingUser = await pgQueryOne('SELECT id,email,name,phone,address,role FROM users WHERE id = $1', [userId]);
+    const existingUser = applyReservedSuperAdminRole(await pgQueryOne('SELECT id,email,name,phone,address,role FROM users WHERE id = $1', [userId]));
     if (!existingUser) return res.status(404).json({ ok: false, error: 'user not found' });
 
     const requesterIsSuperAdmin = isSuperAdminRole(req.user?.role);
@@ -5092,7 +5139,7 @@ app.delete('/api/admin/users/:userId', authMiddleware, requireAdmin, requireCapa
   if (userId === safeString(req.user?.id).trim()) return res.status(400).json({ ok: false, error: 'cannot delete the active user via admin endpoint' });
 
   try {
-    const existingUser = await pgQueryOne('SELECT id,role FROM users WHERE id = $1', [userId]);
+    const existingUser = applyReservedSuperAdminRole(await pgQueryOne('SELECT id,email,role FROM users WHERE id = $1', [userId]));
     if (!existingUser) return res.status(404).json({ ok: false, error: 'user not found' });
 
     const requesterIsSuperAdmin = isSuperAdminRole(req.user?.role);

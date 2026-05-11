@@ -628,11 +628,11 @@ export default function FacultyDirectoryScreen() {
                 </ScrollView>
 
                 <View style={styles.tabContent}>{renderTabContent()}</View>
-                <View style={styles.actionStrip}>
-                  {isBcba ? <TouchableOpacity style={styles.primaryButton} onPress={() => showAction('Assign caseload', 'Caseload assignment is staged for BCBA review and assignment controls.')}><Text style={styles.primaryButtonText}>Assign Caseload</Text></TouchableOpacity> : null}
-                  {isOffice ? <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate('UserMonitor', { initialUserId: selectedStaff.id })}><Text style={styles.secondaryButtonText}>Manage Staff</Text></TouchableOpacity> : null}
-                  <TouchableOpacity style={styles.secondaryButton} onPress={() => setShowMemoModal(true)}><Text style={styles.secondaryButtonText}>Urgent Memo</Text></TouchableOpacity>
-                </View>
+                {isBcba ? (
+                  <View style={styles.actionStrip}>
+                    <TouchableOpacity style={styles.primaryButton} onPress={() => showAction('Assign caseload', 'Caseload assignment is staged for BCBA review and assignment controls.')}><Text style={styles.primaryButtonText}>Assign Caseload</Text></TouchableOpacity>
+                  </View>
+                ) : null}
               </>
             ) : <Text style={styles.empty}>No staff selected.</Text>}
           </View>

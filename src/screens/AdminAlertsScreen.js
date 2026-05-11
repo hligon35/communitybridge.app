@@ -147,7 +147,6 @@ export default function AdminAlertsScreen() {
           <View style={styles.tabRow}>
           {[
             { key: 'tracker', label: 'Credential Tracker' },
-            { key: 'alerts', label: 'Expiration Alerts' },
             { key: 'documents', label: 'Document Uploads' },
             { key: 'audit', label: 'Audit Log' },
           ].map((item) => (
@@ -158,9 +157,9 @@ export default function AdminAlertsScreen() {
           </View>
         </ScrollView>
 
-        {(tab === 'tracker' || tab === 'alerts') ? (
+        {tab === 'tracker' ? (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>{tab === 'tracker' ? 'Credential tracker' : 'Expiration alerts'}</Text>
+            <Text style={styles.cardTitle}>Credential tracker</Text>
             {complianceItems.map((item) => (
               <TouchableOpacity key={item.id} style={[styles.row, item.id === selectedStaff?.id ? styles.rowSelected : null]} onPress={() => setSelectedStaffId(item.id)} disabled={tab !== 'documents'}>
                 <View style={{ flex: 1 }}>

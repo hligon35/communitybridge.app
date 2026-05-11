@@ -16,6 +16,7 @@ import { canAccessPhoneRoute, getPhoneAccessProfile, isPhoneViewport as resolveP
 
 const checkUpdatesIcon = require('../../assets/icons/checkUpdates.png');
 const BREAK_OPTIONS = [5, 7, 10, 30];
+const BREAK_NOTIFICATION_CHANNEL_ID = 'break-alerts';
 const MOBILE_BOTTOM_MENU_HEIGHT = 36;
 const DRAWER_COLLAPSED_WIDTH = 92;
 const DRAWER_EXPANDED_MIN_WIDTH = 216;
@@ -81,10 +82,12 @@ async function ensureBreakNotificationsReady() {
     }
     if (status !== 'granted') return { ok: false, reason: 'permission-denied' };
     if (Platform.OS === 'android' && typeof Notifications.setNotificationChannelAsync === 'function') {
-      await Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
-        importance: Notifications.AndroidImportance.HIGH,
+      await Notifications.setNotificationChannelAsync(BREAK_NOTIFICATION_CHANNEL_ID, {
+        name: 'Break alerts',
+        importance: Notifications.AndroidImportance.MAX,
         sound: 'default',
+        vibrationPattern: [0, 250, 200, 250],
+        lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
       });
     }
     return { ok: true, Notifications };
@@ -266,7 +269,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
       title: 'Break complete',
       body: `Your ${minutes || 0}-minute break is over.`,
       sound: 'default',
-      channelId: 'default',
+      channelId: BREAK_NOTIFICATION_CHANNEL_ID,
       data: { type: 'break-end', minutes },
     }).catch(() => {});
   }
@@ -306,7 +309,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
           title: 'Break reminder',
           body: '2 minutes left on your break.',
           sound: 'default',
-          channelId: 'default',
+          channelId: BREAK_NOTIFICATION_CHANNEL_ID,
           data: { type: 'break-warning', minutes: durationMinutes },
         },
         trigger: { seconds: Math.max(1, durationMinutes * 60 - 120) },
@@ -319,7 +322,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
         title: 'Break complete',
         body: `Your ${durationMinutes}-minute break is over.`,
         sound: 'default',
-        channelId: 'default',
+        channelId: BREAK_NOTIFICATION_CHANNEL_ID,
         data: { type: 'break-end', minutes: durationMinutes },
       },
       trigger: { seconds: Math.max(1, durationMinutes * 60) },
@@ -732,8 +735,13 @@ export default function TabletNavigationShell({ currentRoute, children }) {
                     ) : null}
                     <TouchableOpacity style={[styles.mobileBreakButton, breakEndsAt ? styles.mobileBreakButtonActive : null]} onPress={handleBreakPress}>
                       <MaterialIcons name="free-breakfast" size={20} color="#0f172a" />
-                      <Text style={styles.mobileBreakText}>Break</Text>
-                      {breakEndsAt ? <Text style={styles.mobileBreakTimerText}>{formatBreakCountdown(breakEndsAt, breakNow)}</Text> : null}
+                        <Text style={styles.mobileBreakText}>{breakEndsAt ? 'End Break' : 'Break'}</Text>
+                        {breakEndsAt ? (
+                          <View style={styles.mobileBreakMetaWrap}>
+                            <View style={styles.mobileBreakDivider} />
+                            <Text style={styles.mobileBreakTimerText}>{formatBreakCountdown(breakEndsAt, breakNow)}</Text>
+                          </View>
+                        ) : null}
                     </TouchableOpacity>
                     <View style={styles.mobileUtilitySection}>
                       <TouchableOpacity style={styles.mobileUtilityButton} onPress={() => { setMobileNavOpen(false); openTarget({ root: 'Settings', screen: 'Help' }); }}>
@@ -763,15 +771,6 @@ export default function TabletNavigationShell({ currentRoute, children }) {
               <MaterialIcons name={mobileNavOpen ? 'close' : 'menu'} size={22} color="#ffffff" />
             </TouchableOpacity>
           </View>
-          {breakEndsAt && breakNow < breakEndsAt ? (
-            <View style={[styles.breakOverlayWrap, styles.mobileBreakOverlayWrap, { bottom: Math.max(insets.bottom, 0) + MOBILE_BOTTOM_MENU_HEIGHT + 12 }]}> 
-              <TouchableOpacity style={styles.breakOverlayButton} onPress={() => setBreakEndConfirmOpen(true)}>
-                <MaterialIcons name="free-breakfast" size={18} color="#ffffff" />
-                <Text style={styles.breakOverlayText}>End break</Text>
-                <Text style={styles.breakOverlayTimerText}>{formatBreakCountdown(breakEndsAt, breakNow)}</Text>
-              </TouchableOpacity>
-            </View>
-          ) : null}
           {renderBreakModals()}
         </View>
       </MobileAdminShellContext.Provider>
@@ -867,8 +866,13 @@ export default function TabletNavigationShell({ currentRoute, children }) {
             ) : null}
             <TouchableOpacity style={[styles.drawerUtilityButton, breakEndsAt ? styles.drawerUtilityButtonActive : null]} onPress={handleBreakPress}>
               <MaterialIcons name="free-breakfast" size={20} color="#f8fafc" />
-              {!collapsed ? <Text style={styles.drawerUtilityText}>Break</Text> : null}
-              {!collapsed && breakEndsAt ? <Text style={styles.drawerUtilityTimerText}>{formatBreakCountdown(breakEndsAt, breakNow)}</Text> : null}
+              {!collapsed ? <Text style={styles.drawerUtilityText}>{breakEndsAt ? 'End Break' : 'Break'}</Text> : null}
+              {!collapsed && breakEndsAt ? (
+                <View style={styles.drawerBreakMetaWrap}>
+                  <View style={styles.drawerBreakDivider} />
+                  <Text style={styles.drawerUtilityTimerText}>{formatBreakCountdown(breakEndsAt, breakNow)}</Text>
+                </View>
+              ) : null}
             </TouchableOpacity>
             <TouchableOpacity style={styles.drawerUtilityButton} onPress={() => openTarget({ root: 'Settings', screen: 'Help' })}>
               <MaterialIcons name="help-outline" size={20} color="#f8fafc" />
@@ -884,16 +888,6 @@ export default function TabletNavigationShell({ currentRoute, children }) {
             </TouchableOpacity>
           </View>
         </ScrollView>
-
-          {breakEndsAt && breakNow < breakEndsAt ? (
-            <View style={[styles.breakOverlayWrap, { right: 24, bottom: Math.max(insets.bottom, 12) + 24 }]}> 
-              <TouchableOpacity style={styles.breakOverlayButton} onPress={() => setBreakEndConfirmOpen(true)}>
-                <MaterialIcons name="free-breakfast" size={18} color="#ffffff" />
-                <Text style={styles.breakOverlayText}>End break</Text>
-                <Text style={styles.breakOverlayTimerText}>{formatBreakCountdown(breakEndsAt, breakNow)}</Text>
-              </TouchableOpacity>
-            </View>
-          ) : null}
 
           <View style={[styles.contentWrap, { paddingTop: 12, paddingBottom: Math.max(insets.bottom, 12) }]}>
             {renderBreakModals()}
@@ -976,6 +970,8 @@ const styles = StyleSheet.create({
   drawerUtilityMetaWrap: { flexDirection: 'row', alignItems: 'center', marginLeft: 'auto' },
   drawerUtilityDivider: { width: 2, height: 24, backgroundColor: 'rgba(226, 232, 240, 0.3)', marginRight: 3, marginLeft: 3 },
   drawerUtilityTimerText: { color: '#f8fafc', fontWeight: '800' },
+  drawerBreakMetaWrap: { flexDirection: 'row', alignItems: 'center', marginLeft: 'auto' },
+  drawerBreakDivider: { width: 2, height: 24, backgroundColor: 'rgba(226, 232, 240, 0.3)', marginLeft: 4, marginRight: 4 },
   logoutButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 14, backgroundColor: '#1e293b' },
   logoutText: { color: '#fecaca', fontWeight: '700', marginLeft: 10 },
   contentWrap: { flex: 1, paddingHorizontal: 12, position: 'relative' },
@@ -1028,7 +1024,9 @@ const styles = StyleSheet.create({
   mobileBreakButtonActive: { backgroundColor: '#eff6ff', borderColor: '#93c5fd' },
   mobileBreakText: { color: '#0f172a', fontWeight: '700', marginLeft: 10 },
   mobileClockMetaText: { color: '#0f172a', fontWeight: '800', marginLeft: 'auto' },
-  mobileBreakTimerText: { color: '#0f172a', fontWeight: '800', marginLeft: 'auto', marginRight: -12 },
+  mobileBreakMetaWrap: { flexDirection: 'row', alignItems: 'center', marginLeft: 'auto' },
+  mobileBreakDivider: { width: 2, height: 24, backgroundColor: '#cbd5e1', marginLeft: 4, marginRight: 4 },
+  mobileBreakTimerText: { color: '#0f172a', fontWeight: '800' },
   mobileUtilitySection: { marginTop: 6, paddingTop: 8, paddingBottom: 6, borderTopWidth: 1, borderTopColor: '#dbe2ea' },
   mobileUtilityButton: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 12, backgroundColor: '#eff6ff', marginBottom: 10 },
   mobileUtilityButtonDisabled: { opacity: 0.72 },
@@ -1048,11 +1046,6 @@ const styles = StyleSheet.create({
   breakConfirmSecondaryText: { color: '#0f172a', fontWeight: '700' },
   breakConfirmPrimaryButton: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10, backgroundColor: '#2563eb' },
   breakConfirmPrimaryText: { color: '#ffffff', fontWeight: '700' },
-  breakOverlayWrap: { position: 'absolute', zIndex: 30 },
-  mobileBreakOverlayWrap: { left: 12, right: 12 },
-  breakOverlayButton: { minHeight: 48, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#1d4ed8', flexDirection: 'row', alignItems: 'center', shadowColor: '#0f172a', shadowOpacity: 0.16, shadowRadius: 10, shadowOffset: { width: 0, height: 6 }, elevation: 8 },
-  breakOverlayText: { color: '#ffffff', fontWeight: '800', marginLeft: 10 },
-  breakOverlayTimerText: { color: '#dbeafe', fontWeight: '800', marginLeft: 'auto' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.45)', justifyContent: 'center', padding: 24 },
   modalCard: { borderRadius: 20, backgroundColor: '#ffffff', padding: 18 },
   modalTitle: { fontSize: 18, fontWeight: '800', color: '#0f172a' },
