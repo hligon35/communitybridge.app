@@ -7,7 +7,12 @@ import { useData } from '../DataContext';
 import { useAuth } from '../AuthContext';
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import ImageToggle from '../components/ImageToggle';
+import EmptyInsightsState from '../features/sessionInsights/components/EmptyInsightsState';
+import InsightStatCard from '../features/sessionInsights/components/InsightStatCard';
 import LatestSummaryCard from '../features/sessionInsights/components/LatestSummaryCard';
+import TrendMiniChart from '../features/sessionInsights/components/TrendMiniChart';
+import BehaviorTrendList from '../features/sessionInsights/components/BehaviorTrendList';
+import useChildProgressInsights from '../features/sessionInsights/hooks/useChildProgressInsights';
 import { childHasParent, findLinkedParentId } from '../utils/directoryLinking';
 import { avatarSourceFor } from '../utils/idVisibility';
 import { maskEmailDisplay, maskPhoneDisplay } from '../utils/inputFormat';
@@ -75,11 +80,14 @@ export default function MyChildScreen() {
   const [approvedParentSummaries, setApprovedParentSummaries] = useState([]);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState('');
+  const [expandedApprovedSummaryId, setExpandedApprovedSummaryId] = useState(null);
+  const [selectedParentSection, setSelectedParentSection] = useState('summary');
   const [artifactModalOpen, setArtifactModalOpen] = useState(false);
   const [artifactLoading, setArtifactLoading] = useState(false);
   const [artifactError, setArtifactError] = useState('');
   const [artifactTitle, setArtifactTitle] = useState('SessionSummary.txt');
   const [artifactText, setArtifactText] = useState('');
+  const childInsights = useChildProgressInsights(child?.id || '', { limit: 20 });
 
   function getProposalTypeLabel(type) {
     const normalized = String(type || '').trim().toLowerCase();
@@ -251,6 +259,11 @@ export default function MyChildScreen() {
     setArtifactText('');
   }, [child?.id]);
 
+  useEffect(() => {
+    setSelectedParentSection('summary');
+    setExpandedApprovedSummaryId(null);
+  }, [child?.id]);
+
   const latestApprovedSummarySubtitle = useMemo(() => {
     const source = latestApprovedSummary?.approvedAt || latestApprovedSummary?.updatedAt || latestApprovedSummary?.generatedAt || '';
     if (!source) return '';
@@ -261,13 +274,17 @@ export default function MyChildScreen() {
     }
   }, [latestApprovedSummary]);
 
-  const previousApprovedSummaries = useMemo(() => {
-    const latestSessionId = String(latestApprovedSummary?.sessionId || '').trim();
-    return approvedSummaryHistory.filter((item) => String(item?.sessionId || '').trim() !== latestSessionId);
-  }, [approvedSummaryHistory, latestApprovedSummary?.sessionId]);
+  const recentApprovedSummaries = useMemo(() => approvedSummaryHistory.slice(0, 10), [approvedSummaryHistory]);
 
   const latestApprovedParentSummary = approvedParentSummaries[0] || null;
   const previousApprovedParentSummaries = useMemo(() => approvedParentSummaries.slice(1), [approvedParentSummaries]);
+  const parentQuickActions = useMemo(() => ([
+    { key: 'summary', label: 'Latest Summary' },
+    { key: 'recent-sessions', label: 'Recent Sessions' },
+    { key: 'pending-notifications', label: 'Pending Notifications' },
+    { key: 'care-plan', label: 'Care Plan' },
+    { key: 'insights', label: 'Insights' },
+  ]), []);
 
   function formatSessionStamp(item) {
     const source = item?.approvedAt || item?.updatedAt || item?.generatedAt || '';
@@ -277,14 +294,6 @@ export default function MyChildScreen() {
     } catch (_) {
       return 'Approved summary';
     }
-  }
-
-  function openRecentApprovedSessions(item) {
-    if (!child?.id) return;
-    navigation.navigate('RecentApprovedSessions', {
-      childId: child.id,
-      initialSessionId: String(item?.sessionId || item?.id || '').trim() || undefined,
-    });
   }
 
   async function openSummaryArtifact(item) {
@@ -353,6 +362,280 @@ export default function MyChildScreen() {
       // ignore
     }
   };
+
+  const toggleParentSection = (key) => {
+    setSelectedParentSection((current) => (current === key ? 'summary' : key));
+  };
+
+  const summaryContent = summaryLoading ? (
+    <View style={styles.summaryLoadingWrap}>
+      <ActivityIndicator size="small" color="#2563eb" />
+    </View>
+  ) : summaryError ? (
+    <Text style={styles.summaryErrorText}>{summaryError}</Text>
+  ) : latestApprovedSummary?.summary || latestApprovedParentSummary ? (
+    <>
+      {latestApprovedSummary?.summary ? (
+        <LatestSummaryCard
+          summary={latestApprovedSummary}
+          subtitle={latestApprovedSummarySubtitle}
+          metricsTwoByTwo
+          onOpenArtifact={() => openSummaryArtifact(latestApprovedSummary).catch(() => {})}
+          artifactDisabled={!String(latestApprovedSummary?.sessionId || '').trim()}
+        />
+      ) : null}
+
+      {latestApprovedParentSummary ? (
+        <View style={styles.summaryHistoryCard}>
+          <Text style={styles.summaryHistoryTitle}>Parent-Safe ABA Updates</Text>
+          <Text style={styles.summaryHistorySubtitle}>BCBA-approved behavior progress updates are summarized here without internal clinical detail.</Text>
+          <View style={styles.parentSummaryCard}>
+            <Text style={styles.parentSummaryStamp}>{formatSessionStamp(latestApprovedParentSummary)}</Text>
+            {latestApprovedParentSummary?.highLevelProgress ? <Text style={styles.parentSummaryBody}>{latestApprovedParentSummary.highLevelProgress}</Text> : null}
+            {latestApprovedParentSummary?.strengthsObserved ? <Text style={styles.parentSummaryDetail}>Strengths: {latestApprovedParentSummary.strengthsObserved}</Text> : null}
+            {latestApprovedParentSummary?.focusAreas ? <Text style={styles.parentSummaryDetail}>Focus areas: {latestApprovedParentSummary.focusAreas}</Text> : null}
+            {latestApprovedParentSummary?.homeCarryoverTip ? <Text style={styles.parentSummaryDetail}>Carryover tip: {latestApprovedParentSummary.homeCarryoverTip}</Text> : null}
+          </View>
+          {previousApprovedParentSummaries.map((item) => (
+            <View key={item.id || item.sessionDataSheetId} style={styles.parentSummaryHistoryEntry}>
+              <Text style={styles.parentSummaryHistoryStamp}>{formatSessionStamp(item)}</Text>
+              <Text style={styles.parentSummaryHistoryText} numberOfLines={3}>{item?.highLevelProgress || item?.focusAreas || 'Parent-safe ABA update available.'}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
+      {isParent ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Meeting with BCBA</Text>
+          {((child.upcoming || []).filter((u) => u.type === 'parent-aba')).length ? (
+            (child.upcoming || []).filter((u) => u.type === 'parent-aba').map((u) => (
+              <View key={u.id} style={{ marginBottom: 8 }}>
+                <Text style={styles.sectionText}>• {u.when} — {u.title}</Text>
+                {u.organizer ? (
+                  <Text style={[styles.sectionText, { marginTop: 4 }]}>Organizer: {u.organizer.name} • {maskPhoneDisplay(u.organizer.phone)} • {maskEmailDisplay(u.organizer.email)}</Text>
+                ) : null}
+              </View>
+            ))
+          ) : (
+            <Text style={styles.sectionText}>No meeting scheduled yet.</Text>
+          )}
+        </View>
+      ) : null}
+    </>
+  ) : (
+    <View style={styles.reviewAccordionList}>
+      {dailyReviewSections.map((section) => {
+        const isExpanded = expandedReviewSection === section.key;
+        return (
+          <TouchableOpacity
+            key={section.key}
+            style={styles.reviewAccordionCard}
+            activeOpacity={0.9}
+            onPress={() => setExpandedReviewSection(isExpanded ? null : section.key)}
+          >
+            <View style={styles.reviewAccordionHeader}>
+              <Text style={styles.reviewAccordionTitle}>{section.title}</Text>
+              <MaterialIcons name={isExpanded ? 'keyboard-arrow-up' : 'keyboard-arrow-down'} size={28} color="#667085" />
+            </View>
+            {isExpanded ? (
+              <Text style={styles.reviewAccordionContent}>{section.content}</Text>
+            ) : null}
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+
+  const recentSessionsContent = summaryLoading ? (
+    <View style={styles.summaryLoadingWrap}>
+      <ActivityIndicator size="small" color="#2563eb" />
+    </View>
+  ) : summaryError ? (
+    <Text style={styles.summaryErrorText}>{summaryError}</Text>
+  ) : (
+    <View style={styles.summaryHistoryCard}>
+      <Text style={styles.summaryHistoryTitle}>Recent Approved Sessions</Text>
+      <Text style={styles.summaryHistorySubtitle}>Review the last 10 approved session summaries for this learner here.</Text>
+      {recentApprovedSummaries.length ? recentApprovedSummaries.map((item) => {
+        const itemKey = String(item?.id || item?.sessionId || `${item?.approvedAt || ''}-${item?.generatedAt || ''}`);
+        const isExpanded = expandedApprovedSummaryId === itemKey;
+        const previewText = item?.summary?.dailyRecap?.therapistNarrative || item?.summary?.dailyRecap?.summary || item?.summary?.overview || 'No recap note recorded.';
+        return (
+          <TouchableOpacity
+            key={itemKey}
+            style={styles.summaryAccordionEntry}
+            activeOpacity={0.9}
+            onPress={() => setExpandedApprovedSummaryId(isExpanded ? null : itemKey)}
+          >
+            <View style={styles.summaryAccordionHeader}>
+              <View style={styles.summaryAccordionTitleWrap}>
+                <Text style={styles.summaryAccordionTitle}>{formatSessionStamp(item)}</Text>
+                <Text style={styles.summaryAccordionPreview} numberOfLines={isExpanded ? 0 : 2}>{previewText}</Text>
+              </View>
+              <MaterialIcons name={isExpanded ? 'keyboard-arrow-up' : 'keyboard-arrow-down'} size={28} color="#667085" />
+            </View>
+            {isExpanded ? (
+              <View style={styles.summaryAccordionBody}>
+                <Text style={styles.summaryAccordionBodyText}>{previewText}</Text>
+                {!String(item?.sessionId || '').trim() ? null : (
+                  <TouchableOpacity style={styles.summaryArtifactLink} onPress={() => openSummaryArtifact(item).catch(() => {})}>
+                    <Text style={styles.summaryArtifactLinkText}>Open session artifact</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ) : null}
+          </TouchableOpacity>
+        );
+      }) : <Text style={styles.sectionText}>No approved sessions are available yet.</Text>}
+    </View>
+  );
+
+  const pendingNotificationsContent = (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>Pending Notifications</Text>
+      {(() => {
+        const memoRequests = (urgentMemos || []).filter((m) => m.childId === child.id && m.type === 'time_update' && (!m.status || m.status === 'pending'));
+        const proposalRequests = (timeChangeProposals || []).filter((p) => p.childId === child.id);
+        const combined = [
+          ...proposalRequests.map((p) => ({ ...p, _source: 'proposal', status: p.status || 'pending' })),
+          ...memoRequests.map((m) => ({ id: m.id, type: m.updateType, proposedISO: m.proposedISO, note: m.note, proposerName: m.proposerId, _source: 'memo', status: m.status || 'pending' })),
+        ];
+        if (!combined.length) return <Text style={styles.sectionText}>No pending notifications.</Text>;
+        return combined.map((p) => (
+          <View key={p.id} style={{ paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' }}>
+            <Text style={{ fontWeight: '700' }}>{getProposalTypeLabel(p.type)} notification</Text>
+            <Text style={{ color: '#374151' }}>Requested: {formatISO(p.proposedISO)}</Text>
+            <Text style={{ color: '#6b7280', fontSize: 12 }}>{p.note || ''}</Text>
+            <Text style={{ fontSize: 12, color: '#6b7280' }}>By: {p.proposerName || p.proposerId}</Text>
+            {user && isAdminRole(user.role) ? (
+              <View style={{ flexDirection: 'row', marginTop: 8 }}>
+                {p._source === 'proposal' ? (
+                  <>
+                    <TouchableOpacity onPress={async () => {
+                      const res = await respondToProposal(p.id, 'accept');
+                      if (res?.ok) Alert.alert('Accepted', 'The time change request was accepted.');
+                      else Alert.alert('Accept failed', String(res?.error || 'Could not update the time change request.'));
+                    }} style={{ marginRight: 8, padding: 8, backgroundColor: '#10B981', borderRadius: 8 }}>
+                      <Text style={{ color: '#fff' }}>Accept</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={async () => {
+                      const res = await respondToProposal(p.id, 'reject');
+                      if (res?.ok) Alert.alert('Rejected', 'The time change request was rejected.');
+                      else Alert.alert('Reject failed', String(res?.error || 'Could not update the time change request.'));
+                    }} style={{ padding: 8, backgroundColor: '#ef4444', borderRadius: 8 }}>
+                      <Text style={{ color: '#fff' }}>Reject</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <>
+                    <TouchableOpacity onPress={async () => { const ok = await respondToUrgentMemo(p.id, 'accepted'); if (ok) Alert.alert('Accepted'); }} style={{ marginRight: 8, padding: 8, backgroundColor: '#10B981', borderRadius: 8 }}>
+                      <Text style={{ color: '#fff' }}>Accept</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={async () => { const ok = await respondToUrgentMemo(p.id, 'denied'); if (ok) Alert.alert('Denied'); }} style={{ padding: 8, backgroundColor: '#ef4444', borderRadius: 8 }}>
+                      <Text style={{ color: '#fff' }}>Deny</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
+            ) : (
+              <Text style={{ marginTop: 8, color: '#6b7280' }}>Waiting for admin response</Text>
+            )}
+          </View>
+        ));
+      })()}
+    </View>
+  );
+
+  const carePlanContent = (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>Program</Text>
+      <Text style={styles.sectionText}>
+        {child?.curriculum || child?.programCurriculum || 'No curriculum details available yet.'}
+      </Text>
+
+      <View style={{ height: 10 }} />
+      <Text style={[styles.sectionTitle, { marginBottom: 6 }]}>Care Plan</Text>
+      <Text style={styles.sectionText}>
+        {child?.carePlan || "Sam's goals: fine motor, communication prompts, and independent dressing."}
+      </Text>
+
+      {featureFlags.programDocuments !== false ? (
+        <>
+          <View style={{ height: 10 }} />
+          <Text style={[styles.sectionTitle, { marginBottom: 6 }]}>Curriculum Documents</Text>
+          {(programDocs || []).length ? (
+            (programDocs || []).map((d) => (
+              <View key={d.url} style={styles.docRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontWeight: '700' }} numberOfLines={1}>{d.title}</Text>
+                  <Text style={{ color: '#6b7280', fontSize: 12 }} numberOfLines={1}>{d.url}</Text>
+                </View>
+                <TouchableOpacity onPress={() => openDoc(d.url)} style={styles.docBtn} accessibilityLabel={`Download ${d.title}`}>
+                  <MaterialIcons name="file-download" size={18} color="#2563eb" />
+                  <Text style={styles.docBtnText}>Download</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => printDoc(d.url)} style={styles.docBtn} accessibilityLabel={`Print ${d.title}`}>
+                  <MaterialIcons name="print" size={18} color="#2563eb" />
+                  <Text style={styles.docBtnText}>Print</Text>
+                </TouchableOpacity>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.sectionText}>No program documents available.</Text>
+          )}
+        </>
+      ) : null}
+    </View>
+  );
+
+  const insightsContent = (
+    <>
+      <View style={styles.insightsHero}>
+        <Text style={styles.insightsEyebrow}>Progress Insights</Text>
+        <Text style={styles.insightsTitle}>{child?.name || 'Child progress'}</Text>
+        <Text style={styles.sectionText}>Approved session summaries are translated into simple progress, behavior, and participation trends for families and care teams.</Text>
+      </View>
+
+      {childInsights.loading ? (
+        <View style={styles.summaryHistoryCard}>
+          <Text style={styles.sectionText}>Loading progress insights...</Text>
+        </View>
+      ) : null}
+
+      {!childInsights.loading && childInsights.error ? (
+        <EmptyInsightsState title="Could not load insights" message={childInsights.error} />
+      ) : null}
+
+      {!childInsights.loading && !childInsights.error && (!childInsights.data || !childInsights.data.stats || !childInsights.data.stats.sessions) ? (
+        <EmptyInsightsState />
+      ) : null}
+
+      {!childInsights.loading && !childInsights.error && childInsights.data?.stats?.sessions ? (
+        <>
+          <View style={styles.insightsStatsRow}>
+            <InsightStatCard label="Sessions" value={childInsights.data.stats.sessions} hint="Approved session records in range." />
+            <InsightStatCard label="Approved summaries" value={childInsights.data.stats.approvedSummaries} hint="Therapist-approved progress outputs." accent="#16a34a" />
+            <InsightStatCard label="Average mood" value={childInsights.data.stats.averageMood == null ? '—' : childInsights.data.stats.averageMood} hint="Average mood score across approved sessions." accent="#f59e0b" />
+            <InsightStatCard label="Behavior events" value={childInsights.data.stats.behaviorEventsCount} hint="Count of summarized behavior events." accent="#dc2626" />
+            <InsightStatCard label="Milestones met" value={childInsights.data.stats.successCriteriaCount} hint="Tracked success criteria across approved sessions." />
+            <InsightStatCard label="Programs worked" value={childInsights.data.stats.programsWorkedOnCount} hint="Programs or goals touched in the selected range." accent="#7c3aed" />
+          </View>
+
+          <TrendMiniChart title="Mood over time" items={childInsights.data?.trends?.mood || []} color="#0ea5e9" />
+          <TrendMiniChart title="Behavior frequency" items={childInsights.data?.trends?.behaviorFrequency || []} color="#dc2626" />
+          <TrendMiniChart title="Independence trend" items={childInsights.data?.trends?.independence || []} color="#16a34a" />
+          <TrendMiniChart title="Progress trend" items={childInsights.data?.trends?.progressLevel || []} color="#7c3aed" />
+
+          <BehaviorTrendList items={childInsights.data?.latestSummary?.interferingBehaviors || []} />
+          <LatestSummaryCard
+            summary={childInsights.data?.latestSummary}
+            subtitle={childInsights.data?.latestSummary?.approvedAt ? `Approved ${new Date(childInsights.data.latestSummary.approvedAt).toLocaleString()}` : ''}
+          />
+        </>
+      ) : null}
+    </>
+  );
 
   return (
     <ScreenWrapper bannerShowBack={false} style={{ flex: 1 }}>
@@ -436,216 +719,81 @@ export default function MyChildScreen() {
       )}
 
       <View>
-        <View style={styles.scheduleHeaderRow}>
-          <Text style={styles.scheduleGroupTitle}>Daily Review</Text>
-          <View style={styles.headerActionsRow}>
-            {child?.id ? (
-              <TouchableOpacity style={styles.reportsLinkButton} onPress={() => navigation.navigate('ChildProgressInsights', { childId: child.id })}>
-                <Text style={styles.reportsLinkButtonText}>Progress Insights</Text>
-              </TouchableOpacity>
-            ) : null}
-            {child?.id && !isParent ? (
-              <TouchableOpacity style={[styles.reportsLinkButton, styles.secondaryLinkButton]} onPress={() => navigation.navigate('Reports', { childId: child.id })}>
-                <Text style={styles.reportsLinkButtonText}>Open Reports</Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
-        </View>
-
-        {summaryLoading ? (
-          <View style={styles.summaryLoadingWrap}>
-            <ActivityIndicator size="small" color="#2563eb" />
-          </View>
-        ) : summaryError ? (
-          <Text style={styles.summaryErrorText}>{summaryError}</Text>
-        ) : latestApprovedSummary?.summary || latestApprovedParentSummary ? (
-          <>
-            {latestApprovedSummary?.summary ? (
-              <LatestSummaryCard
-                summary={latestApprovedSummary}
-                subtitle={latestApprovedSummarySubtitle}
-                metricsTwoByTwo
-                onOpenArtifact={() => openSummaryArtifact(latestApprovedSummary).catch(() => {})}
-                artifactDisabled={!String(latestApprovedSummary?.sessionId || '').trim()}
-              />
-            ) : null}
-
-            {previousApprovedSummaries.length ? (
-              <View style={styles.summaryHistoryCard}>
-                <Text style={styles.summaryHistoryTitle}>Recent Approved Sessions</Text>
-                <Text style={styles.summaryHistorySubtitle}>Review prior approved session summaries for this learner without leaving the family progress screen.</Text>
-                {previousApprovedSummaries.map((item) => {
-                  const itemKey = item.id || item.sessionId;
+        <View>
+          <View style={styles.scheduleHeaderRow}>
+            {isParent ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.quickLinksTrack}
+              >
+                {parentQuickActions.map((item, index) => {
+                  const isActive = selectedParentSection === item.key;
                   return (
-                    <TouchableOpacity key={itemKey} style={styles.summaryHistoryEntry} activeOpacity={0.88} onPress={() => openRecentApprovedSessions(item)}>
-                      <View style={styles.summaryHistoryEntryHeader}>
-                        <View style={styles.summaryHistoryEntryTextWrap}>
-                          <Text style={styles.summaryHistoryEntryTitle}>{formatSessionStamp(item)}</Text>
-                          <Text style={styles.summaryHistoryEntryPreview} numberOfLines={2}>
-                            {item?.summary?.dailyRecap?.therapistNarrative || 'No recap note recorded.'}
-                          </Text>
-                        </View>
-                        <MaterialIcons name="chevron-right" size={24} color="#64748b" />
-                      </View>
+                    <TouchableOpacity
+                      key={item.key}
+                      style={[
+                        styles.reportsLinkButton,
+                        index > 0 ? styles.secondaryLinkButton : null,
+                        isActive ? styles.reportsLinkButtonActive : null,
+                      ]}
+                      onPress={() => toggleParentSection(item.key)}
+                    >
+                      <Text style={[styles.reportsLinkButtonText, isActive ? styles.reportsLinkButtonTextActive : null]}>{item.label}</Text>
                     </TouchableOpacity>
                   );
                 })}
-              </View>
-            ) : null}
-
-            {latestApprovedParentSummary ? (
-              <View style={styles.summaryHistoryCard}>
-                <Text style={styles.summaryHistoryTitle}>Parent-Safe ABA Updates</Text>
-                <Text style={styles.summaryHistorySubtitle}>BCBA-approved behavior progress updates are summarized here without internal clinical detail.</Text>
-                <View style={styles.parentSummaryCard}>
-                  <Text style={styles.parentSummaryStamp}>{formatSessionStamp(latestApprovedParentSummary)}</Text>
-                  {latestApprovedParentSummary?.highLevelProgress ? <Text style={styles.parentSummaryBody}>{latestApprovedParentSummary.highLevelProgress}</Text> : null}
-                  {latestApprovedParentSummary?.strengthsObserved ? <Text style={styles.parentSummaryDetail}>Strengths: {latestApprovedParentSummary.strengthsObserved}</Text> : null}
-                  {latestApprovedParentSummary?.focusAreas ? <Text style={styles.parentSummaryDetail}>Focus areas: {latestApprovedParentSummary.focusAreas}</Text> : null}
-                  {latestApprovedParentSummary?.homeCarryoverTip ? <Text style={styles.parentSummaryDetail}>Carryover tip: {latestApprovedParentSummary.homeCarryoverTip}</Text> : null}
+              </ScrollView>
+            ) : (
+              <>
+                <Text style={styles.scheduleGroupTitle}>Daily Review</Text>
+                <View style={styles.headerActionsRow}>
+                  {child?.id ? (
+                    <TouchableOpacity style={styles.reportsLinkButton} onPress={() => navigation.navigate('ChildProgressInsights', { childId: child.id })}>
+                      <Text style={styles.reportsLinkButtonText}>Progress Insights</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                  {child?.id && !isParent ? (
+                    <TouchableOpacity style={[styles.reportsLinkButton, styles.secondaryLinkButton]} onPress={() => navigation.navigate('Reports', { childId: child.id })}>
+                      <Text style={styles.reportsLinkButtonText}>Open Reports</Text>
+                    </TouchableOpacity>
+                  ) : null}
                 </View>
-                {previousApprovedParentSummaries.map((item) => (
-                  <View key={item.id || item.sessionDataSheetId} style={styles.parentSummaryHistoryEntry}>
-                    <Text style={styles.parentSummaryHistoryStamp}>{formatSessionStamp(item)}</Text>
-                    <Text style={styles.parentSummaryHistoryText} numberOfLines={3}>{item?.highLevelProgress || item?.focusAreas || 'Parent-safe ABA update available.'}</Text>
-                  </View>
-                ))}
-              </View>
-            ) : null}
+              </>
+            )}
+          </View>
+        </View>
+
+        {isParent ? (
+          <>
+            {selectedParentSection === 'summary' ? summaryContent : null}
+            {selectedParentSection === 'recent-sessions' ? recentSessionsContent : null}
+            {selectedParentSection === 'pending-notifications' ? pendingNotificationsContent : null}
+            {selectedParentSection === 'care-plan' ? carePlanContent : null}
+            {selectedParentSection === 'insights' ? insightsContent : null}
           </>
         ) : (
-          <View style={styles.reviewAccordionList}>
-            {dailyReviewSections.map((section) => {
-              const isExpanded = expandedReviewSection === section.key;
-              return (
-                <TouchableOpacity
-                  key={section.key}
-                  style={styles.reviewAccordionCard}
-                  activeOpacity={0.9}
-                  onPress={() => setExpandedReviewSection(isExpanded ? null : section.key)}
-                >
-                  <View style={styles.reviewAccordionHeader}>
-                    <Text style={styles.reviewAccordionTitle}>{section.title}</Text>
-                    <MaterialIcons name={isExpanded ? 'keyboard-arrow-up' : 'keyboard-arrow-down'} size={28} color="#667085" />
-                  </View>
-                  {isExpanded ? (
-                    <Text style={styles.reviewAccordionContent}>{section.content}</Text>
-                  ) : null}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Pending Notifications</Text>
-          {(() => {
-            const memoRequests = (urgentMemos || []).filter((m) => m.childId === child.id && m.type === 'time_update' && (!m.status || m.status === 'pending'));
-            const proposalRequests = (timeChangeProposals || []).filter((p) => p.childId === child.id);
-            const combined = [
-              ...proposalRequests.map((p) => ({ ...p, _source: 'proposal', status: p.status || 'pending' })),
-              ...memoRequests.map((m) => ({ id: m.id, type: m.updateType, proposedISO: m.proposedISO, note: m.note, proposerName: m.proposerId, _source: 'memo', status: m.status || 'pending' }))
-            ];
-            if (!combined.length) return <Text style={styles.sectionText}>No pending notifications.</Text>;
-            return combined.map((p) => (
-              <View key={p.id} style={{ paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' }}>
-                <Text style={{ fontWeight: '700' }}>{getProposalTypeLabel(p.type)} notification</Text>
-                <Text style={{ color: '#374151' }}>Requested: {formatISO(p.proposedISO)}</Text>
-                <Text style={{ color: '#6b7280', fontSize: 12 }}>{p.note || ''}</Text>
-                <Text style={{ fontSize: 12, color: '#6b7280' }}>By: {p.proposerName || p.proposerId}</Text>
-                {user && isAdminRole(user.role) ? (
-                  <View style={{ flexDirection: 'row', marginTop: 8 }}>
-                    {p._source === 'proposal' ? (
-                      <>
-                        <TouchableOpacity onPress={async () => {
-                          const res = await respondToProposal(p.id, 'accept');
-                          if (res?.ok) Alert.alert('Accepted', 'The time change request was accepted.');
-                          else Alert.alert('Accept failed', String(res?.error || 'Could not update the time change request.'));
-                        }} style={{ marginRight: 8, padding: 8, backgroundColor: '#10B981', borderRadius: 8 }}>
-                          <Text style={{ color: '#fff' }}>Accept</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={async () => {
-                          const res = await respondToProposal(p.id, 'reject');
-                          if (res?.ok) Alert.alert('Rejected', 'The time change request was rejected.');
-                          else Alert.alert('Reject failed', String(res?.error || 'Could not update the time change request.'));
-                        }} style={{ padding: 8, backgroundColor: '#ef4444', borderRadius: 8 }}>
-                          <Text style={{ color: '#fff' }}>Reject</Text>
-                        </TouchableOpacity>
-                      </>
-                    ) : (
-                      <>
-                        <TouchableOpacity onPress={async () => { const ok = await respondToUrgentMemo(p.id, 'accepted'); if (ok) Alert.alert('Accepted'); }} style={{ marginRight: 8, padding: 8, backgroundColor: '#10B981', borderRadius: 8 }}>
-                          <Text style={{ color: '#fff' }}>Accept</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={async () => { const ok = await respondToUrgentMemo(p.id, 'denied'); if (ok) Alert.alert('Denied'); }} style={{ padding: 8, backgroundColor: '#ef4444', borderRadius: 8 }}>
-                          <Text style={{ color: '#fff' }}>Deny</Text>
-                        </TouchableOpacity>
-                      </>
-                    )}
-                  </View>
-                ) : (
-                  <Text style={{ marginTop: 8, color: '#6b7280' }}>Waiting for admin response</Text>
-                )}
-              </View>
-            ));
-          })()}
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Meeting with BCBA</Text>
-          {((child.upcoming || []).filter((u) => u.type === 'parent-aba')).length ? (
-            (child.upcoming || []).filter((u) => u.type === 'parent-aba').map((u) => (
-              <View key={u.id} style={{ marginBottom: 8 }}>
-                <Text style={styles.sectionText}>• {u.when} — {u.title}</Text>
-                {u.organizer ? (
-                  <Text style={[styles.sectionText, { marginTop: 4 }]}>Organizer: {u.organizer.name} • {maskPhoneDisplay(u.organizer.phone)} • {maskEmailDisplay(u.organizer.email)}</Text>
-                ) : null}
-              </View>
-            ))
-          ) : (
-            <Text style={styles.sectionText}>No meeting scheduled yet.</Text>
-          )}
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Program</Text>
-          <Text style={styles.sectionText}>
-            {child?.curriculum || child?.programCurriculum || 'No curriculum details available yet.'}
-          </Text>
-
-          <View style={{ height: 10 }} />
-          <Text style={[styles.sectionTitle, { marginBottom: 6 }]}>Care Plan</Text>
-          <Text style={styles.sectionText}>
-            {child?.carePlan || "Sam's goals: fine motor, communication prompts, and independent dressing."}
-          </Text>
-
-          {featureFlags.programDocuments !== false ? (
-            <>
-              <View style={{ height: 10 }} />
-              <Text style={[styles.sectionTitle, { marginBottom: 6 }]}>Curriculum Documents</Text>
-              {(programDocs || []).length ? (
-                (programDocs || []).map((d) => (
-                  <View key={d.url} style={styles.docRow}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontWeight: '700' }} numberOfLines={1}>{d.title}</Text>
-                      <Text style={{ color: '#6b7280', fontSize: 12 }} numberOfLines={1}>{d.url}</Text>
-                    </View>
-                    <TouchableOpacity onPress={() => openDoc(d.url)} style={styles.docBtn} accessibilityLabel={`Download ${d.title}`}>
-                      <MaterialIcons name="file-download" size={18} color="#2563eb" />
-                      <Text style={styles.docBtnText}>Download</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => printDoc(d.url)} style={styles.docBtn} accessibilityLabel={`Print ${d.title}`}>
-                      <MaterialIcons name="print" size={18} color="#2563eb" />
-                      <Text style={styles.docBtnText}>Print</Text>
-                    </TouchableOpacity>
+          <>
+            {summaryContent}
+            {pendingNotificationsContent}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Meeting with BCBA</Text>
+              {((child.upcoming || []).filter((u) => u.type === 'parent-aba')).length ? (
+                (child.upcoming || []).filter((u) => u.type === 'parent-aba').map((u) => (
+                  <View key={u.id} style={{ marginBottom: 8 }}>
+                    <Text style={styles.sectionText}>• {u.when} — {u.title}</Text>
+                    {u.organizer ? (
+                      <Text style={[styles.sectionText, { marginTop: 4 }]}>Organizer: {u.organizer.name} • {maskPhoneDisplay(u.organizer.phone)} • {maskEmailDisplay(u.organizer.email)}</Text>
+                    ) : null}
                   </View>
                 ))
               ) : (
-                <Text style={styles.sectionText}>No program documents available.</Text>
+                <Text style={styles.sectionText}>No meeting scheduled yet.</Text>
               )}
-            </>
-          ) : null}
-        </View>
+            </View>
+            {carePlanContent}
+          </>
+        )}
       </View>
 
       <Modal transparent visible={artifactModalOpen} animationType="fade" onRequestClose={() => setArtifactModalOpen(false)}>
@@ -716,15 +864,27 @@ const styles = StyleSheet.create({
   scheduleWrap: { marginTop: 12, backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, padding: 12 },
   scheduleHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headerActionsRow: { flexDirection: 'row', alignItems: 'center' },
+  quickLinksTrack: { paddingRight: 8 },
   scheduleGroupTitle: { textAlign: 'center', fontWeight: '800', fontSize: 16, color: '#111827' },
   reportsLinkButton: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 999, backgroundColor: '#dbeafe' },
+  reportsLinkButtonActive: { backgroundColor: '#2563eb' },
   secondaryLinkButton: { marginLeft: 8 },
   reportsLinkButtonText: { color: '#1d4ed8', fontWeight: '800', fontSize: 12 },
+  reportsLinkButtonTextActive: { color: '#ffffff' },
   summaryLoadingWrap: { paddingVertical: 24, alignItems: 'center', justifyContent: 'center' },
   summaryErrorText: { color: '#b91c1c', paddingVertical: 12 },
   summaryHistoryCard: { marginTop: 12, backgroundColor: '#ffffff', borderRadius: 16, borderWidth: 1, borderColor: '#e5e7eb', padding: 14 },
   summaryHistoryTitle: { fontSize: 15, fontWeight: '800', color: '#111827' },
   summaryHistorySubtitle: { marginTop: 4, color: '#64748b', lineHeight: 20 },
+  summaryAccordionEntry: { marginTop: 12, borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 12 },
+  summaryAccordionHeader: { flexDirection: 'row', alignItems: 'center' },
+  summaryAccordionTitleWrap: { flex: 1, paddingRight: 12 },
+  summaryAccordionTitle: { fontWeight: '800', color: '#111827' },
+  summaryAccordionPreview: { marginTop: 4, color: '#475569', lineHeight: 20 },
+  summaryAccordionBody: { marginTop: 12, borderRadius: 14, backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', padding: 12 },
+  summaryAccordionBodyText: { color: '#334155', lineHeight: 20 },
+  summaryArtifactLink: { marginTop: 12, alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 999, backgroundColor: '#dbeafe' },
+  summaryArtifactLinkText: { color: '#1d4ed8', fontWeight: '800', fontSize: 12 },
   parentSummaryCard: { marginTop: 12, borderRadius: 14, backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#dbeafe', padding: 14 },
   parentSummaryStamp: { color: '#1d4ed8', fontWeight: '800' },
   parentSummaryBody: { marginTop: 8, color: '#0f172a', lineHeight: 22, fontWeight: '700' },
@@ -732,11 +892,10 @@ const styles = StyleSheet.create({
   parentSummaryHistoryEntry: { marginTop: 12, borderTopWidth: 1, borderTopColor: '#e2e8f0', paddingTop: 12 },
   parentSummaryHistoryStamp: { color: '#111827', fontWeight: '700' },
   parentSummaryHistoryText: { marginTop: 4, color: '#475569', lineHeight: 20 },
-  summaryHistoryEntry: { marginTop: 12, borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 12 },
-  summaryHistoryEntryHeader: { flexDirection: 'row', alignItems: 'center' },
-  summaryHistoryEntryTextWrap: { flex: 1, paddingRight: 12 },
-  summaryHistoryEntryTitle: { fontWeight: '800', color: '#111827' },
-  summaryHistoryEntryPreview: { marginTop: 4, color: '#475569', lineHeight: 20 },
+  insightsHero: { marginTop: 12, borderRadius: 22, backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe', padding: 18 },
+  insightsEyebrow: { color: '#1d4ed8', fontWeight: '800', fontSize: 12, textTransform: 'uppercase' },
+  insightsTitle: { marginTop: 6, fontSize: 24, fontWeight: '800', color: '#0f172a' },
+  insightsStatsRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginVertical: 12 },
   artifactModalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.42)', justifyContent: 'center', padding: 20 },
   artifactModalCard: { maxHeight: '80%', borderRadius: 18, backgroundColor: '#ffffff', padding: 18 },
   artifactModalTitle: { fontSize: 17, fontWeight: '800', color: '#111827' },

@@ -64,10 +64,16 @@ function dedupeMembers(children, therapists, options = {}) {
       });
     }
 
-    (Array.isArray(therapists) ? therapists : [])
+    const officeMatches = (Array.isArray(therapists) ? therapists : [])
       .filter((staff) => (parentScoped ? isOfficeAdminRole(staff?.role) : ['office', 'admin', 'reception', 'campusAdmin'].includes(String(staff?.role || '').trim())))
-      .filter((staff) => matchesCampus(staff, campusId))
-      .forEach((staff) => addMember(map, staff, staff.role, childLabel));
+      .filter((staff) => matchesCampus(staff, campusId));
+
+    if (parentScoped) {
+      const officeContact = officeMatches[0] || null;
+      if (officeContact) addMember(map, officeContact, officeContact.role, childLabel);
+    } else {
+      officeMatches.forEach((staff) => addMember(map, staff, staff.role, childLabel));
+    }
   });
   return Array.from(map.values());
 }
@@ -129,7 +135,7 @@ function buildCampusContacts(children, tenant) {
   return Array.from(contacts.values());
 }
 
-function ContactCard({ member, showContactInfo = true }) {
+function ContactCard({ member, showContactInfo = true, showChildrenLabel = true }) {
   const phone = member.phone;
   const email = member.email;
   const onCall = () => {
@@ -153,7 +159,7 @@ function ContactCard({ member, showContactInfo = true }) {
           {member.roles.length ? (
             <Text style={styles.role} numberOfLines={1}>{member.roles.join(' • ')}</Text>
           ) : null}
-          {member.childrenLabels.length ? (
+          {showChildrenLabel && member.childrenLabels.length ? (
             <Text style={styles.subtle} numberOfLines={1}>For {member.childrenLabels.join(', ')}</Text>
           ) : null}
           {showContactInfo && member.address ? (
@@ -208,8 +214,10 @@ export default function CareTeamScreen() {
   const relevantChildren = useMemo(() => {
     const linkedChildren = getRelevantChildren(linkedParentId, children);
     const requestedChildId = route?.params?.childId;
-    if (!requestedChildId) return linkedChildren;
-    return linkedChildren.filter((child) => child?.id === requestedChildId);
+    if (!requestedChildId) return isParent ? linkedChildren.slice(0, 1) : linkedChildren;
+    const matchedChildren = linkedChildren.filter((child) => child?.id === requestedChildId);
+    if (matchedChildren.length) return matchedChildren;
+    return isParent ? linkedChildren.slice(0, 1) : linkedChildren;
   }, [children, linkedParentId, route?.params?.childId]);
   const members = useMemo(() => dedupeMembers(relevantChildren, therapists, { parentScoped: isParent }), [isParent, relevantChildren, therapists]);
   const campusContacts = useMemo(() => (isParent ? [] : buildCampusContacts(relevantChildren, tenant)), [isParent, relevantChildren, tenant]);
@@ -230,7 +238,7 @@ export default function CareTeamScreen() {
         ) : (
           <>
             {members.length ? <Text style={styles.sectionTitle}>Staff</Text> : null}
-            {members.map((m) => <ContactCard key={m.id} member={m} showContactInfo={!isParent} />)}
+            {members.map((m) => <ContactCard key={m.id} member={m} showContactInfo={!isParent} showChildrenLabel={!isParent} />)}
             {campusContacts.length ? <Text style={styles.sectionTitle}>Campus Contact</Text> : null}
             {campusContacts.map((contact) => <ContactCard key={contact.id} member={contact} />)}
           </>

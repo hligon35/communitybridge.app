@@ -357,7 +357,7 @@ export default function InsuranceBillingScreen() {
               <TouchableOpacity style={styles.primaryButton} onPress={openParentBilling}>
                 <Text style={styles.primaryButtonText}>Payment Portal</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.secondaryButton} onPress={openParentContact}>
+              <TouchableOpacity style={[styles.secondaryButton, styles.parentActionSecondaryButton]} onPress={openParentContact}>
                 <Text style={styles.secondaryButtonText}>Contact</Text>
               </TouchableOpacity>
             </View>
@@ -483,6 +483,7 @@ const styles = StyleSheet.create({
   digitalCardLabel: { color: '#bfdbfe', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4 },
   digitalCardValue: { marginTop: 4, color: '#ffffff', fontSize: 15, fontWeight: '700' },
   parentActionRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', marginTop: 12 },
+  parentActionSecondaryButton: { marginLeft: 10 },
   parentContactList: { marginTop: 10 },
   parentContactText: { color: '#475569', lineHeight: 20 },
   primaryButton: { marginTop: 10, alignSelf: 'flex-start', borderRadius: 12, backgroundColor: '#2563eb', paddingVertical: 12, paddingHorizontal: 14 },

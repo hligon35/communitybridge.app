@@ -110,7 +110,7 @@ function isOpenItemsStatus(item) {
 
 export default function RoleDashboardScreen({ navigation }) {
   const { user } = useAuth();
-  const { children = [], urgentMemos = [], directoryLoading = false, directoryError = '', fetchAndSync, activeSeedPreset = '', seededItemsNeededByChild = {} } = useData();
+  const { children = [], urgentMemos = [], directoryLoading = false, directoryError = '', fetchAndSync, activeSeedPreset = '', seededItemsNeededByChild = {}, respondToUrgentMemo } = useData();
   const tenant = useTenant();
   const isTabletLayout = useIsTabletLayout();
   const { width, height } = useWindowDimensions();
@@ -264,6 +264,12 @@ export default function RoleDashboardScreen({ navigation }) {
       setItemsNeededOverlayOpen(false);
       return;
     }
+
+    const memoIds = parentItemsNeededEntries.map((item) => item.memoId).filter(Boolean);
+    if (memoIds.length) {
+      await Promise.allSettled(memoIds.map((memoId) => respondToUrgentMemo?.(memoId, 'opened')));
+    }
+
     const next = { ...(readItemsNeededIds || {}) };
     parentItemsNeededEntries.forEach((item) => {
       next[item.id] = new Date().toISOString();
@@ -563,6 +569,7 @@ export default function RoleDashboardScreen({ navigation }) {
 
         {!isTherapist ? <View style={[styles.grid, isTherapist ? styles.gridTherapist : null]}>
           {showDashboardPlaceholder ? dashboardCards.map((card) => renderPlaceholderDashboardCard(card.key)) : dashboardCards.map((card) => {
+            const showCardValue = isTherapist || card.key === 'mood-score';
             const cardContent = (
               <>
                 <View style={styles.cardIconRow}>
@@ -578,7 +585,7 @@ export default function RoleDashboardScreen({ navigation }) {
                   ) : null}
                 </View>
                 <Text style={styles.cardTitle}>{card.title}</Text>
-                <Text style={styles.cardValue}>{card.value}</Text>
+                {showCardValue ? <Text style={styles.cardValue}>{card.value}</Text> : null}
               </>
             );
 
@@ -640,12 +647,12 @@ const styles = StyleSheet.create({
   statusText: { flexShrink: 1, color: '#334155', lineHeight: 18 },
   retryButton: { marginLeft: 'auto', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, backgroundColor: '#2563eb' },
   retryButtonText: { color: '#ffffff', fontWeight: '700', fontSize: 12 },
-  familyCarouselTrack: { paddingRight: 8, paddingTop: 12 },
+  // familyCarouselTrack: { paddingRight: 2, paddingTop: 2 },
   familyCard: {
     width: 108,
     marginRight: 12,
     paddingVertical: 12,
-    paddingHorizontal: 10,
+    paddingHorizontal: 2,
     borderRadius: 16,
     backgroundColor: '#fff',
     borderWidth: 1,

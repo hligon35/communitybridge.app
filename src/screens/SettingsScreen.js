@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, Image, Alert, ScrollView, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Image, Alert, ScrollView, Platform, Modal, TextInput, ActivityIndicator, KeyboardAvoidingView } from 'react-native';
 import { useAuth } from '../AuthContext';
 import { BASE_URL } from '../config';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -10,14 +10,12 @@ import TenantSwitcher from '../components/TenantSwitcher';
 import { avatarSourceFor } from '../utils/idVisibility';
 import { registerForExpoPushTokenAsync } from '../utils/pushNotifications';
 import * as Api from '../Api';
-import * as Updates from 'expo-updates';
-import Constants from 'expo-constants';
 import { SETTINGS_KEYS, readBooleanSetting, writeBooleanSetting } from '../utils/appSettings';
+import { formatPhoneInput } from '../utils/inputFormat';
 import { isAdminRole, normalizeUserRole, USER_ROLES } from '../core/tenant/models';
 import useIsTabletLayout from '../hooks/useIsTabletLayout';
 
 const editIconImage = require('../../assets/icons/edit.png');
-const checkUpdatesIcon = require('../../assets/icons/checkUpdates.png');
 const deleteAccountIcon = require('../../assets/icons/deleteAccount.png');
 
 const ARRIVAL_KEY = SETTINGS_KEYS.arrivalEnabled;
@@ -27,14 +25,23 @@ const PUSH_TIMELINE_POSTS_KEY = 'settings_push_timeline_posts_v1';
 const PUSH_MENTIONS_POSTS_KEY = 'settings_push_mentions_posts_v1';
 const PUSH_TAGS_POSTS_KEY = 'settings_push_tags_posts_v1';
 const PUSH_UPDATES_KEY = 'settings_push_updates_v1';
-const PUSH_OTHER_KEY = 'settings_push_other_v1';
 const SHOW_EMAIL_KEY = SETTINGS_KEYS.showEmail;
 const SHOW_PHONE_KEY = SETTINGS_KEYS.showPhone;
 
+function passwordPolicy(pw) {
+  const value = String(pw || '');
+  const hasMinLen = value.length >= 8;
+  const hasUpper = /[A-Z]/.test(value);
+  const hasSpecial = /[^A-Za-z0-9]/.test(value);
+  const score = [hasMinLen, hasUpper, hasSpecial].filter(Boolean).length;
+  return { hasMinLen, hasUpper, hasSpecial, score };
+}
+
 export default function SettingsScreen({ navigation }) {
-  const { user, logout, setRole } = useAuth();
+  const { user, logout, setRole, setAuth, refreshMfaState } = useAuth();
   const isWeb = Platform.OS === 'web';
   const isTabletLayout = useIsTabletLayout();
+  const isParentSettings = normalizeUserRole(user?.role) === USER_ROLES.PARENT;
   const isParentMobileSettings = !isWeb && !isTabletLayout && normalizeUserRole(user?.role) === USER_ROLES.PARENT;
 
   React.useLayoutEffect(() => {
@@ -69,6 +76,11 @@ export default function SettingsScreen({ navigation }) {
   }, [isParentMobileSettings, logout, navigation]);
 
   const openEditProfile = React.useCallback(() => {
+    if (isParentSettings) {
+      openParentEditModal();
+      return;
+    }
+
     const parentNavigation = navigation?.getParent?.();
     const state = navigation?.getState?.();
     const routeNames = Array.isArray(state?.routeNames) ? state.routeNames : [];
@@ -84,11 +96,77 @@ export default function SettingsScreen({ navigation }) {
     }
 
     navigation.navigate('Settings', { screen: 'EditProfile' });
-  }, [navigation]);
+  }, [isParentSettings, navigation, openParentEditModal]);
 
-  const appVersion = Constants?.expoConfig?.version || Constants?.manifest?.version || '';
-  const iosBuildNumber = Constants?.expoConfig?.ios?.buildNumber || '';
-  const androidVersionCode = Constants?.expoConfig?.android?.versionCode || '';
+  function isValidEmail(value) {
+    const normalized = String(value || '').trim();
+    if (!normalized) return false;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized);
+  }
+
+  async function saveParentContactDetails() {
+    const nextEmail = String(parentEditEmail || '').trim().toLowerCase();
+    const nextPhone = formatPhoneInput(parentEditPhone);
+    const currentEmail = String(user?.email || '').trim().toLowerCase();
+    const currentPhone = formatPhoneInput(user?.phone);
+    const nextPassword = String(parentEditPassword || '');
+    const nextPasswordConfirm = String(parentEditPasswordConfirm || '');
+    const wantsPasswordChange = nextPassword.length > 0 || nextPasswordConfirm.length > 0;
+
+    if (!nextEmail || !isValidEmail(nextEmail)) {
+      Alert.alert('Invalid email', 'Enter a valid email address.');
+      return;
+    }
+
+    if (!nextPhone) {
+      Alert.alert('Phone required', 'Enter a phone number.');
+      return;
+    }
+
+    if (wantsPasswordChange) {
+      const policy = passwordPolicy(nextPassword);
+      if (!policy.hasMinLen) {
+        Alert.alert('Password', 'Password must be at least 8 characters.');
+        return;
+      }
+      if (!policy.hasUpper) {
+        Alert.alert('Password', 'Password must include at least 1 capital letter.');
+        return;
+      }
+      if (!policy.hasSpecial) {
+        Alert.alert('Password', 'Password must include at least 1 special character.');
+        return;
+      }
+      if (nextPassword !== nextPasswordConfirm) {
+        Alert.alert('Password', 'Passwords do not match.');
+        return;
+      }
+    }
+
+    const payload = {};
+    if (nextEmail !== currentEmail) payload.email = nextEmail;
+    if (nextPhone !== currentPhone) payload.phone = nextPhone;
+    if (wantsPasswordChange) payload.password = nextPassword;
+
+    if (!Object.keys(payload).length) {
+      setParentEditModalOpen(false);
+      return;
+    }
+
+    let method = 'email';
+    let phone = '';
+    let reason = 'password';
+    if (payload.phone) {
+      method = 'sms';
+      phone = nextPhone;
+      reason = 'phone';
+    } else if (payload.email) {
+      reason = 'email';
+    }
+
+    beginParentSensitiveAction({ payload, method, phone, reason }).catch(() => {});
+  }
+
   const [arrivalEnabled, setArrivalEnabled] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushChats, setPushChats] = useState(true);
@@ -96,19 +174,25 @@ export default function SettingsScreen({ navigation }) {
   const [pushMentionsPosts, setPushMentionsPosts] = useState(true);
   const [pushTagsPosts, setPushTagsPosts] = useState(true);
   const [pushUpdates, setPushUpdates] = useState(true);
-  const [pushOther, setPushOther] = useState(false);
   const [showEmail, setShowEmail] = useState(true);
   const [showPhone, setShowPhone] = useState(true);
-
-  const [updateStatus, setUpdateStatus] = useState({
-    isEnabled: Updates.isEnabled,
-    channel: Updates.channel ?? '',
-    runtimeVersion: Updates.runtimeVersion ?? '',
-    updateId: Updates.updateId ?? '',
-    isEmbeddedLaunch: Updates.isEmbeddedLaunch,
-    createdAt: Updates.createdAt ? String(Updates.createdAt) : '',
-  });
-  const [updateBusy, setUpdateBusy] = useState(false);
+  const [parentEditModalOpen, setParentEditModalOpen] = useState(false);
+  const [parentEditEmail, setParentEditEmail] = useState(String(user?.email || ''));
+  const [parentEditPhone, setParentEditPhone] = useState(formatPhoneInput(user?.phone));
+  const [parentEditPassword, setParentEditPassword] = useState('');
+  const [parentEditPasswordConfirm, setParentEditPasswordConfirm] = useState('');
+  const [parentEditSaving, setParentEditSaving] = useState(false);
+  const [parentSensitiveAction, setParentSensitiveAction] = useState('');
+  const [parentPendingSensitivePayload, setParentPendingSensitivePayload] = useState(null);
+  const [parentTwoFactorMethod, setParentTwoFactorMethod] = useState('email');
+  const [parentTwoFactorPhone, setParentTwoFactorPhone] = useState('');
+  const [parentTwoFactorReason, setParentTwoFactorReason] = useState('');
+  const [parentTwoFactorModalOpen, setParentTwoFactorModalOpen] = useState(false);
+  const [parentTwoFactorCode, setParentTwoFactorCode] = useState('');
+  const [parentTwoFactorSending, setParentTwoFactorSending] = useState(false);
+  const [parentTwoFactorBusy, setParentTwoFactorBusy] = useState(false);
+  const [parentTwoFactorStatus, setParentTwoFactorStatus] = useState('');
+  const [parentTwoFactorError, setParentTwoFactorError] = useState('');
   const [deleteBusy, setDeleteBusy] = useState(false);
 
   // Debounced push preference sync to backend (efficient + consistent).
@@ -130,7 +214,6 @@ export default function SettingsScreen({ navigation }) {
         const pmp = await AsyncStorage.getItem(PUSH_MENTIONS_POSTS_KEY);
         const ptg = await AsyncStorage.getItem(PUSH_TAGS_POSTS_KEY);
         const pu = await AsyncStorage.getItem(PUSH_UPDATES_KEY);
-        const po = await AsyncStorage.getItem(PUSH_OTHER_KEY);
         if (!mounted) return;
         setArrivalEnabled(!!a);
         if (p !== null) setPushEnabled(p === '1');
@@ -139,7 +222,6 @@ export default function SettingsScreen({ navigation }) {
         if (pmp !== null) setPushMentionsPosts(pmp === '1');
         if (ptg !== null) setPushTagsPosts(ptg === '1');
         if (pu !== null) setPushUpdates(pu === '1');
-        if (po !== null) setPushOther(po === '1');
         const se = await AsyncStorage.getItem(SHOW_EMAIL_KEY);
         const sp = await AsyncStorage.getItem(SHOW_PHONE_KEY);
         if (se !== null) setShowEmail(se === '1');
@@ -151,64 +233,6 @@ export default function SettingsScreen({ navigation }) {
     load();
     return () => { mounted = false; };
   }, []);
-
-  useEffect(() => {
-    // Keep display values fresh after reloads/updates.
-    setUpdateStatus({
-      isEnabled: Updates.isEnabled,
-      channel: Updates.channel ?? '',
-      runtimeVersion: Updates.runtimeVersion ?? '',
-      updateId: Updates.updateId ?? '',
-      isEmbeddedLaunch: Updates.isEmbeddedLaunch,
-      createdAt: Updates.createdAt ? String(Updates.createdAt) : '',
-    });
-  }, [Platform.OS]);
-
-  async function checkForOtaUpdate() {
-    if (Platform.OS === 'web') {
-      Alert.alert('Not supported', 'EAS Update is not supported on web.');
-      return;
-    }
-    if (!Updates.isEnabled) {
-      Alert.alert(
-        'Updates disabled',
-        'This build does not have expo-updates enabled (or you are running a dev/Expo Go session). Install an EAS-built binary to receive OTA updates.'
-      );
-      return;
-    }
-
-    try {
-      setUpdateBusy(true);
-      const result = await Updates.checkForUpdateAsync();
-      if (!result.isAvailable) {
-        Alert.alert('Up to date', 'No update is available for this channel/runtime version.');
-        return;
-      }
-
-      const fetched = await Updates.fetchUpdateAsync();
-      setUpdateStatus({
-        isEnabled: Updates.isEnabled,
-        channel: Updates.channel ?? '',
-        runtimeVersion: Updates.runtimeVersion ?? '',
-        updateId: Updates.updateId ?? '',
-        isEmbeddedLaunch: Updates.isEmbeddedLaunch,
-        createdAt: Updates.createdAt ? String(Updates.createdAt) : '',
-      });
-
-      Alert.alert(
-        'Update downloaded',
-        'Restart the app to apply it now.',
-        [
-          { text: 'Later', style: 'cancel' },
-          { text: 'Restart now', onPress: () => Updates.reloadAsync().catch(() => {}) },
-        ]
-      );
-    } catch (e) {
-      Alert.alert('Update check failed', e?.message || String(e));
-    } finally {
-      setUpdateBusy(false);
-    }
-  }
 
   useEffect(() => {
     writeBooleanSetting(ARRIVAL_KEY, arrivalEnabled).catch(() => {});
@@ -233,9 +257,6 @@ export default function SettingsScreen({ navigation }) {
   useEffect(() => {
     AsyncStorage.setItem(PUSH_UPDATES_KEY, pushUpdates ? '1' : '0').catch(() => {});
   }, [pushUpdates]);
-  useEffect(() => {
-    AsyncStorage.setItem(PUSH_OTHER_KEY, pushOther ? '1' : '0').catch(() => {});
-  }, [pushOther]);
 
   function buildPushPreferences() {
     return {
@@ -244,7 +265,6 @@ export default function SettingsScreen({ navigation }) {
       mentionsPosts: !!pushMentionsPosts,
       tagsPosts: !!pushTagsPosts,
       updates: !!pushUpdates,
-      other: !!pushOther,
     };
   }
 
@@ -292,7 +312,6 @@ export default function SettingsScreen({ navigation }) {
     pushMentionsPosts,
     pushTagsPosts,
     pushUpdates,
-    pushOther,
     user?.id,
   ]);
 
@@ -303,6 +322,105 @@ export default function SettingsScreen({ navigation }) {
   useEffect(() => {
     writeBooleanSetting(SHOW_PHONE_KEY, showPhone).catch(() => {});
   }, [showPhone]);
+
+  const openParentEditModal = React.useCallback(() => {
+    setParentEditEmail(String(user?.email || ''));
+    setParentEditPhone(formatPhoneInput(user?.phone));
+    setParentEditPassword('');
+    setParentEditPasswordConfirm('');
+    setParentEditModalOpen(true);
+  }, [user?.email, user?.phone]);
+
+  const closeParentTwoFactorModal = React.useCallback(() => {
+    setParentTwoFactorModalOpen(false);
+    setParentSensitiveAction('');
+    setParentPendingSensitivePayload(null);
+    setParentTwoFactorMethod('email');
+    setParentTwoFactorPhone('');
+    setParentTwoFactorReason('');
+    setParentTwoFactorCode('');
+    setParentTwoFactorStatus('');
+    setParentTwoFactorError('');
+  }, []);
+
+  const applyParentProfileUpdate = React.useCallback(async (payload) => {
+    try {
+      setParentEditSaving(true);
+      const result = await Api.updateMe(payload || {});
+      const nextUser = {
+        ...(user || {}),
+        ...(payload || {}),
+        ...(result?.user || {}),
+      };
+      await setAuth({ token: result?.token, user: nextUser });
+      setParentEditModalOpen(false);
+      setParentEditPassword('');
+      setParentEditPasswordConfirm('');
+      Alert.alert('Profile updated', 'Your account details were updated.');
+    } catch (error) {
+      Alert.alert('Update failed', String(error?.message || error || 'Could not update your profile.'));
+    } finally {
+      setParentEditSaving(false);
+    }
+  }, [setAuth, user]);
+
+  const requestParentTwoFactorCode = React.useCallback(async ({ manual = true, method, phone } = {}) => {
+    if (!isParentSettings) return;
+    const nextMethod = String(method || parentTwoFactorMethod || 'email').toLowerCase() === 'sms' ? 'sms' : 'email';
+    const nextPhone = String(phone || parentTwoFactorPhone || '');
+    setParentTwoFactorError('');
+    if (!manual) setParentTwoFactorStatus('Sending verification code...');
+    setParentTwoFactorSending(true);
+    try {
+      const result = await Api.resend2fa({ method: nextMethod, ...(nextMethod === 'sms' && nextPhone ? { phone: nextPhone } : {}) });
+      const destination = String(result?.challenge?.to || user?.email || '').trim();
+      setParentTwoFactorStatus(destination ? `Code sent to ${destination}.` : 'Verification code sent.');
+    } catch (error) {
+      const message = String(error?.message || error || 'Could not send a verification code.');
+      setParentTwoFactorError(message);
+      if (manual) Alert.alert('Could not send code', message);
+    } finally {
+      setParentTwoFactorSending(false);
+    }
+  }, [isParentSettings, parentTwoFactorMethod, parentTwoFactorPhone, user?.email]);
+
+  const beginParentSensitiveAction = React.useCallback(async ({ payload, method, phone, reason } = {}) => {
+    if (!isParentSettings) return;
+    setParentSensitiveAction('profile-update');
+    setParentPendingSensitivePayload(payload || null);
+    setParentTwoFactorMethod(String(method || 'email').toLowerCase() === 'sms' ? 'sms' : 'email');
+    setParentTwoFactorPhone(String(phone || ''));
+    setParentTwoFactorReason(String(reason || ''));
+    setParentTwoFactorCode('');
+    setParentTwoFactorError('');
+    setParentTwoFactorStatus('');
+    setParentTwoFactorModalOpen(true);
+    await requestParentTwoFactorCode({ manual: false, method, phone });
+  }, [isParentSettings, requestParentTwoFactorCode]);
+
+  const verifyParentSensitiveAction = React.useCallback(async () => {
+    const code = String(parentTwoFactorCode || '').trim();
+    if (!code) {
+      Alert.alert('Missing code', 'Enter the verification code.');
+      return;
+    }
+
+    try {
+      setParentTwoFactorBusy(true);
+      setParentTwoFactorError('');
+      await Api.verify2fa({ code });
+      await refreshMfaState?.();
+      const payload = parentPendingSensitivePayload;
+      closeParentTwoFactorModal();
+      await applyParentProfileUpdate(payload);
+    } catch (error) {
+      const message = String(error?.message || error || 'Verification failed.');
+      setParentTwoFactorError(message);
+      Alert.alert('Verification failed', message);
+    } finally {
+      setParentTwoFactorBusy(false);
+    }
+  }, [applyParentProfileUpdate, closeParentTwoFactorModal, parentPendingSensitivePayload, parentTwoFactorCode, refreshMfaState]);
 
   const toggleArrival = () => {
     const next = !arrivalEnabled;
@@ -526,91 +644,31 @@ export default function SettingsScreen({ navigation }) {
             <ImageToggle value={pushEnabled} onValueChange={togglePush} accessibilityLabel="Push notifications" />
           </View>
 
-          {/* Chats */}
-          <View style={{ marginTop: 8, paddingVertical: 8, borderTopWidth: 1, borderTopColor: '#f3f4f6' }}>
-            <Text style={{ fontSize: 14, fontWeight: '700', marginBottom: 6 }}>Chats</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <View style={{ flex: 1, paddingRight: 8 }}>
-                <Text style={{ fontSize: 14 }}>Receive chat messages</Text>
-                <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>Get notified when someone sends you a chat message.</Text>
+          {!isParentSettings ? (
+            <View style={{ marginTop: 8, paddingVertical: 8, borderTopWidth: 1, borderTopColor: '#f3f4f6' }}>
+              <Text style={{ fontSize: 14, fontWeight: '700', marginBottom: 6 }}>Chats</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <View style={{ flex: 1, paddingRight: 8 }}>
+                  <Text style={{ fontSize: 14 }}>Receive chat messages</Text>
+                  <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>Get notified when someone sends you a chat message.</Text>
+                </View>
+                <ImageToggle value={pushChats} onValueChange={setPushChats} disabled={!pushEnabled} accessibilityLabel="Receive chat messages" />
               </View>
-              <ImageToggle value={pushChats} onValueChange={setPushChats} disabled={!pushEnabled} accessibilityLabel="Receive chat messages" />
             </View>
-          </View>
+          ) : null}
 
           {/* Updates & Reminders */}
           <View style={{ marginTop: 8, paddingVertical: 8, borderTopWidth: 1, borderTopColor: '#f3f4f6' }}>
             <Text style={{ fontSize: 14, fontWeight: '700', marginBottom: 6 }}>Updates & Reminders</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <View style={{ flex: 1, paddingRight: 8 }}>
                 <Text style={{ fontSize: 14 }}>Updates & reminders</Text>
-                <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>Urgent memos, schedule changes or cancellations, and arrival detection alerts.</Text>
+                <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>Urgent memos, schedule changes or cancellations, arrival detection alerts, and other low-priority notices.</Text>
               </View>
               <ImageToggle value={pushUpdates} onValueChange={setPushUpdates} disabled={!pushEnabled} accessibilityLabel="Updates and reminders" />
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <View style={{ flex: 1, paddingRight: 8 }}>
-                <Text style={{ fontSize: 14 }}>Other activity</Text>
-                <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>Low-priority notices that do not fit the categories above.</Text>
-              </View>
-              <ImageToggle value={pushOther} onValueChange={setPushOther} disabled={!pushEnabled} accessibilityLabel="Other activity" />
-            </View>
           </View>
         </View>
-
-          {/* Profile Privacy moved above Push Notifications */}
-
-          {/* Build / Update footer (fills extra space at bottom) */}
-          <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#f3f4f6' }}>
-            <Text style={{ fontSize: 16, fontWeight: '700', marginBottom: 8 }}>Build & Update</Text>
-            <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 8 }}>
-              Use this to confirm you’re on the expected build and EAS update.
-            </Text>
-            <Text style={{ fontSize: 13, color: '#111827' }}>App version: {appVersion || '(unknown)'}</Text>
-            {Platform.OS === 'ios' ? (
-              <Text style={{ fontSize: 13, color: '#111827' }}>iOS build: {iosBuildNumber || '(unknown)'}</Text>
-            ) : null}
-            {Platform.OS === 'android' ? (
-              <Text style={{ fontSize: 13, color: '#111827' }}>Android versionCode: {androidVersionCode || '(unknown)'}</Text>
-            ) : null}
-            {Platform.OS !== 'web' ? (
-              <View style={{ marginTop: 10 }}>
-                <Text style={{ fontSize: 13, color: '#111827' }}>Channel: {updateStatus.channel || '(unknown)'}</Text>
-                <Text style={{ fontSize: 13, color: '#111827' }}>Runtime: {updateStatus.runtimeVersion || '(unknown)'}</Text>
-                <Text style={{ fontSize: 13, color: '#111827' }}>Update ID: {updateStatus.updateId || '(embedded)'}</Text>
-                <Text style={{ fontSize: 13, color: '#111827' }}>Created at: {updateStatus.createdAt || '(unknown)'}</Text>
-              </View>
-            ) : null}
-          </View>
-
-          {/* EAS Update status (useful for verifying OTA updates) */}
-          {Platform.OS !== 'web' && !isTabletLayout ? (
-            <View style={{ marginTop: 12, borderTopWidth: 1, borderTopColor: '#eef2f7', paddingTop: 12 }}>
-              <Text style={{ fontSize: 16, fontWeight: '700', marginBottom: 8 }}>App Update Status</Text>
-              <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 8 }}>
-                Channel and runtime version must match the published EAS update.
-              </Text>
-
-              <View style={{ marginBottom: 10 }}>
-                <Text style={{ fontSize: 13, color: '#111827' }}>Updates enabled: {updateStatus.isEnabled ? 'yes' : 'no'}</Text>
-                <Text style={{ fontSize: 13, color: '#111827' }}>Channel: {updateStatus.channel || '(unknown)'}</Text>
-                <Text style={{ fontSize: 13, color: '#111827' }}>Runtime: {updateStatus.runtimeVersion || '(unknown)'}</Text>
-                <Text style={{ fontSize: 13, color: '#111827' }}>Update ID: {updateStatus.updateId || '(embedded)'}</Text>
-                <Text style={{ fontSize: 13, color: '#111827' }}>Embedded launch: {updateStatus.isEmbeddedLaunch ? 'yes' : 'no'}</Text>
-              </View>
-
-              <TouchableOpacity
-                onPress={checkForOtaUpdate}
-                disabled={updateBusy}
-                style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', paddingVertical: 4 }}
-                activeOpacity={0.7}
-              >
-                <Image source={checkUpdatesIcon} style={{ width: 48, height: 48, resizeMode: 'contain', marginRight: 10, opacity: updateBusy ? 0.5 : 1 }} />
-                <Text style={{ color: '#111827', fontWeight: '700' }}>{updateBusy ? 'Checking…' : 'Check for update now'}</Text>
-              </TouchableOpacity>
-            </View>
-          ) : null}
-
         </View>
 
         {/* Organization */}
@@ -636,6 +694,149 @@ export default function SettingsScreen({ navigation }) {
         </View>
         {/* Dev role switcher moved to DevRoleSwitcher (floating) */}
       </ScrollView>
+
+      <Modal transparent visible={parentEditModalOpen} animationType="fade" onRequestClose={() => !parentEditSaving && setParentEditModalOpen(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.42)', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%', maxWidth: 420 }}>
+            <View style={{ width: '100%', borderRadius: 22, backgroundColor: '#ffffff', padding: 18 }}>
+              <Text style={{ fontSize: 20, fontWeight: '800', color: '#111827' }}>Edit Contact Info</Text>
+              <Text style={{ marginTop: 6, color: '#64748b', lineHeight: 20 }}>Update your email address or phone number. These changes are saved to your profile and sign-in record.</Text>
+
+              <Text style={{ marginTop: 14, marginBottom: 6, fontSize: 12, fontWeight: '800', color: '#111827' }}>Email</Text>
+              <TextInput
+                value={parentEditEmail}
+                onChangeText={setParentEditEmail}
+                placeholder="name@example.com"
+                autoCapitalize="none"
+                keyboardType="email-address"
+                editable={!parentEditSaving}
+                style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, paddingVertical: 10, paddingHorizontal: 12, backgroundColor: '#fff' }}
+              />
+
+              <Text style={{ marginTop: 12, marginBottom: 6, fontSize: 12, fontWeight: '800', color: '#111827' }}>Phone</Text>
+              <TextInput
+                value={parentEditPhone}
+                onChangeText={(value) => setParentEditPhone(formatPhoneInput(value))}
+                placeholder="555-123-4567"
+                autoCapitalize="none"
+                keyboardType={Platform.OS === 'ios' ? 'numbers-and-punctuation' : 'phone-pad'}
+                editable={!parentEditSaving}
+                style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, paddingVertical: 10, paddingHorizontal: 12, backgroundColor: '#fff' }}
+              />
+
+              <Text style={{ marginTop: 16, fontSize: 16, fontWeight: '800', color: '#111827' }}>Change password</Text>
+              <Text style={{ marginTop: 6, color: '#64748b', lineHeight: 20 }}>Leave blank to keep your current password.</Text>
+
+              <Text style={{ marginTop: 12, marginBottom: 6, fontSize: 12, fontWeight: '800', color: '#111827' }}>New password</Text>
+              <TextInput
+                value={parentEditPassword}
+                onChangeText={setParentEditPassword}
+                placeholder="••••••"
+                autoCapitalize="none"
+                secureTextEntry
+                editable={!parentEditSaving}
+                style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, paddingVertical: 10, paddingHorizontal: 12, backgroundColor: '#fff' }}
+              />
+
+              {String(parentEditPassword || '').length > 0 ? (() => {
+                const policy = passwordPolicy(parentEditPassword);
+                const barColor = policy.score <= 1 ? '#ef4444' : policy.score === 2 ? '#F59E0B' : '#10B981';
+                const barWidth = policy.score === 0 ? '10%' : policy.score === 1 ? '35%' : policy.score === 2 ? '70%' : '100%';
+                return (
+                  <View style={{ marginTop: 8 }}>
+                    <View style={{ width: '100%', height: 8, borderRadius: 4, backgroundColor: '#e5e7eb', overflow: 'hidden' }}>
+                      <View style={{ height: 8, borderRadius: 4, width: barWidth, backgroundColor: barColor }} />
+                    </View>
+
+                    <View style={{ marginTop: 10 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
+                        <MaterialIcons name={policy.hasMinLen ? 'check-circle' : 'cancel'} size={18} color={policy.hasMinLen ? '#10B981' : '#ef4444'} />
+                        <Text style={{ marginLeft: 8, color: '#374151', fontWeight: '700' }}>8+ characters</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
+                        <MaterialIcons name={policy.hasUpper ? 'check-circle' : 'cancel'} size={18} color={policy.hasUpper ? '#10B981' : '#ef4444'} />
+                        <Text style={{ marginLeft: 8, color: '#374151', fontWeight: '700' }}>1 capital letter</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
+                        <MaterialIcons name={policy.hasSpecial ? 'check-circle' : 'cancel'} size={18} color={policy.hasSpecial ? '#10B981' : '#ef4444'} />
+                        <Text style={{ marginLeft: 8, color: '#374151', fontWeight: '700' }}>1 special character</Text>
+                      </View>
+                    </View>
+
+                    <Text style={{ marginTop: 12, marginBottom: 6, fontSize: 12, fontWeight: '800', color: '#111827' }}>Confirm new password</Text>
+                    <TextInput
+                      value={parentEditPasswordConfirm}
+                      onChangeText={setParentEditPasswordConfirm}
+                      placeholder="••••••"
+                      autoCapitalize="none"
+                      secureTextEntry
+                      editable={!parentEditSaving}
+                      style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, paddingVertical: 10, paddingHorizontal: 12, backgroundColor: '#fff' }}
+                    />
+                  </View>
+                );
+              })() : null}
+
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginTop: 18 }}>
+                {parentEditSaving ? <ActivityIndicator size="small" color="#2563eb" style={{ marginRight: 12 }} /> : null}
+                <TouchableOpacity onPress={() => setParentEditModalOpen(false)} disabled={parentEditSaving} style={{ paddingVertical: 10, paddingHorizontal: 12, marginRight: 8 }}>
+                  <Text style={{ color: '#475569', fontWeight: '700' }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={saveParentContactDetails} disabled={parentEditSaving} style={{ borderRadius: 12, backgroundColor: '#2563eb', paddingVertical: 10, paddingHorizontal: 14, opacity: parentEditSaving ? 0.7 : 1 }}>
+                  <Text style={{ color: '#ffffff', fontWeight: '800' }}>{parentEditSaving ? 'Saving…' : 'Save'}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
+
+      <Modal transparent visible={parentTwoFactorModalOpen} animationType="fade" onRequestClose={() => !parentTwoFactorBusy && !parentTwoFactorSending && closeParentTwoFactorModal()}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.42)', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%', maxWidth: 420 }}>
+            <View style={{ width: '100%', borderRadius: 22, backgroundColor: '#ffffff', padding: 18 }}>
+              <Text style={{ fontSize: 20, fontWeight: '800', color: '#111827' }}>Two-step verification</Text>
+              <Text style={{ marginTop: 6, color: '#64748b', lineHeight: 20 }}>
+                {parentTwoFactorReason === 'phone'
+                  ? 'Enter the verification code sent by text to continue updating your phone number.'
+                  : parentTwoFactorReason === 'email'
+                    ? 'Enter the verification code sent by email to continue updating your email address.'
+                    : 'Enter the verification code sent by email to continue updating your password.'}
+              </Text>
+
+              {parentTwoFactorStatus ? <Text style={{ marginTop: 10, color: '#0f766e', lineHeight: 20 }}>{parentTwoFactorStatus}</Text> : null}
+              {parentTwoFactorError ? <Text style={{ marginTop: 10, color: '#b91c1c', lineHeight: 20 }}>{parentTwoFactorError}</Text> : null}
+
+              <Text style={{ marginTop: 14, marginBottom: 6, fontSize: 12, fontWeight: '800', color: '#111827' }}>Verification code</Text>
+              <TextInput
+                value={parentTwoFactorCode}
+                onChangeText={setParentTwoFactorCode}
+                placeholder="123456"
+                keyboardType={Platform.OS === 'ios' ? 'number-pad' : 'numeric'}
+                autoCapitalize="none"
+                editable={!parentTwoFactorBusy}
+                style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, paddingVertical: 10, paddingHorizontal: 12, backgroundColor: '#fff' }}
+              />
+
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 18 }}>
+                <TouchableOpacity onPress={() => requestParentTwoFactorCode({ manual: true }).catch(() => {})} disabled={parentTwoFactorSending || parentTwoFactorBusy} style={{ paddingVertical: 10, paddingHorizontal: 12 }}>
+                  <Text style={{ color: '#2563eb', fontWeight: '700' }}>{parentTwoFactorSending ? 'Sending…' : 'Resend code'}</Text>
+                </TouchableOpacity>
+
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  {parentTwoFactorBusy ? <ActivityIndicator size="small" color="#2563eb" style={{ marginRight: 12 }} /> : null}
+                  <TouchableOpacity onPress={closeParentTwoFactorModal} disabled={parentTwoFactorBusy || parentTwoFactorSending} style={{ paddingVertical: 10, paddingHorizontal: 12, marginRight: 8 }}>
+                    <Text style={{ color: '#475569', fontWeight: '700' }}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={verifyParentSensitiveAction} disabled={parentTwoFactorBusy || parentTwoFactorSending} style={{ borderRadius: 12, backgroundColor: '#2563eb', paddingVertical: 10, paddingHorizontal: 14, opacity: parentTwoFactorBusy || parentTwoFactorSending ? 0.7 : 1 }}>
+                    <Text style={{ color: '#ffffff', fontWeight: '800' }}>{parentTwoFactorBusy ? 'Verifying…' : 'Verify'}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
     </ScreenWrapper>
   );
 }

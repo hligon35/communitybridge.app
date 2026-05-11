@@ -11,7 +11,6 @@ export const SETTINGS_KEYS = {
   pushRepliesComments: 'settings_push_replies_comments_v1',
   pushMentionsComments: 'settings_push_mentions_comments_v1',
   pushUpdates: 'settings_push_updates_v1',
-  pushOther: 'settings_push_other_v1',
   showEmail: 'settings_show_email_v1',
   showPhone: 'settings_show_phone_v1',
   showIds: 'settings_show_ids_v1',

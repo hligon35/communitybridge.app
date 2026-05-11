@@ -9,7 +9,6 @@ export const PUSH_STORAGE_KEYS = Object.freeze({
   mentionsPosts: 'settings_push_mentions_posts_v1',
   tagsPosts: 'settings_push_tags_posts_v1',
   updates: 'settings_push_updates_v1',
-  other: 'settings_push_other_v1',
   token: 'push_expo_token_v1',
 });
 
@@ -154,7 +153,6 @@ async function readStoredPushPreferences() {
     PUSH_STORAGE_KEYS.mentionsPosts,
     PUSH_STORAGE_KEYS.tagsPosts,
     PUSH_STORAGE_KEYS.updates,
-    PUSH_STORAGE_KEYS.other,
     PUSH_STORAGE_KEYS.token,
   ]);
   const map = new Map(values || []);
@@ -168,7 +166,6 @@ async function readStoredPushPreferences() {
       mentionsPosts: map.get(PUSH_STORAGE_KEYS.mentionsPosts) !== '0',
       tagsPosts: map.get(PUSH_STORAGE_KEYS.tagsPosts) !== '0',
       updates: map.get(PUSH_STORAGE_KEYS.updates) !== '0',
-      other: map.get(PUSH_STORAGE_KEYS.other) === '1',
     },
   };
 }

@@ -2119,8 +2119,7 @@ function pushPrefAllows(preferences, kind) {
   const keys = Object.keys(preferences);
   if (!keys.length) return true;
   if (kind === 'chats') return Boolean(preferences.chats ?? true);
-  if (kind === 'updates') return Boolean(preferences.updates ?? preferences.other ?? true);
-  if (kind === 'other') return Boolean(preferences.other ?? preferences.updates ?? true);
+  if (kind === 'updates' || kind === 'other') return Boolean(preferences.updates ?? preferences.other ?? true);
   // fallback
   return true;
 }

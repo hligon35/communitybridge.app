@@ -4,6 +4,10 @@ function normalizeRole(role) {
   return String(role || '').trim().toLowerCase();
 }
 
+function normalizeToken(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
 function isAdminLikeRole(role) {
   const value = normalizeRole(role);
   return value === 'admin'
@@ -19,37 +23,118 @@ function isAdminLikeRole(role) {
 
 function getParticipantTokens(user) {
   return [user?.id, user?.uid, user?.name, user?.email]
-    .map((value) => String(value || '').trim().toLowerCase())
+    .map(normalizeToken)
     .filter(Boolean);
+}
+
+function getUserParticipantTokens(user) {
+  const effectiveUser = getEffectiveChatIdentity(user);
+  return Array.from(new Set([
+    ...getParticipantTokens(user),
+    ...getParticipantTokens(effectiveUser),
+  ]));
 }
 
 function addParticipantTokens(set, participant) {
   [participant?.id, participant?.name, participant?.email]
-    .map((value) => String(value || '').trim())
+    .map(normalizeToken)
     .filter(Boolean)
     .forEach((value) => set.add(value));
+}
+
+function participantTokenMatches(token, participantToken) {
+  const left = normalizeToken(token);
+  const right = normalizeToken(participantToken);
+  if (!left || !right) return false;
+  return left === right || left.includes(right) || right.includes(left);
+}
+
+function isParticipantMatch(participant, userTokens) {
+  const participantTokens = new Set();
+  addParticipantTokens(participantTokens, participant);
+  return userTokens.some((token) => Array.from(participantTokens).some((participantToken) => participantTokenMatches(token, participantToken)));
+}
+
+function getConversationParticipant(message, user) {
+  const userTokens = getUserParticipantTokens(user);
+  if (!userTokens.length) return null;
+  const targets = Array.isArray(message?.to) ? message.to.filter(Boolean) : [];
+  const sender = message?.sender && typeof message.sender === 'object' ? message.sender : null;
+
+  if (sender && !isParticipantMatch(sender, userTokens)) return sender;
+
+  const firstTarget = targets.find((target) => !isParticipantMatch(target, userTokens));
+  if (firstTarget) return firstTarget;
+
+  return sender || targets[0] || null;
+}
+
+function getConversationKey(message, user) {
+  const participant = getConversationParticipant(message, user);
+  const participantId = normalizeToken(participant?.id || participant?.email || participant?.name);
+  if (participantId) return `user:${participantId}`;
+  return `thread:${normalizeToken(message?.threadId || message?.id || 'default')}`;
+}
+
+function getConversationTitle(participant, fallbackMessage) {
+  return String(
+    participant?.name
+    || participant?.fullName
+    || participant?.email
+    || fallbackMessage?.sender?.name
+    || 'Conversation'
+  ).trim();
+}
+
+function isMessageFromUser(message, user) {
+  const userTokens = getUserParticipantTokens(user);
+  if (!userTokens.length) return false;
+  const senderTokens = new Set();
+  addParticipantTokens(senderTokens, message?.sender);
+  return userTokens.some((token) => Array.from(senderTokens).some((senderToken) => participantTokenMatches(token, senderToken)));
+}
+
+function canViewThread(threadMessages, user) {
+  if (isAdminLikeRole(user?.role)) return true;
+  const messages = Array.isArray(threadMessages) ? threadMessages : [];
+  if (!messages.length) return false;
+  const userTokens = getUserParticipantTokens(user);
+  if (!userTokens.length) return false;
+  const participants = new Set();
+  messages.forEach((message) => {
+    addParticipantTokens(participants, message?.sender);
+    if (Array.isArray(message?.to)) message.to.forEach((target) => addParticipantTokens(participants, target));
+  });
+  const participantTokens = Array.from(participants);
+  return userTokens.some((token) => participantTokens.some((participantToken) => participantTokenMatches(token, participantToken)));
 }
 
 function buildVisibleThreads(messages, threadReads, user, archivedThreads) {
   const items = Array.isArray(messages) ? messages : [];
   const reads = threadReads && typeof threadReads === 'object' ? threadReads : {};
   const archived = new Set((archivedThreads || []).map((value) => String(value)));
-  const chatUser = getEffectiveChatIdentity(user);
-  const uid = String(chatUser?.id || chatUser?.uid || '').trim();
 
   const threads = items.reduce((acc, msg) => {
-    const key = msg?.threadId || msg?.threadId === 0 ? msg.threadId : msg?.threadId || msg?.id || msg?.contactId || 'default';
-    acc[key] = acc[key] || { id: key, last: msg, participants: new Set() };
-    if (msg?.sender) addParticipantTokens(acc[key].participants, msg.sender);
-    if (Array.isArray(msg?.to)) msg.to.forEach((target) => addParticipantTokens(acc[key].participants, target));
+    const key = getConversationKey(msg, user);
+    const participant = getConversationParticipant(msg, user);
+    const rawThreadId = String(msg?.threadId || msg?.id || '').trim();
+    acc[key] = acc[key] || {
+      id: key,
+      last: msg,
+      participant,
+      threadIds: new Set(),
+      messages: [],
+    };
+    if (participant && !acc[key].participant) acc[key].participant = participant;
+    if (rawThreadId) acc[key].threadIds.add(rawThreadId);
+    acc[key].messages.push(msg);
     if (new Date(msg?.createdAt) > new Date(acc[key].last?.createdAt)) acc[key].last = msg;
     return acc;
   }, {});
 
   const list = Object.values(threads).map((thread) => {
-    const latestIncomingAt = items
-      .filter((message) => String(message?.threadId || message?.id) === String(thread.id))
-      .filter((message) => String(message?.sender?.id || '') !== uid)
+    const latestIncomingAt = thread.messages
+      .filter((message) => !isMessageFromUser(message, user))
       .reduce((latest, message) => {
         const messageMs = Date.parse(String(message?.createdAt || ''));
         return Number.isFinite(messageMs) && messageMs > latest ? messageMs : latest;
@@ -58,20 +143,17 @@ function buildVisibleThreads(messages, threadReads, user, archivedThreads) {
     return {
       id: thread.id,
       last: thread.last,
-      title: Array.from(thread.participants).filter(Boolean).slice(0, 2).join(', ') || (thread.last?.sender?.name || 'Conversation'),
-      participants: Array.from(thread.participants).filter(Boolean),
+      title: getConversationTitle(thread.participant, thread.last),
+      participant: thread.participant,
+      threadIds: Array.from(thread.threadIds),
+      activeThreadId: String(thread.last?.threadId || thread.last?.id || '').trim() || Array.from(thread.threadIds)[0] || '',
       isUnread: latestIncomingAt > 0 && (!Number.isFinite(readAtMs) || latestIncomingAt > readAtMs),
     };
   });
 
   const visibleList = isAdminLikeRole(user?.role)
     ? list
-    : list.filter((thread) => {
-        const participantNames = (thread.participants || []).map((value) => String(value || '').toLowerCase());
-        const tokens = getParticipantTokens(chatUser);
-        if (!tokens.length) return false;
-        return tokens.some((token) => participantNames.some((name) => name.includes(token)));
-      });
+    : list.filter((thread) => canViewThread(threads[thread.id]?.messages || [], user));
 
   return visibleList
     .filter((thread) => !archived.has(String(thread.id)))
@@ -93,5 +175,10 @@ function countUnreadVisibleThreads(messages, threadReads, user, archivedThreads)
 
 module.exports = {
   buildVisibleThreads,
+  canViewThread,
   countUnreadVisibleThreads,
+  getConversationParticipant,
+  getUserParticipantTokens,
+  getConversationKey,
+  isMessageFromUser,
 };

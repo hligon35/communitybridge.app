@@ -1,50 +1,86 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, FlatList, TextInput, Button, RefreshControl, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, Platform, Alert } from 'react-native';
+import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { View, Text, FlatList, TextInput, Button, RefreshControl, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, Platform, Alert, TouchableOpacity } from 'react-native';
 // removed SafeAreaView usage to avoid shifting content down
 import { useData } from '../DataContext';
 import { useAuth } from '../AuthContext';
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { useHeaderHeight } from '@react-navigation/elements';
-import { isAdminRole } from '../core/tenant/models';
+import { canViewThread, getUserParticipantTokens, isMessageFromUser } from '../utils/chatThreads';
+import { MaterialIcons } from '@expo/vector-icons';
+import { HelpButton } from '../components/TopButtons';
 
-export default function ChatThreadScreen({ route }) {
-  const { threadId, isNew, to: initialTo } = route.params || {};
+export default function ChatThreadScreen({ route, navigation }) {
+  const { threadId, threadIds: routeThreadIds, activeThreadId, isNew, to: initialTo } = route.params || {};
   const { messages, sendMessage, markThreadRead, chatBlockedUserIds = [] } = useData();
   const [text, setText] = useState('');
   const { user } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
   const headerHeight = useHeaderHeight ? useHeaderHeight() : 0;
+  const userTokens = useMemo(() => getUserParticipantTokens(user), [user]);
+  const effectiveThreadIds = useMemo(() => {
+    const raw = Array.isArray(routeThreadIds) && routeThreadIds.length ? routeThreadIds : [activeThreadId || threadId];
+    return Array.from(new Set(raw.map((value) => String(value || '').trim()).filter(Boolean)));
+  }, [activeThreadId, routeThreadIds, threadId]);
+  const sendThreadId = useMemo(() => String(activeThreadId || effectiveThreadIds[0] || threadId || '').trim(), [activeThreadId, effectiveThreadIds, threadId]);
 
-  const threadMessages = useMemo(() => messages.filter((m) => (m.threadId || m.id) === threadId).sort((a,b)=> new Date(a.createdAt)-new Date(b.createdAt)), [messages, threadId]);
+  const threadMessages = useMemo(() => messages
+    .filter((m) => {
+      const messageThreadId = String(m?.threadId || m?.id || '').trim();
+      if (!messageThreadId) return false;
+      return effectiveThreadIds.includes(messageThreadId);
+    })
+    .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)), [effectiveThreadIds, messages]);
 
   useEffect(() => {
-    if (!threadId || !threadMessages.length || !user?.id) return;
+    if (!threadId || !threadMessages.length || !userTokens.length) return;
     const latestIncoming = [...threadMessages]
       .reverse()
-      .find((message) => String(message?.sender?.id || '') !== String(user.id));
+      .find((message) => !isMessageFromUser(message, user));
     if (!latestIncoming?.createdAt) return;
     markThreadRead(threadId, latestIncoming.createdAt);
-  }, [markThreadRead, threadId, threadMessages, user]);
+  }, [markThreadRead, threadId, threadMessages, user, userTokens.length]);
 
   // authorization: only participants or admin may view the thread
   const isParticipant = useMemo(() => {
     if (isNew) return true;
-    if (!threadMessages || !threadMessages.length) return false;
-    if (user && isAdminRole(user.role)) return true;
-    const participants = new Set();
-    threadMessages.forEach(m => {
-      if (m.sender?.id) participants.add(m.sender.id.toString());
-      if (m.sender?.name) participants.add(m.sender.name.toString());
-      if (m.to && Array.isArray(m.to)) m.to.forEach(t => { if (t.id) participants.add(t.id.toString()); if (t.name) participants.add(t.name.toString()); });
-    });
-    const uid = (user?.id || user?.name || '').toString();
-    return !!Array.from(participants).find(p => p.toLowerCase() === uid.toLowerCase());
+    return canViewThread(threadMessages, user);
   }, [threadMessages, user, isNew]);
 
   const isChatBlocked = useMemo(() => {
-    const uid = user?.id != null ? String(user.id) : '';
-    return !!uid && (chatBlockedUserIds || []).some((id) => String(id) === uid);
-  }, [chatBlockedUserIds, user]);
+    return userTokens.some((token) => (chatBlockedUserIds || []).some((id) => String(id).trim().toLowerCase() === token));
+  }, [chatBlockedUserIds, userTokens]);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerLeft: Platform.OS === 'web' ? undefined : () => (
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
+          style={{
+            marginLeft: 6,
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            backgroundColor: '#f1f5f9',
+            borderWidth: 1,
+            borderColor: '#e2e8f0',
+            alignItems: 'center',
+            justifyContent: 'center',
+            shadowColor: '#0f172a',
+            shadowOpacity: 0.06,
+            shadowOffset: { width: 0, height: 1 },
+            shadowRadius: 2,
+            elevation: 1,
+          }}
+        >
+          <MaterialIcons name="chevron-left" size={24} color="#111827" />
+        </TouchableOpacity>
+      ),
+      headerRight: Platform.OS === 'web' ? () => null : () => <HelpButton />,
+    });
+  }, [navigation]);
 
   async function handleSend() {
     if (!text.trim()) return;
@@ -54,7 +90,7 @@ export default function ChatThreadScreen({ route }) {
       return;
     }
     try {
-      await sendMessage({ threadId, body: text, to: (Array.isArray(initialTo) && initialTo.length) ? initialTo : undefined });
+      await sendMessage({ threadId: sendThreadId, body: text, to: (Array.isArray(initialTo) && initialTo.length) ? initialTo : undefined });
       setText('');
       Keyboard.dismiss();
     } catch (e) {
@@ -93,7 +129,7 @@ export default function ChatThreadScreen({ route }) {
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={{ paddingBottom: 120 }}
             renderItem={({ item }) => {
-              const isMine = user && (item.sender?.id === user.id || (item.sender?.name || '').toLowerCase().includes((user.name || '').toLowerCase()));
+              const isMine = isMessageFromUser(item, user);
               return (
                 <View style={{ paddingHorizontal: 12, paddingVertical: 6, flexDirection: 'row', justifyContent: isMine ? 'flex-end' : 'flex-start' }}>
                   {!isMine && (

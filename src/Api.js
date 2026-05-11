@@ -11,6 +11,7 @@ import {
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
   updateEmail,
+  updatePassword,
   updateProfile,
   getIdToken,
   deleteUser,
@@ -1065,6 +1066,14 @@ export async function me() {
 export async function updateMe(payload) {
   const u = requireUser();
   const next = { ...(payload || {}) };
+
+  if (next.password != null) {
+    const normalizedPassword = String(next.password || '');
+    if (normalizedPassword) {
+      await updatePassword(u, normalizedPassword);
+    }
+    delete next.password;
+  }
 
   if (next.email != null) {
     const normalizedEmail = normalizeEmailInput(next.email);

@@ -23,8 +23,9 @@ function timeAgo(iso) {
 function MessageRow({ item, user, navigation, archiveThread, deleteThread }) {
   const swipeableRef = useRef(null);
   const last = item.last || {};
-  const isOutgoing = last.sender && user && last.sender.id === user.id;
   const isUnread = !!item.isUnread;
+  const avatarUri = String(item?.participant?.avatar || item?.participant?.photoURL || '').trim();
+  const avatarLabel = String(item?.title || item?.participant?.name || 'C').trim();
 
   const showToast = (msg) => {
     if (Platform.OS === 'android') ToastAndroid.show(msg, ToastAndroid.SHORT);
@@ -70,22 +71,20 @@ function MessageRow({ item, user, navigation, archiveThread, deleteThread }) {
 
   return (
     <Swipeable ref={swipeableRef} renderLeftActions={renderLeftActions} renderRightActions={renderRightActions} onSwipeableOpen={handleOpen}>
-      <TouchableOpacity style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: '#eee', flexDirection: 'row', alignItems: 'center', backgroundColor: isUnread ? '#f8fbff' : '#fff' }} onPress={() => navigation.navigate('ChatThread', { threadId: item.id })}>
-        <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-          <Text style={{ fontWeight: '700' }}>{(item.title || 'C').slice(0,1)}</Text>
-        </View>
+      <TouchableOpacity style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: '#eee', flexDirection: 'row', alignItems: 'center', backgroundColor: isUnread ? '#f8fbff' : '#fff' }} onPress={() => navigation.navigate('ChatThread', { threadId: item.id, threadIds: item.threadIds, activeThreadId: item.activeThreadId })}>
+        {avatarUri ? (
+          <Image source={{ uri: avatarUri }} style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#f3f4f6', marginRight: 12 }} />
+        ) : (
+          <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+            <Text style={{ fontWeight: '700' }}>{avatarLabel.slice(0,1)}</Text>
+          </View>
+        )}
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, paddingRight: 8 }}>
-              {isUnread ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#2563eb', marginRight: 8 }} /> : null}
-              <Text numberOfLines={1} style={{ fontWeight: isUnread ? '800' : '700', flexShrink: 1 }}>{item.title}</Text>
-            </View>
+            <Text numberOfLines={1} style={{ color: '#0f172a', flex: 1, paddingRight: 8, fontWeight: isUnread ? '800' : '700' }}>{item.title}</Text>
             <Text style={{ color: isUnread ? '#2563eb' : '#6b7280', fontSize: 12, fontWeight: isUnread ? '700' : '500' }}>{timeAgo(last.createdAt)}</Text>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
-            <Text style={{ marginRight: 8 }}>{isOutgoing ? '→' : '←'}</Text>
-            <Text numberOfLines={1} style={{ color: '#374151', flex: 1, fontWeight: isUnread ? '700' : '400' }}>{last.body}</Text>
-          </View>
+          <Text numberOfLines={1} style={{ marginTop: 4, color: '#374151', fontWeight: isUnread ? '700' : '400' }}>{last.body}</Text>
         </View>
       </TouchableOpacity>
     </Swipeable>
