@@ -129,7 +129,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
   const [clockConfirmOpen, setClockConfirmOpen] = useState(false);
   const [clockPromptAt, setClockPromptAt] = useState(null);
   const [clockActionSaving, setClockActionSaving] = useState(false);
-  const breakNotificationIdsRef = useRef([]);
+  const breakNotificationIdsRef = useRef({ warningIds: [], endId: null });
   const breakCompletionHandledRef = useRef(false);
   const isStaff = isStaffRole(user?.role);
   const showAdminWorkspace = canAccessAdminWorkspace(user?.role);
@@ -238,6 +238,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
       const data = event?.request?.content?.data || {};
       if (data?.type !== 'break-end') return;
       breakCompletionHandledRef.current = true;
+      breakNotificationIdsRef.current = { warningIds: [], endId: null };
       setBreakEndsAt(null);
       setBreakDurationMinutes(0);
       setBreakCompletedOverlayOpen(true);
@@ -247,14 +248,19 @@ export default function TabletNavigationShell({ currentRoute, children }) {
     };
   }, []);
 
-  async function cancelBreakNotifications() {
+  async function cancelBreakNotifications({ includeEnd = true } = {}) {
     const Notifications = getNotificationsModule();
     if (!Notifications || typeof Notifications.cancelScheduledNotificationAsync !== 'function') {
-      breakNotificationIdsRef.current = [];
+      breakNotificationIdsRef.current = { warningIds: [], endId: null };
       return;
     }
-    const ids = [...breakNotificationIdsRef.current];
-    breakNotificationIdsRef.current = [];
+    const warningIds = Array.isArray(breakNotificationIdsRef.current?.warningIds) ? breakNotificationIdsRef.current.warningIds : [];
+    const endId = breakNotificationIdsRef.current?.endId || null;
+    const ids = includeEnd ? [...warningIds, ...(endId ? [endId] : [])] : [...warningIds];
+    breakNotificationIdsRef.current = {
+      warningIds: [],
+      endId: includeEnd ? null : endId,
+    };
     await Promise.all(ids.map((id) => Notifications.cancelScheduledNotificationAsync(id).catch(() => {})));
   }
 
@@ -275,12 +281,13 @@ export default function TabletNavigationShell({ currentRoute, children }) {
   }
 
   async function finishBreak({ minutes = breakDurationMinutes, notifyInApp = false } = {}) {
+    const hasScheduledEndNotification = Boolean(breakNotificationIdsRef.current?.endId);
     setBreakEndsAt(null);
     setBreakDurationMinutes(0);
     setBreakNow(Date.now());
     setBreakCompletedOverlayOpen(true);
-    await cancelBreakNotifications();
-    if (notifyInApp) {
+    await cancelBreakNotifications({ includeEnd: !notifyInApp });
+    if (notifyInApp && !hasScheduledEndNotification) {
       await presentBreakCompletionNotification(minutes);
     }
   }
@@ -301,7 +308,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
     if (!setup.ok || !setup.Notifications) return;
 
     const Notifications = setup.Notifications;
-    const scheduledIds = [];
+    const warningIds = [];
 
     if (durationMinutes > 2) {
       const warningId = await Notifications.scheduleNotificationAsync({
@@ -314,7 +321,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
         },
         trigger: { seconds: Math.max(1, durationMinutes * 60 - 120) },
       }).catch(() => null);
-      if (warningId) scheduledIds.push(warningId);
+      if (warningId) warningIds.push(warningId);
     }
 
     const endId = await Notifications.scheduleNotificationAsync({
@@ -327,8 +334,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
       },
       trigger: { seconds: Math.max(1, durationMinutes * 60) },
     }).catch(() => null);
-    if (endId) scheduledIds.push(endId);
-    breakNotificationIdsRef.current = scheduledIds;
+    breakNotificationIdsRef.current = { warningIds, endId: endId || null };
   }
 
   async function endBreakEarly() {

@@ -218,25 +218,35 @@ export default function RoleDashboardScreen({ navigation }) {
           }).length;
       }
       if (!selectedChild?.id) return 0;
-      return (Array.isArray(seededItemsNeededByChild?.[selectedChild.id]) ? seededItemsNeededByChild[selectedChild.id] : []).filter((item) => {
+      return (Array.isArray(seededItemsNeededByChild?.[selectedChild.id]) ? seededItemsNeededByChild[selectedChild.id] : []).filter((item, index) => {
         const status = String(item?.status || '').trim().toLowerCase();
-        return status === 'requested' || status === 'overdue';
+        if (status !== 'requested' && status !== 'overdue') return false;
+        const itemId = `seed:${selectedChild.id}:${String(item?.id || index)}`;
+        return !readItemsNeededIds?.[itemId];
       }).length;
     }
     if (isTherapist) {
       return (urgentMemos || []).filter((memo) => !memo?.status || memo.status === 'pending').length;
     }
     if (!selectedChild?.id) return 0;
-    return (urgentMemos || []).filter((memo) => memo?.childId === selectedChild.id && (!memo?.status || memo.status === 'pending')).length;
-  }, [activeSeedPreset, isTherapist, seededItemsNeededByChild, selectedChild?.id, urgentMemos]);
+    return (urgentMemos || []).filter((memo) => {
+      if (String(memo?.childId || '').trim() !== String(selectedChild.id).trim()) return false;
+      if (String(memo?.type || '').trim().toLowerCase() !== 'admin_memo') return false;
+      if (!isItemsNeededRequest(memo) || !isOpenItemsStatus(memo)) return false;
+      const itemId = `memo:${String(memo?.id || '').trim()}`;
+      return !readItemsNeededIds?.[itemId];
+    }).length;
+  }, [activeSeedPreset, isTherapist, readItemsNeededIds, seededItemsNeededByChild, selectedChild?.id, urgentMemos]);
 
   const parentItemsNeededEntries = useMemo(() => {
     if (isTherapist || !selectedChild?.id) return [];
     if (activeSeedPreset === 'screenshot') {
       return (Array.isArray(seededItemsNeededByChild?.[selectedChild.id]) ? seededItemsNeededByChild[selectedChild.id] : [])
-        .filter((item) => {
+        .filter((item, index) => {
           const status = String(item?.status || '').trim().toLowerCase();
-          return status === 'requested' || status === 'overdue';
+          if (status !== 'requested' && status !== 'overdue') return false;
+          const itemId = `seed:${selectedChild.id}:${String(item?.id || index)}`;
+          return !readItemsNeededIds?.[itemId];
         })
         .map((item, index) => ({
           id: `seed:${selectedChild.id}:${String(item?.id || index)}`,
@@ -254,10 +264,11 @@ export default function RoleDashboardScreen({ navigation }) {
         title: String(memo?.body || '').replace(/^Requested items:\s*/i, '').trim() || String(memo?.subject || memo?.title || 'Requested items').trim(),
         detail: [String(memo?.subject || memo?.title || '').trim(), memo?.createdAt ? new Date(memo.createdAt).toLocaleString() : ''].filter(Boolean).join(' • '),
         memoId: String(memo?.id || '').trim() || null,
-      }));
-  }, [activeSeedPreset, isTherapist, seededItemsNeededByChild, selectedChild?.id, urgentMemos]);
+      }))
+      .filter((item) => !readItemsNeededIds?.[item.id]);
+  }, [activeSeedPreset, isTherapist, readItemsNeededIds, seededItemsNeededByChild, selectedChild?.id, urgentMemos]);
 
-  const unreadItemsNeededCount = useMemo(() => parentItemsNeededEntries.filter((item) => !readItemsNeededIds?.[item.id]).length, [parentItemsNeededEntries, readItemsNeededIds]);
+  const unreadItemsNeededCount = useMemo(() => parentItemsNeededEntries.length, [parentItemsNeededEntries]);
 
   const markItemsNeededRead = async () => {
     if (!parentItemsNeededEntries.length) {

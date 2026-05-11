@@ -69,8 +69,8 @@ loadEnvFile(path.join(process.cwd(), '.env'));
 loadEnvFile(path.join(process.cwd(), 'env', 'cloudrun.env'));
 
 const TEST_USERS = [
-  { name: 'Harold Ligon',             email: 'hligon35@gmail.com',          password: 'ParentDemo123!', role: 'parent' },
-  { name: 'Cheyanne Cook',            email: 'cheyanne2448@gmail.com',      password: 'ParentDemo123!', role: 'parent' },
+  { name: 'Jason Bridgeport',             email: 'hligon35@gmail.com',          password: 'ParentDemo123!', role: 'parent' },
+  { name: 'Chelsey Bridgeport',            email: 'cheyanne2448@gmail.com',      password: 'ParentDemo123!', role: 'parent' },
   { name: 'CommunityBridge ABA Tech 1', email: 'abatech1@communitybridge.app', password: 'AbaTech123!', role: 'therapist' },
   { name: 'CommunityBridge ABA Tech 2', email: 'abatech2@communitybridge.app', password: 'AbaTech123!', role: 'therapist' },
   { name: 'CommunityBridge ABA Tech 3', email: 'abatech3@communitybridge.app', password: 'AbaTech123!', role: 'therapist' },
@@ -242,11 +242,11 @@ function buildDirectoryEntitiesByEmail(uidByEmail) {
   const childSeeds = [
     {
       id: 'child-001',
-      name: 'Zahari Cook',
+      name: 'Zachary Bridgeport',
       age: '5',
       room: 'Blue-1',
       session: 'AM',
-      notes: 'Zahari is working on functional communication during transitions.',
+      notes: 'Zachary is working on functional communication during transitions.',
       monthlyGoal: 'Use functional communication during transitions.',
       successCriteria: 'Meets target in 80% of opportunities across two consecutive sessions.',
       curriculum: 'Functional Communication, Transitions, Visual Schedule',
@@ -257,11 +257,11 @@ function buildDirectoryEntitiesByEmail(uidByEmail) {
     },
     {
       id: 'child-002',
-      name: 'Aubrey Cook',
+      name: 'Ashley Bridgeport',
       age: '7',
       room: 'Blue-2',
       session: 'PM',
-      notes: 'Aubrey is working on spontaneous requests for preferred items.',
+      notes: 'Ashley is working on spontaneous requests for preferred items.',
       monthlyGoal: 'Increase spontaneous requests for preferred items.',
       successCriteria: 'Meets target in 80% of opportunities across two consecutive sessions.',
       curriculum: 'Peer Play, Matching, Independent Work',

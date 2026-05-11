@@ -1,12 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
+const TILE_GAP = 10;
+const MIN_TILE_WIDTH = 168;
+
 export default function BehaviorTapGrid({ groups = [], queuedEvents = [], disabled = false, onQueueEvent, onUndoLast }) {
   const [variantPicker, setVariantPicker] = useState(null);
   const [textPromptState, setTextPromptState] = useState(null);
   const [textPromptValue, setTextPromptValue] = useState('');
   const [undoToast, setUndoToast] = useState('');
   const [lastQueuedId, setLastQueuedId] = useState('');
+  const [gridWidth, setGridWidth] = useState(0);
 
   const queuedPreview = useMemo(() => queuedEvents.slice(-4).reverse(), [queuedEvents]);
 
@@ -60,6 +64,14 @@ export default function BehaviorTapGrid({ groups = [], queuedEvents = [], disabl
     setUndoToast('Last queued event removed');
   }
 
+  function resolveTileWidth(itemCount) {
+    const availableWidth = Number(gridWidth) || 0;
+    if (!availableWidth) return null;
+    const maxColumns = Math.min(Math.max(itemCount || 1, 1), 4);
+    const columns = Math.max(1, Math.min(maxColumns, Math.floor((availableWidth + TILE_GAP) / (MIN_TILE_WIDTH + TILE_GAP)) || 1));
+    return Math.floor((availableWidth - (TILE_GAP * (columns - 1))) / columns);
+  }
+
   return (
     <View style={styles.root}>
       {undoToast ? (
@@ -94,16 +106,26 @@ export default function BehaviorTapGrid({ groups = [], queuedEvents = [], disabl
       {groups.map((group) => (
         <View key={group.key} style={styles.section}>
           <Text style={styles.sectionTitle}>{group.title}</Text>
-          <View style={styles.grid}>
+          <View
+            style={styles.grid}
+            onLayout={(event) => {
+              const nextWidth = Math.floor(event?.nativeEvent?.layout?.width || 0);
+              if (nextWidth && nextWidth !== gridWidth) setGridWidth(nextWidth);
+            }}
+          >
             {group.items.map((preset) => (
               <TouchableOpacity
                 key={preset.key}
-                style={[styles.tile, group.items.length === 4 ? styles.tileFourAcross : styles.tileThreeAcross, disabled ? styles.tileDisabled : null]}
+                style={[
+                  styles.tile,
+                  gridWidth ? { width: resolveTileWidth(group.items.length) } : (group.items.length === 4 ? styles.tileFourAcross : styles.tileThreeAcross),
+                  disabled ? styles.tileDisabled : null,
+                ]}
                 activeOpacity={0.88}
                 disabled={disabled}
                 onPress={() => handlePress(preset)}
               >
-                <Text style={styles.tileLabel}>{preset.label}</Text>
+                <Text style={styles.tileLabel} numberOfLines={2} ellipsizeMode="tail">{preset.label}</Text>
                 <Text style={styles.tileDescription}>{preset.description}</Text>
                 <Text style={styles.tileMetaHint}>Tap to choose detail</Text>
               </TouchableOpacity>
@@ -223,7 +245,7 @@ const styles = StyleSheet.create({
   tileFourAcross: { width: '23.5%' },
   tileThreeAcross: { width: '32%' },
   tileDisabled: { opacity: 0.5 },
-  tileLabel: { fontSize: 15, fontWeight: '800', color: '#0f172a' },
+  tileLabel: { width: '100%', fontSize: 15, lineHeight: 20, minHeight: 40, fontWeight: '800', color: '#0f172a' },
   tileDescription: { marginTop: 4, color: '#475569', lineHeight: 18, fontSize: 12, flexGrow: 1, width: '100%' },
   tileMetaHint: { marginTop: 10, color: '#2563eb', fontSize: 11, fontWeight: '700' },
   modalOverlay: {
