@@ -3,7 +3,6 @@ const APP_REVIEW_EMAIL = 'appreview@communitybridge.app';
 const DEV_SWITCH_EMAILS = new Set([
   DEV_SWITCH_EMAIL,
   APP_REVIEW_EMAIL,
-  'hligon35@gmail.com',
   'abatech1@communitybridge.app',
   'bcba@communitybridge.app',
   'office@communitybridge.app',

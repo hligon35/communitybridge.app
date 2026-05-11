@@ -171,6 +171,50 @@ async function cleanupFirestoreOrganizations(firestore) {
   return result;
 }
 
+async function cleanupFirestoreSeedCollections(firestore, preservedEmails, preservedUids) {
+  const result = {};
+
+  const keyedCollections = ['parents', 'therapists', 'directoryLinks'];
+  for (const name of keyedCollections) {
+    const snapshot = await firestore.collection(name).get();
+    let deleted = 0;
+    let preserved = 0;
+    for (const doc of snapshot.docs) {
+      const data = doc.data() || {};
+      const email = normalizeEmail(data.email || data.emailNormalized);
+      const keep = preservedUids.has(doc.id) || (email && preservedEmails.has(email));
+      if (keep) {
+        preserved += 1;
+        continue;
+      }
+      if (!DRY) {
+        await firestore.collection(name).doc(doc.id).delete().catch(() => {});
+      }
+      deleted += 1;
+    }
+    result[name] = { deleted, preserved, total: snapshot.size };
+  }
+
+  const wipeCollections = ['children', 'pushTokens'];
+  for (const name of wipeCollections) {
+    const collectionRef = firestore.collection(name);
+    const snapshot = await collectionRef.get();
+    if (!DRY) {
+      await deleteCollectionRecursive(collectionRef);
+    }
+    result[name] = { deleted: snapshot.size, total: snapshot.size };
+  }
+
+  const metaDirectoryRef = firestore.collection('meta').doc('directory');
+  const metaDirectorySnapshot = await metaDirectoryRef.get().catch(() => null);
+  if (!DRY && metaDirectorySnapshot?.exists) {
+    await metaDirectoryRef.delete().catch(() => {});
+  }
+  result.metaDirectory = { deleted: metaDirectorySnapshot?.exists ? 1 : 0 };
+
+  return result;
+}
+
 async function cleanupPostgres(pool, preservedEmails) {
   const preserved = Array.from(preservedEmails);
   const client = await pool.connect();
@@ -233,6 +277,7 @@ async function main() {
   const authStats = await cleanupFirebaseAuth(auth, firestore, new Set(PRESERVE_EMAILS));
   const profileStats = await cleanupFirestoreProfiles(firestore, new Set(PRESERVE_EMAILS), authStats.preservedUids);
   const orgStats = await cleanupFirestoreOrganizations(firestore);
+  const seedCollectionStats = await cleanupFirestoreSeedCollections(firestore, new Set(PRESERVE_EMAILS), authStats.preservedUids);
 
   let pgStats = null;
   if (DATABASE_URL) {
@@ -249,6 +294,7 @@ async function main() {
   console.log('[cleanup] firebase auth', { total: authStats.total, preserved: authStats.preserved, deleted: authStats.deleted });
   console.log('[cleanup] firestore profiles', profileStats);
   console.log('[cleanup] firestore organizations', orgStats);
+  console.log('[cleanup] firestore seed collections', seedCollectionStats);
   if (pgStats) {
     console.log('[cleanup] postgres', pgStats);
   }
