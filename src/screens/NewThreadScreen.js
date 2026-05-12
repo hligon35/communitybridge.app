@@ -277,7 +277,7 @@ export default function NewThreadScreen({ navigation }) {
           <Text style={{ fontSize: 16, fontWeight: '800', color: '#111827' }}>Choose who to message</Text>
           {note ? <Text style={{ marginTop: 8, color: '#6b7280' }}>{note}</Text> : null}
 
-          <RoleSection title="Admin" items={admins} selectedId={selected?.id} onPick={pick} />
+          <RoleSection title={isParent ? 'Office / Admin' : 'Admin'} items={admins} selectedId={selected?.id} onPick={pick} />
           <RoleSection title={isParent ? 'BCBA' : THERAPY_ROLE_LABELS.therapists} items={connectedTherapists} selectedId={selected?.id} onPick={pick} />
           {!isParent ? <RoleSection title="Parents" items={connectedParents} selectedId={selected?.id} onPick={pick} /> : null}
 

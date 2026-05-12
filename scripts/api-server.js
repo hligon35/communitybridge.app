@@ -3579,6 +3579,14 @@ app.get('/api/directory/me', authMiddleware, (req, res) => {
         const bcbaId = supervisionByAba.get(abaId);
         if (bcbaId) outTherapistIds.add(bcbaId);
       });
+
+      // Parent messaging also needs office/admin contacts in the visible staff roster.
+      (allTherapists || []).forEach((staff) => {
+        const staffId = safeString(staff && staff.id).trim();
+        const staffRole = safeString(staff && staff.role).trim().toLowerCase();
+        if (!staffId) return;
+        if (isAdminRole(staffRole) || ['office', 'officeadmin', 'office admin', 'office-admin', 'office_admin', 'reception', 'receptionist', 'frontdesk', 'front desk', 'front-desk', 'front_desk'].includes(staffRole)) outTherapistIds.add(staffId);
+      });
     } else if (wantTherapist) {
       const meTherapist = pickDirectoryRecordForUser(req.user, allTherapists);
       if (!meTherapist) {

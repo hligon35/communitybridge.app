@@ -11,6 +11,7 @@ import { isBcbaRole, isOfficeAdminRole } from '../core/tenant/models';
 import { THERAPY_ROLE_LABELS } from '../utils/roleTerminology';
 import AppIconButton from '../components/AppIconButton';
 import { HelpButton } from '../components/TopButtons';
+import { getUserParticipantTokens } from '../utils/chatThreads';
 
 const IMAGE_PICKER_MEDIA_TYPES = ImagePicker.MediaTypeOptions?.Images ?? ImagePicker.MediaType?.Images;
 
@@ -38,30 +39,79 @@ function getStaffActivityMeta(item) {
   };
 }
 
-function buildThreads(messages = []) {
+function normalizeToken(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function participantTokenMatches(left, right) {
+  const normalizedLeft = normalizeToken(left);
+  const normalizedRight = normalizeToken(right);
+  if (!normalizedLeft || !normalizedRight) return false;
+  return normalizedLeft === normalizedRight || normalizedLeft.includes(normalizedRight) || normalizedRight.includes(normalizedLeft);
+}
+
+function addParticipantTokens(set, participant) {
+  [participant?.id, participant?.uid, participant?.name, participant?.email]
+    .map(normalizeToken)
+    .filter(Boolean)
+    .forEach((value) => set.add(value));
+}
+
+function isParticipantMatch(participant, userTokens = []) {
+  const participantTokens = new Set();
+  addParticipantTokens(participantTokens, participant);
+  const values = Array.from(participantTokens);
+  return (userTokens || []).some((token) => values.some((participantToken) => participantTokenMatches(token, participantToken)));
+}
+
+function getMessageParticipants(message) {
+  return [message?.sender, ...(Array.isArray(message?.to) ? message.to : [])]
+    .filter((participant) => participant && typeof participant === 'object');
+}
+
+function isMessageInvolvingUser(message, userTokens = []) {
+  if (!Array.isArray(userTokens) || !userTokens.length) return false;
+  return getMessageParticipants(message).some((participant) => isParticipantMatch(participant, userTokens));
+}
+
+function getDirectConversationLabel(message, userTokens = []) {
+  const otherParticipants = getMessageParticipants(message)
+    .filter((participant) => !isParticipantMatch(participant, userTokens))
+    .map((participant) => getParticipantLabel(participant))
+    .filter(Boolean);
+  if (otherParticipants.length) return Array.from(new Set(otherParticipants)).join(', ');
+  return getParticipantLabel(message?.sender) || 'Conversation';
+}
+
+function getMonitoredConversationLabel(message) {
+  const senderLabel = getParticipantLabel(message?.sender);
+  const recipients = (Array.isArray(message?.to) ? message.to : [])
+    .map((participant) => getParticipantLabel(participant))
+    .filter(Boolean);
+  const recipientLabel = Array.from(new Set(recipients)).join(', ');
+  if (senderLabel && recipientLabel) return `${senderLabel} to ${recipientLabel}`;
+  return recipientLabel || senderLabel || 'Conversation';
+}
+
+function buildThreads(messages = [], options = {}) {
+  const { userTokens = [], mode = 'monitor' } = options;
   const map = new Map();
   (messages || []).forEach((message, index) => {
     const key = message?.threadId || message?.id || `thread-${index}`;
     const existing = map.get(key) || { id: key, last: message, count: 0, recipientLabel: '', previewText: '' };
     existing.last = message;
     existing.count += 1;
-    existing.recipientLabel = getRecipientLabel(message);
+    existing.recipientLabel = mode === 'inbox'
+      ? getDirectConversationLabel(message, userTokens)
+      : getMonitoredConversationLabel(message);
     existing.previewText = getPreviewText(message);
     map.set(key, existing);
   });
-  return Array.from(map.values());
+  return Array.from(map.values()).sort((left, right) => new Date(right?.last?.createdAt || 0).getTime() - new Date(left?.last?.createdAt || 0).getTime());
 }
 
 function getParticipantLabel(participant) {
   return String(participant?.name || participant?.fullName || participant?.email || participant?.id || '').trim();
-}
-
-function getRecipientLabel(message) {
-  const recipients = (Array.isArray(message?.to) ? message.to : [])
-    .map((participant) => getParticipantLabel(participant))
-    .filter(Boolean);
-  if (recipients.length) return recipients.join(', ');
-  return getParticipantLabel(message?.sender) || 'Conversation';
 }
 
 function getPreviewText(message) {
@@ -77,7 +127,7 @@ function buildThreadMessages(messages = [], threadId) {
 export default function AdminChatMonitorScreen() {
   const navigation = useNavigation();
   const { user } = useAuth();
-  const { messages = [], parents = [], therapists = [], urgentMemos = [], sendAdminMemo } = useData();
+  const { messages = [], parents = [], therapists = [], urgentMemos = [], sendAdminMemo, deleteThread } = useData();
   const isBcba = isBcbaRole(user?.role);
   const isOffice = isOfficeAdminRole(user?.role);
   const [tab, setTab] = useState('inbox');
@@ -88,6 +138,7 @@ export default function AdminChatMonitorScreen() {
   const [announcementImage, setAnnouncementImage] = useState('');
   const [sendingAnnouncement, setSendingAnnouncement] = useState(false);
   const [selectedInboxThreadId, setSelectedInboxThreadId] = useState('');
+  const userTokens = useMemo(() => getUserParticipantTokens(user), [user]);
 
   const openNewStaffChat = () => {
     navigation.navigate('Chats', { screen: 'NewThread' });
@@ -108,19 +159,27 @@ export default function AdminChatMonitorScreen() {
     });
   }, [navigation]);
 
-  const threads = useMemo(() => buildThreads(messages), [messages]);
-  const filteredThreads = useMemo(() => {
+  const inboxMessages = useMemo(() => (Array.isArray(messages) ? messages : []).filter((message) => isMessageInvolvingUser(message, userTokens)), [messages, userTokens]);
+  const monitoredMessages = useMemo(() => (Array.isArray(messages) ? messages : []).filter((message) => !isMessageInvolvingUser(message, userTokens)), [messages, userTokens]);
+  const inboxThreads = useMemo(() => buildThreads(inboxMessages, { userTokens, mode: 'inbox' }), [inboxMessages, userTokens]);
+  const monitoredThreads = useMemo(() => buildThreads(monitoredMessages, { mode: 'monitor' }), [monitoredMessages]);
+  const filteredInboxThreads = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    if (!normalized) return threads;
-    return threads.filter((thread) => JSON.stringify(thread.last || {}).toLowerCase().includes(normalized));
-  }, [query, threads]);
-  const selectedInboxThread = useMemo(() => threads.find((thread) => thread.id === selectedInboxThreadId) || null, [selectedInboxThreadId, threads]);
-  const selectedInboxMessages = useMemo(() => buildThreadMessages(messages, selectedInboxThreadId), [messages, selectedInboxThreadId]);
+    if (!normalized) return inboxThreads;
+    return inboxThreads.filter((thread) => JSON.stringify(thread.last || {}).toLowerCase().includes(normalized));
+  }, [inboxThreads, query]);
+  const filteredMonitoredThreads = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return monitoredThreads;
+    return monitoredThreads.filter((thread) => JSON.stringify(thread.last || {}).toLowerCase().includes(normalized));
+  }, [monitoredThreads, query]);
+  const selectedInboxThread = useMemo(() => inboxThreads.find((thread) => thread.id === selectedInboxThreadId) || null, [selectedInboxThreadId, inboxThreads]);
+  const selectedInboxMessages = useMemo(() => buildThreadMessages(inboxMessages, selectedInboxThreadId), [inboxMessages, selectedInboxThreadId]);
   const attachments = useMemo(() => [
-    { id: 'pdf', label: 'PDFs', count: Math.max(1, filteredThreads.length) },
+    { id: 'pdf', label: 'PDFs', count: Math.max(1, filteredMonitoredThreads.length) },
     { id: 'notes', label: 'Notes', count: Math.max(1, therapists.length) },
     { id: 'reports', label: 'Reports', count: Math.max(1, parents.length) },
-  ], [filteredThreads.length, parents.length, therapists.length]);
+  ], [filteredMonitoredThreads.length, parents.length, therapists.length]);
   const recentAnnouncements = useMemo(() => {
     return (Array.isArray(urgentMemos) ? urgentMemos : [])
       .filter((item) => String(item?.type || '').toLowerCase() === 'admin_memo')
@@ -204,6 +263,26 @@ export default function AdminChatMonitorScreen() {
     setSelectedInboxThreadId('');
   }
 
+  function confirmDeleteInboxThread(threadId) {
+    const key = String(threadId || '').trim();
+    if (!key || typeof deleteThread !== 'function') return;
+    Alert.alert(
+      'Delete thread',
+      'Remove this conversation from the inbox?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            deleteThread(key);
+            if (selectedInboxThreadId === key) setSelectedInboxThreadId('');
+          },
+        },
+      ]
+    );
+  }
+
   return (
     <ScreenWrapper
       style={styles.container}
@@ -242,10 +321,16 @@ export default function AdminChatMonitorScreen() {
             {selectedInboxThread ? (
               <>
                 <View style={styles.inboxThreadHeader}>
-                  <TouchableOpacity style={styles.inboxBackButton} onPress={closeInboxThread} accessibilityLabel="Back to conversation list">
-                    <MaterialIcons name="arrow-back" size={18} color="#1d4ed8" />
-                    <Text style={styles.inboxBackText}>Inbox</Text>
-                  </TouchableOpacity>
+                  <View style={styles.inboxThreadActionRow}>
+                    <TouchableOpacity style={styles.inboxBackButton} onPress={closeInboxThread} accessibilityLabel="Back to conversation list">
+                      <MaterialIcons name="arrow-back" size={18} color="#1d4ed8" />
+                      <Text style={styles.inboxBackText}>Inbox</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.deleteThreadButton} onPress={() => confirmDeleteInboxThread(selectedInboxThread.id)} accessibilityLabel="Delete inbox thread">
+                      <MaterialIcons name="delete-outline" size={18} color="#b91c1c" />
+                      <Text style={styles.deleteThreadText}>Delete</Text>
+                    </TouchableOpacity>
+                  </View>
                   <View style={styles.inboxThreadHeaderText}>
                       <Text style={styles.cardTitle}>{selectedInboxThread.recipientLabel || 'Conversation'}</Text>
                       <Text style={styles.rowText}>{selectedInboxThread.previewText || 'No recent message.'}</Text>
@@ -268,13 +353,18 @@ export default function AdminChatMonitorScreen() {
             ) : (
               <>
                 <Text style={styles.cardTitle}>Inbox</Text>
-                {filteredThreads.length ? filteredThreads.slice(0, 8).map((thread) => (
-                  <TouchableOpacity key={thread.id} style={styles.threadRow} onPress={() => openInboxThread(thread.id)}>
-                    <Text style={styles.threadTitle}>{thread.recipientLabel || 'Conversation'}</Text>
-                    <Text style={styles.rowText}>{thread.previewText || 'No recent message.'}</Text>
-                    <Text style={styles.rowText}>{thread.count} message{thread.count === 1 ? '' : 's'}</Text>
-                  </TouchableOpacity>
-                )) : <Text style={styles.rowText}>No communication threads available.</Text>}
+                {filteredInboxThreads.length ? filteredInboxThreads.slice(0, 8).map((thread) => (
+                  <View key={thread.id} style={styles.threadRowInline}>
+                    <TouchableOpacity style={styles.threadRowContent} onPress={() => openInboxThread(thread.id)}>
+                      <Text style={styles.threadTitle}>{thread.recipientLabel || 'Conversation'}</Text>
+                      <Text style={styles.rowText}>{thread.previewText || 'No recent message.'}</Text>
+                      <Text style={styles.rowText}>{thread.count} message{thread.count === 1 ? '' : 's'}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.threadDeleteIconButton} onPress={() => confirmDeleteInboxThread(thread.id)} accessibilityLabel="Delete inbox thread">
+                      <MaterialIcons name="delete-outline" size={18} color="#b91c1c" />
+                    </TouchableOpacity>
+                  </View>
+                )) : <Text style={styles.rowText}>No direct inbox conversations are available.</Text>}
               </>
             )}
           </View>
@@ -353,13 +443,14 @@ export default function AdminChatMonitorScreen() {
         {tab === 'threads' ? (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Conversation threads</Text>
-            {filteredThreads.length ? filteredThreads.map((thread) => (
+            <Text style={styles.rowText}>Monitor conversations between other users here. Your direct messages stay in Inbox.</Text>
+            {filteredMonitoredThreads.length ? filteredMonitoredThreads.map((thread) => (
               <TouchableOpacity key={thread.id} style={styles.threadRow} onPress={() => navigation.navigate('ChatThread', { threadId: thread.id, conversationTitle: thread.recipientLabel || 'Conversation' })}>
                 <Text style={styles.threadTitle}>{thread.recipientLabel || 'Conversation'}</Text>
                 <Text style={styles.rowText}>{thread.previewText || 'No recent message.'}</Text>
                 <Text style={styles.rowText}>{thread.last?.createdAt ? new Date(thread.last.createdAt).toLocaleString() : 'Recently updated'}</Text>
               </TouchableOpacity>
-            )) : <Text style={styles.rowText}>No conversation threads available.</Text>}
+            )) : <Text style={styles.rowText}>No monitored conversation threads are available.</Text>}
           </View>
         ) : null}
 
@@ -416,9 +507,15 @@ const styles = StyleSheet.create({
   threadRow: { paddingVertical: 10, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
   threadTitle: { fontWeight: '800', color: '#0f172a' },
   inboxThreadHeader: { marginBottom: 4 },
+  inboxThreadActionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   inboxBackButton: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', marginBottom: 8, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 999, backgroundColor: '#eff6ff' },
   inboxBackText: { marginLeft: 6, color: '#1d4ed8', fontWeight: '800' },
+  deleteThreadButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 10, borderRadius: 999, backgroundColor: '#fee2e2' },
+  deleteThreadText: { marginLeft: 6, color: '#b91c1c', fontWeight: '800' },
   inboxThreadHeaderText: { marginBottom: 6 },
+  threadRowInline: { flexDirection: 'row', alignItems: 'flex-start', borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingVertical: 10 },
+  threadRowContent: { flex: 1, paddingRight: 8 },
+  threadDeleteIconButton: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#fee2e2', alignItems: 'center', justifyContent: 'center', marginTop: 2 },
   chatMessageRow: { paddingVertical: 6, flexDirection: 'row', justifyContent: 'flex-start' },
   chatMessageRowMine: { justifyContent: 'flex-end' },
   chatMessageBubble: { maxWidth: '82%', borderRadius: 14, paddingVertical: 10, paddingHorizontal: 12 },
