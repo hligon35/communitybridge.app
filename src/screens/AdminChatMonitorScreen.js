@@ -21,22 +21,15 @@ function formatActivityTimestamp(value) {
   return parsed.toLocaleString();
 }
 
-function getStaffActivityMeta(item) {
-  const type = String(item?.type || '').trim().toLowerCase();
-  const actor = String(item?.staffName || item?.proposerName || item?.title || 'Staff').trim();
-  if (type === 'clock_event') {
-    const status = String(item?.clockStatus || '').trim().toLowerCase() === 'out' ? 'Clocked out' : 'Clocked in';
-    return {
-      title: `${actor} · ${status}`,
-      body: item?.body || `${actor} ${status.toLowerCase()}.`,
-      stamp: formatActivityTimestamp(item?.eventAt || item?.createdAt),
-    };
-  }
-  return {
-    title: item?.title || actor,
-    body: item?.body || 'Operational activity recorded.',
-    stamp: formatActivityTimestamp(item?.createdAt),
-  };
+function getParticipantLabel(participant) {
+  if (!participant || typeof participant !== 'object') return '';
+  return String(
+    participant.name
+    || `${participant.firstName || ''} ${participant.lastName || ''}`.trim()
+    || participant.email
+    || participant.id
+    || ''
+  ).trim();
 }
 
 function normalizeToken(value) {
@@ -107,11 +100,11 @@ function buildThreads(messages = [], options = {}) {
     existing.previewText = getPreviewText(message);
     map.set(key, existing);
   });
-  return Array.from(map.values()).sort((left, right) => new Date(right?.last?.createdAt || 0).getTime() - new Date(left?.last?.createdAt || 0).getTime());
-}
-
-function getParticipantLabel(participant) {
-  return String(participant?.name || participant?.fullName || participant?.email || participant?.id || '').trim();
+  return Array.from(map.values()).sort((left, right) => {
+    const leftTime = new Date(left?.last?.createdAt || 0).getTime();
+    const rightTime = new Date(right?.last?.createdAt || 0).getTime();
+    return rightTime - leftTime;
+  });
 }
 
 function getPreviewText(message) {
@@ -185,13 +178,6 @@ export default function AdminChatMonitorScreen() {
       .filter((item) => String(item?.type || '').toLowerCase() === 'admin_memo')
       .slice(0, 5);
   }, [urgentMemos]);
-  const staffActivity = useMemo(() => {
-    return (Array.isArray(urgentMemos) ? urgentMemos : [])
-      .filter((item) => ['clock_event', 'quick_note', 'incident_log', 'unexpected_data'].includes(String(item?.type || '').trim().toLowerCase()))
-      .sort((left, right) => new Date(right?.eventAt || right?.createdAt || 0).getTime() - new Date(left?.eventAt || left?.createdAt || 0).getTime())
-      .slice(0, 20);
-  }, [urgentMemos]);
-
   const announcementRecipients = useMemo(() => {
     if (announcementAudience === 'parents') {
       return (parents || []).map((entry) => ({ id: entry?.id, role: 'parent', name: entry?.name || `${entry?.firstName || ''} ${entry?.lastName || ''}`.trim() })).filter((entry) => entry.id);
@@ -420,23 +406,6 @@ export default function AdminChatMonitorScreen() {
                 ))}
               </View>
             ) : null}
-          </View>
-        ) : null}
-
-        {tab === 'activity' ? (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Staff activity</Text>
-            <Text style={styles.rowText}>Clock-ins, clock-outs, and quick operational logs land here for office review without changing the underlying staff workflow.</Text>
-            {staffActivity.length ? staffActivity.map((item) => {
-              const meta = getStaffActivityMeta(item);
-              return (
-                <View key={item.id} style={styles.threadRow}>
-                  <Text style={styles.threadTitle}>{meta.title}</Text>
-                  <Text style={styles.rowText}>{meta.body}</Text>
-                  <Text style={styles.activityStamp}>{meta.stamp}</Text>
-                </View>
-              );
-            }) : <Text style={styles.rowText}>No staff activity has been recorded yet.</Text>}
           </View>
         ) : null}
 

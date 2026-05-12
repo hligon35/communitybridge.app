@@ -5,6 +5,7 @@ import { useData } from '../DataContext';
 import { useAuth } from '../AuthContext';
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { useHeaderHeight } from '@react-navigation/elements';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { canViewThread, getConversationParticipant, getUserParticipantTokens, isMessageFromUser } from '../utils/chatThreads';
 import { MaterialIcons } from '@expo/vector-icons';
 import { HelpButton } from '../components/TopButtons';
@@ -16,6 +17,7 @@ export default function ChatThreadScreen({ route, navigation }) {
   const { user } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
   const headerHeight = useHeaderHeight ? useHeaderHeight() : 0;
+  const insets = useSafeAreaInsets();
   const userTokens = useMemo(() => getUserParticipantTokens(user), [user]);
   const effectiveThreadIds = useMemo(() => {
     const raw = Array.isArray(routeThreadIds) && routeThreadIds.length ? routeThreadIds : [activeThreadId || threadId];
@@ -134,12 +136,12 @@ export default function ChatThreadScreen({ route, navigation }) {
   const outerWrapperProps = Platform.OS === 'web' ? {} : { onPress: Keyboard.dismiss, accessible: false };
 
   return (
-    <ScreenWrapper style={{ flex: 1, backgroundColor: '#fff' }}>
+    <ScreenWrapper style={{ flex: 1, backgroundColor: '#fff' }} bottomSpacerHeight={0}>
       <OuterWrapper {...outerWrapperProps}>
         <KeyboardAvoidingView
           style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight + Math.max(insets.top, 0) : 0}
         >
           <FlatList
             data={threadMessages}
@@ -147,7 +149,8 @@ export default function ChatThreadScreen({ route, navigation }) {
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
             keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
             keyboardShouldPersistTaps="handled"
-            contentContainerStyle={{ paddingBottom: 120 }}
+            automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+            contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) + 104 }}
             renderItem={({ item }) => {
               const isMine = isMessageFromUser(item, user);
               return (
@@ -174,7 +177,7 @@ export default function ChatThreadScreen({ route, navigation }) {
             }}
           />
 
-          <View style={{ padding: 8, borderTopWidth: 1, borderTopColor: '#eee', backgroundColor: '#fff' }}>
+          <View style={{ paddingTop: 8, paddingHorizontal: 8, paddingBottom: Math.max(insets.bottom, 8), borderTopWidth: 1, borderTopColor: '#eee', backgroundColor: '#fff' }}>
             {isChatBlocked ? (
               <Text style={{ color: '#b91c1c', fontWeight: '600', marginBottom: 8 }}>
                 Messaging has been disabled for this account by an administrator.

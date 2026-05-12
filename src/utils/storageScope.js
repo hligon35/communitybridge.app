@@ -5,6 +5,7 @@ const STORAGE_KEY_BASES = {
   messages: 'bbs_messages_v1',
   memos: 'bbs_memos_v1',
   archivedThreads: 'bbs_archived_threads_v1',
+  deletedThreads: 'bbs_deleted_threads_v1',
   threadReads: 'bbs_thread_reads_v1',
   children: 'bbs_children_v1',
   blocked: 'bbs_blocked_v1',

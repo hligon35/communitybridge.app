@@ -38,6 +38,7 @@ import MyChildScreen from './src/screens/MyChildScreen';
 import RecentApprovedSessionsScreen from './src/screens/RecentApprovedSessionsScreen';
 import AdminControlsScreen from './src/screens/AdminControlsScreen';
 import AdminChatMonitorScreen from './src/screens/AdminChatMonitorScreen';
+import StaffActivityScreen from './src/screens/StaffActivityScreen';
 import AnnouncementFeedScreen from './src/screens/AnnouncementFeedScreen';
 import UserMonitorScreen from './src/screens/UserMonitorScreen';
 import StudentDirectoryScreen from './src/screens/StudentDirectoryScreen';
@@ -70,7 +71,7 @@ import { HelpButton, BackButton } from './src/components/TopButtons';
 import LoginScreen from './screens/LoginScreen';
 import TwoFactorScreen from './screens/TwoFactorScreen';
 import CreatePasswordScreen from './screens/CreatePasswordScreen';
-import { initSentry, Sentry } from './src/sentry';
+import { addSentryBreadcrumb, initSentry, Sentry } from './src/sentry';
 import { CommonActions } from '@react-navigation/native';
 import { TenantProvider } from './src/core/tenant/TenantContext';
 import { canAccessAdminWorkspace, isAdminRole, isBcbaRole, isStaffRole, normalizeUserRole } from './src/core/tenant/models';
@@ -195,6 +196,7 @@ function ControlsStack() {
       <ControlsStackNav.Screen name="ExportData" component={ExportDataScreen} options={{ title: 'Export Data' }} />
       <ControlsStackNav.Screen name="Attendance" component={AttendanceScreen} options={{ title: 'Attendance' }} />
       <ControlsStackNav.Screen name="ScheduleCalendar" component={ScheduleCalendarScreen} options={{ title: 'Scheduling' }} />
+      <ControlsStackNav.Screen name="StaffActivity" component={StaffActivityScreen} options={{ title: 'Staff Activity' }} />
       <ControlsStackNav.Screen name="ProgramDirectory" component={ProgramDirectoryScreen} options={{ title: 'Programs & Goals' }} />
       <ControlsStackNav.Screen name="BcbaSessionReviewQueue" component={BcbaSessionReviewQueueScreen} options={{ title: 'BCBA Review Queue' }} />
       <ControlsStackNav.Screen name="LearnerClinicalProfile" component={LearnerClinicalProfileScreen} options={{ title: 'Learner Clinical Profile' }} />
@@ -621,7 +623,8 @@ function AppNavigator() {
     if (Platform.OS === 'web') return undefined;
 
     let active = true;
-    let subscription = null;
+    let responseSubscription = null;
+    let receiptSubscription = null;
     let Notifications = null;
     try {
       Notifications = require('expo-notifications');
@@ -630,9 +633,30 @@ function AppNavigator() {
     }
     if (!Notifications) return undefined;
 
+    const describeNotification = (notification) => {
+      const content = notification?.request?.content || notification?.notification?.request?.content || {};
+      const data = content?.data || {};
+      return {
+        kind: String(data?.kind || '').trim().toLowerCase() || 'unknown',
+        hasMemoId: Boolean(data?.memoId),
+        hasThreadId: Boolean(data?.threadId),
+        triggerType: String(notification?.request?.trigger?.type || notification?.notification?.request?.trigger?.type || '').trim() || 'unknown',
+        channelId: String(content?.channelId || '').trim() || 'default',
+        sound: String(content?.sound || '').trim() || 'default',
+      };
+    };
+
     const handleResponse = (response) => {
       const data = response?.notification?.request?.content?.data || response?.request?.content?.data || {};
       const kind = String(data?.kind || '').trim().toLowerCase();
+      addSentryBreadcrumb({
+        category: 'notifications',
+        message: 'Notification response received',
+        data: {
+          ...describeNotification(response?.notification || response),
+          actionIdentifier: String(response?.actionIdentifier || '').trim() || 'default',
+        },
+      });
       if (!data?.memoId && kind !== 'admin_memo' && kind !== 'urgent_memo') return;
       if (!navigationRef?.isReady?.()) return;
       if (!auth?.token || auth?.needsMfa || auth?.passwordSetupRequired) {
@@ -648,13 +672,22 @@ function AppNavigator() {
       })
       .catch(() => {});
 
-    subscription = Notifications.addNotificationResponseReceivedListener?.((response) => {
+    receiptSubscription = Notifications.addNotificationReceivedListener?.((notification) => {
+      addSentryBreadcrumb({
+        category: 'notifications',
+        message: 'Notification received',
+        data: describeNotification(notification),
+      });
+    });
+
+    responseSubscription = Notifications.addNotificationResponseReceivedListener?.((response) => {
       handleResponse(response);
     });
 
     return () => {
       active = false;
-      subscription?.remove?.();
+      receiptSubscription?.remove?.();
+      responseSubscription?.remove?.();
     };
   }, [auth?.token, auth?.needsMfa, auth?.passwordSetupRequired]);
 

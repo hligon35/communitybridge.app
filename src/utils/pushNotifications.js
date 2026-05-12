@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Api from '../Api';
+import { reportErrorToSentry } from './reportError';
 
 export const PUSH_STORAGE_KEYS = Object.freeze({
   enabled: 'settings_push_enabled_v1',
@@ -13,6 +14,18 @@ export const PUSH_STORAGE_KEYS = Object.freeze({
 });
 
 const DEFAULT_PUSH_CHANNEL_ID = 'communitybridge-alerts-v2';
+
+function reportPushIssue(error, context = {}) {
+  try {
+    return reportErrorToSentry(error, {
+      area: 'notifications',
+      ...context,
+      platform: Platform.OS,
+    });
+  } catch (_) {
+    return '';
+  }
+}
 
 function getNotificationPermissionRequestOptions() {
   if (Platform.OS === 'ios') {
@@ -145,12 +158,21 @@ export async function registerForExpoPushTokenAsync() {
   // iOS will prompt; Android depends on OS version.
   const existing = await Notifications.getPermissionsAsync();
   let status = existing?.status;
+  let requested = null;
   if (status !== 'granted') {
-    const requested = await Notifications.requestPermissionsAsync(getNotificationPermissionRequestOptions());
+    requested = await Notifications.requestPermissionsAsync(getNotificationPermissionRequestOptions());
     status = requested?.status;
   }
 
   if (status !== 'granted') {
+    reportPushIssue(new Error('Push notification permission not granted.'), {
+      action: 'push_permission',
+      permissionStatus: String(status || ''),
+      canAskAgain: Boolean(requested?.canAskAgain ?? existing?.canAskAgain),
+      hasIosSoundPermission: Boolean(requested?.ios?.allowsSound ?? existing?.ios?.allowsSound),
+      hasIosAlertPermission: Boolean(requested?.ios?.allowsAlert ?? existing?.ios?.allowsAlert),
+      hasIosBadgePermission: Boolean(requested?.ios?.allowsBadge ?? existing?.ios?.allowsBadge),
+    });
     return { ok: false, reason: 'permission-denied' };
   }
 
@@ -169,6 +191,11 @@ export async function registerForExpoPushTokenAsync() {
     const token = await Notifications.getExpoPushTokenAsync(EAS_PROJECT_ID ? { projectId: EAS_PROJECT_ID } : undefined);
     return { ok: true, token: token?.data || '' };
   } catch (e) {
+    reportPushIssue(e, {
+      action: 'push_token',
+      reason: 'token-failed',
+      hasProjectId: Boolean(EAS_PROJECT_ID),
+    });
     return { ok: false, reason: 'token-failed', message: e?.message || String(e) };
   }
 }
@@ -226,16 +253,32 @@ export async function syncLoggedInDevicePushRegistration({ userId } = {}) {
   } else if (stored.token) {
     token = stored.token;
   } else {
+    reportPushIssue(new Error(`Push registration failed: ${registration?.reason || 'unknown'}`), {
+      action: 'push_sync',
+      reason: String(registration?.reason || 'unknown'),
+      usedStoredToken: false,
+      pushEnabled: Boolean(stored.enabled),
+    });
     return registration;
   }
 
-  await Api.registerPushToken({
-    token,
-    userId: nextUserId,
-    platform: Platform.OS,
-    enabled: true,
-    preferences: stored.preferences,
-  });
+  try {
+    await Api.registerPushToken({
+      token,
+      userId: nextUserId,
+      platform: Platform.OS,
+      enabled: true,
+      preferences: stored.preferences,
+    });
+  } catch (e) {
+    reportPushIssue(e, {
+      action: 'push_register',
+      hasToken: Boolean(token),
+      usedStoredToken: token === stored.token,
+      pushEnabled: Boolean(stored.enabled),
+    });
+    throw e;
+  }
   return { ok: true, token };
 }
 

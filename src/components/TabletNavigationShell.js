@@ -167,6 +167,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
     TapTracker: 'Tap Tracker',
     SummaryReview: 'Session Report',
     ScheduleCalendar: 'Schedule',
+    StaffActivity: 'Staff Activity',
     ManagePermissions: 'Manage Permissions',
     PrivacyDefaults: 'Profile Settings',
     ModeratePosts: 'Moderate Posts',
@@ -630,6 +631,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
         ? [
           { key: 'dashboard', label: 'Dashboard', icon: 'dashboard', target: { root: 'Controls', screen: 'ControlsMain' } },
           ...((phoneProfile === 'bcba' || phoneProfile === 'office' || phoneProfile === 'admin' || phoneProfile === 'reception') ? [{ key: 'schedule', label: 'Scheduling', icon: 'event', target: { root: 'Controls', screen: 'ScheduleCalendar' }, section: ADMIN_SECTION_KEYS.SCHEDULING }] : []),
+          ...((phoneProfile === 'office' || phoneProfile === 'admin') ? [{ key: 'staff-activity', label: 'Staff Activity', icon: 'timeline', target: { root: 'Controls', screen: 'StaffActivity' } }] : []),
           ...((phoneProfile === 'bcba' || phoneProfile === 'office' || phoneProfile === 'admin' || phoneProfile === 'reception') ? [{ key: 'students', label: 'Students', icon: 'school', target: { root: 'Controls', screen: 'StudentDirectory' }, section: ADMIN_SECTION_KEYS.STUDENTS }] : []),
           ...((phoneProfile === 'bcba' || phoneProfile === 'office' || phoneProfile === 'admin' || phoneProfile === 'reception') ? [{ key: 'staff', label: 'Staff', icon: 'groups', target: { root: 'Controls', screen: 'FacultyDirectory' }, section: ADMIN_SECTION_KEYS.STAFF }] : []),
           ...((phoneProfile === 'office' || phoneProfile === 'admin' || phoneProfile === 'reception') ? [{ key: 'families', label: 'Families', icon: 'family-restroom', target: { root: 'Controls', screen: 'ParentDirectory' }, section: ADMIN_SECTION_KEYS.STUDENTS }] : []),
@@ -646,6 +648,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
           { key: 'students', label: 'Students', icon: 'school', target: { root: 'Controls', screen: 'StudentDirectory' }, section: ADMIN_SECTION_KEYS.STUDENTS },
           { key: 'staff', label: 'Staff', icon: 'groups', target: { root: 'Controls', screen: 'FacultyDirectory' }, section: ADMIN_SECTION_KEYS.STAFF },
           { key: 'scheduling', label: 'Scheduling', icon: 'event', target: { root: 'Controls', screen: 'ScheduleCalendar' }, section: ADMIN_SECTION_KEYS.SCHEDULING },
+          ...((isOfficeAdminRole(user?.role)) ? [{ key: 'staff-activity', label: 'Staff Activity', icon: 'timeline', target: { root: 'Controls', screen: 'StaffActivity' } }] : []),
           { key: 'programs', label: 'Programs & Goals', icon: 'assignment', target: { root: 'Controls', screen: 'ProgramDirectory' }, section: ADMIN_SECTION_KEYS.PROGRAMS_GOALS },
           { key: 'reports', label: 'Data & Reports', icon: 'query-stats', target: { root: 'Controls', screen: 'Reports' }, section: ADMIN_SECTION_KEYS.DATA_REPORTS },
           { key: 'billing', label: 'Billing & Authorizations', icon: 'receipt-long', target: { root: 'Controls', screen: 'InsuranceBilling' }, section: ADMIN_SECTION_KEYS.BILLING_AUTHORIZATIONS },

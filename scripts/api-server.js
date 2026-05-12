@@ -78,6 +78,9 @@ const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const bodyParser = require('body-parser');
+const { captureServerException, initServerSentry } = require('./sentry-node');
+
+initServerSentry({ service: 'api-server-sqlite' });
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
@@ -2217,14 +2220,43 @@ async function sendExpoPush(tokens, { title, body, data } = {}) {
 
     const json = await resp.json().catch(() => null);
 
+    if (!resp.ok) {
+      captureServerException(new Error(`Expo push send failed with status ${resp.status}`), {
+        area: 'notifications',
+        action: 'expo_push_send',
+        status: resp.status,
+        tokenCount: unique.length,
+        kind: safeString(data?.kind).trim() || 'unknown',
+        hasMemoId: Boolean(data?.memoId),
+        hasThreadId: Boolean(data?.threadId),
+        expoResponse: json,
+      });
+    }
+
     // Best-effort cleanup for invalid/unregistered tokens.
     // Expo returns tickets in the same order as the messages array.
     try {
       const tickets = json && Array.isArray(json.data) ? json.data : null;
       if (resp.ok && tickets && tickets.length === messages.length) {
         const tokensToDelete = [];
+        const ticketErrors = [];
         for (let i = 0; i < tickets.length; i += 1) {
+          if (tickets[i]?.status === 'error') {
+            ticketErrors.push({
+              code: safeString(tickets[i]?.details?.error || tickets[i]?.message).trim(),
+              index: i,
+            });
+          }
           if (shouldDeleteTokenForExpoError(tickets[i])) tokensToDelete.push(messages[i].to);
+        }
+        if (ticketErrors.length) {
+          captureServerException(new Error('Expo push ticket errors'), {
+            area: 'notifications',
+            action: 'expo_push_tickets',
+            tokenCount: unique.length,
+            kind: safeString(data?.kind).trim() || 'unknown',
+            ticketErrors,
+          });
         }
         const deleted = deletePushTokens(tokensToDelete);
         if (deleted) console.log(`[api] push cleanup: deleted ${deleted} invalid token(s)`);
@@ -2235,6 +2267,14 @@ async function sendExpoPush(tokens, { title, body, data } = {}) {
 
     return { ok: resp.ok, status: resp.status, expo: json };
   } catch (e) {
+    captureServerException(e, {
+      area: 'notifications',
+      action: 'expo_push_send',
+      tokenCount: Array.isArray(tokens) ? tokens.length : 0,
+      kind: safeString(data?.kind).trim() || 'unknown',
+      hasMemoId: Boolean(data?.memoId),
+      hasThreadId: Boolean(data?.threadId),
+    });
     console.warn('[api] push send failed', e && e.message ? e.message : String(e));
     return { ok: false, error: e && e.message ? e.message : String(e) };
   }

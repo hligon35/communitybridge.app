@@ -3,6 +3,12 @@ import Constants from 'expo-constants';
 
 export { Sentry };
 
+const SENSITIVE_USER_KEYS = new Set(['email', 'ip_address', 'username', 'name']);
+const SENSITIVE_DATA_PARTS = [
+  'password', 'email', 'token', 'phone', 'address', 'body', 'note', 'notes', 'subject',
+  'memo', 'recipient', 'avatar', 'lat', 'lng',
+];
+
 function getExpoExtraValue(key) {
   try {
     return (
@@ -22,10 +28,14 @@ function isPlainObject(value) {
 
 function isSensitiveKey(key) {
   const normalized = String(key || '').toLowerCase();
-  return [
-    'password', 'email', 'token', 'name', 'phone', 'address', 'body', 'note', 'notes', 'subject', 'message',
-    'child', 'parent', 'therapist', 'memo', 'recipient', 'location', 'lat', 'lng', 'avatar',
-  ].some((part) => normalized.includes(part));
+  return SENSITIVE_DATA_PARTS.some((part) => normalized.includes(part));
+}
+
+function scrubUser(user) {
+  if (!user || typeof user !== 'object') return user;
+  return Object.fromEntries(Object.entries(user).map(([key, value]) => (
+    [key, SENSITIVE_USER_KEYS.has(String(key || '').toLowerCase()) ? '[REDACTED]' : value]
+  )));
 }
 
 function scrubValue(value, parentKey = '') {
@@ -42,7 +52,7 @@ function scrubValue(value, parentKey = '') {
 function scrubEvent(event) {
   if (!event || typeof event !== 'object') return event;
   const next = { ...event };
-  if (next.user) next.user = scrubValue(next.user);
+  if (next.user) next.user = scrubUser(next.user);
   if (next.contexts) next.contexts = scrubValue(next.contexts);
   if (next.extra) next.extra = scrubValue(next.extra);
   if (next.request) next.request = scrubValue(next.request);
@@ -66,4 +76,19 @@ export function initSentry() {
       return scrubEvent(event);
     },
   });
+}
+
+export function addSentryBreadcrumb({ category = 'app', message = '', data = null, level = 'info', type } = {}) {
+  try {
+    if (!Sentry || typeof Sentry.addBreadcrumb !== 'function') return;
+    Sentry.addBreadcrumb({
+      category: String(category || 'app'),
+      message: String(message || '').trim() || undefined,
+      level,
+      type: type ? String(type) : undefined,
+      data: data && typeof data === 'object' ? scrubValue(data) : undefined,
+    });
+  } catch (_) {
+    // ignore breadcrumb failures
+  }
 }

@@ -47,6 +47,49 @@ function getMessageConversationKeys(message) {
   return Array.from(new Set(rawValues.map((value) => String(value || '').trim()).filter(Boolean)));
 }
 
+function matchesThreadKey(message, key, user) {
+  const threadKey = String(key || '').trim();
+  if (!threadKey) return false;
+  if (getConversationKey(message, user) === threadKey) return true;
+  const messageKeys = getMessageConversationKeys(message);
+  if (messageKeys.includes(threadKey)) return true;
+  return messageKeys.some((messageKey) => threadKey === `thread:${messageKey}`);
+}
+
+function collectThreadKeys(message, user) {
+  const keys = new Set();
+  const conversationKey = String(getConversationKey(message, user) || '').trim();
+  if (conversationKey) keys.add(conversationKey);
+  getMessageConversationKeys(message).forEach((value) => {
+    keys.add(value);
+    keys.add(`thread:${value}`);
+  });
+  return Array.from(keys).filter(Boolean);
+}
+
+function normalizeDeletedThreadsMap(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return Object.entries(value).reduce((accumulator, [key, deletedAt]) => {
+    const normalizedKey = String(key || '').trim();
+    const deletedAtMs = Date.parse(String(deletedAt || ''));
+    if (normalizedKey && Number.isFinite(deletedAtMs)) accumulator[normalizedKey] = new Date(deletedAtMs).toISOString();
+    return accumulator;
+  }, {});
+}
+
+function filterDeletedMessages(items, deletedThreadMap, user) {
+  const deletedEntries = Object.entries(normalizeDeletedThreadsMap(deletedThreadMap));
+  if (!deletedEntries.length) return Array.isArray(items) ? items : [];
+  return (Array.isArray(items) ? items : []).filter((message) => {
+    const createdAtMs = Date.parse(String(message?.createdAt || ''));
+    return !deletedEntries.some(([key, deletedAt]) => {
+      const deletedAtMs = Date.parse(String(deletedAt || ''));
+      if (!Number.isFinite(createdAtMs) || !Number.isFinite(deletedAtMs)) return false;
+      return createdAtMs <= deletedAtMs && matchesThreadKey(message, key, user);
+    });
+  });
+}
+
 function deriveTherapistsFromChildren(childrenArr) {
   try {
     const ids = new Set();
@@ -125,6 +168,7 @@ export function DataProvider({ children: reactChildren }) {
   const [urgentMemos, setUrgentMemos] = useState([]);
   const [timeChangeProposals, setTimeChangeProposals] = useState([]);
   const [archivedThreads, setArchivedThreads] = useState([]);
+  const [deletedThreads, setDeletedThreads] = useState({});
   const [children, setChildren] = useState([]);
   const [parents, setParents] = useState([]);
   const [therapists, setTherapists] = useState([]);
@@ -178,6 +222,7 @@ export function DataProvider({ children: reactChildren }) {
       threadReads: {},
       urgentMemos: cloneSeedValue(seededScreenshotUrgentMemos),
       archivedThreads: [],
+      deletedThreads: {},
       timeChangeProposals: cloneSeedValue(seededScreenshotTimeChangeProposals),
       children: directory.children,
       parents: directory.parents,
@@ -212,6 +257,7 @@ export function DataProvider({ children: reactChildren }) {
     setUrgentMemos([]);
     setTimeChangeProposals([]);
     setArchivedThreads([]);
+    setDeletedThreads({});
     setChildren([]);
     setParents([]);
     setTherapists([]);
@@ -243,6 +289,7 @@ export function DataProvider({ children: reactChildren }) {
     setThreadReads(snapshot?.threadReads && typeof snapshot.threadReads === 'object' ? snapshot.threadReads : {});
     setUrgentMemos(Array.isArray(snapshot?.urgentMemos) ? snapshot.urgentMemos : []);
     setArchivedThreads(Array.isArray(snapshot?.archivedThreads) ? snapshot.archivedThreads : []);
+    setDeletedThreads(normalizeDeletedThreadsMap(snapshot?.deletedThreads));
     setTimeChangeProposals(Array.isArray(snapshot?.timeChangeProposals) ? snapshot.timeChangeProposals : []);
     setChildren(Array.isArray(snapshot?.children) ? snapshot.children : []);
     setParents(Array.isArray(snapshot?.parents) ? snapshot.parents : []);
@@ -291,9 +338,10 @@ export function DataProvider({ children: reactChildren }) {
     resetLocalState();
     (async () => {
       try {
-        const [blockedRaw, chatBlockedRaw, seedStatusRaw] = await Promise.all([
+        const [blockedRaw, chatBlockedRaw, deletedThreadsRaw, seedStatusRaw] = await Promise.all([
           AsyncStorage.getItem(storageKeys.blocked),
           AsyncStorage.getItem(storageKeys.chatBlocked),
+          AsyncStorage.getItem(storageKeys.deletedThreads),
           AsyncStorage.getItem(storageKeys.seedStatus),
         ]);
         await AsyncStorage.multiRemove(sensitiveStorageKeys).catch(() => {});
@@ -331,6 +379,7 @@ export function DataProvider({ children: reactChildren }) {
         setTherapists([]);
         setChildren([]);
         setArchivedThreads([]);
+        setDeletedThreads({});
         // Blocked users
         if (blockedRaw) {
           try { const parsed = JSON.parse(blockedRaw); if (Array.isArray(parsed)) setBlockedUserIds(parsed); else setBlockedUserIds([]); }
@@ -343,6 +392,15 @@ export function DataProvider({ children: reactChildren }) {
           catch (e) { setChatBlockedUserIds([]); }
         } else {
           setChatBlockedUserIds([]);
+        }
+        if (deletedThreadsRaw) {
+          try {
+            const parsed = JSON.parse(deletedThreadsRaw);
+            setDeletedThreads(normalizeDeletedThreadsMap(parsed));
+          }
+          catch (e) { setDeletedThreads({}); }
+        } else {
+          setDeletedThreads({});
         }
       } catch (e) {
         console.warn('hydrate failed', e.message);
@@ -496,7 +554,7 @@ export function DataProvider({ children: reactChildren }) {
       }
 
       if (messagesResult.status === 'fulfilled') {
-        if (Array.isArray(messagesResult.value)) setMessages(messagesResult.value);
+        if (Array.isArray(messagesResult.value)) setMessages(filterDeletedMessages(messagesResult.value, deletedThreads, user));
       } else {
         console.warn('getMessages failed', messagesResult.reason?.message || messagesResult.reason);
       }
@@ -611,7 +669,7 @@ export function DataProvider({ children: reactChildren }) {
       const run = (async () => {
         try {
           const remoteMessages = await Api.getMessages();
-          if (active && Array.isArray(remoteMessages)) setMessages(remoteMessages);
+          if (active && Array.isArray(remoteMessages)) setMessages(filterDeletedMessages(remoteMessages, deletedThreads, user));
         } catch (e) {
           console.warn('message refresh failed', e?.message || e);
         }
@@ -641,7 +699,7 @@ export function DataProvider({ children: reactChildren }) {
       clearInterval(intervalId);
       appStateSubscription?.remove?.();
     };
-  }, [isDemoReviewer, loading, needsMfa, user?.id, user?.uid]);
+  }, [deletedThreads, isDemoReviewer, loading, needsMfa, user?.id, user?.uid]);
 
   async function createPost(payload) {
     if (isDemoReviewer) {
@@ -910,6 +968,16 @@ export function DataProvider({ children: reactChildren }) {
     const sender = chatUser ? { id: chatUser.id, name: chatUser.name, email: chatUser.email } : undefined;
     const payloadWithSender = { ...payload, sender };
     const temp = { ...payloadWithSender, id: `temp-${Date.now()}`, createdAt: new Date().toISOString(), outgoing: true };
+    const restoredThreadKeys = collectThreadKeys(temp, user);
+    if (restoredThreadKeys.length) {
+      setDeletedThreads((s) => {
+        const current = normalizeDeletedThreadsMap(s);
+        const next = { ...current };
+        restoredThreadKeys.forEach((value) => { delete next[String(value)]; });
+        AsyncStorage.setItem(storageKeys.deletedThreads, JSON.stringify(next)).catch(() => {});
+        return next;
+      });
+    }
     setMessages((s) => [temp, ...s]);
     if (isDemoReviewer) return temp;
     try {
@@ -960,28 +1028,33 @@ export function DataProvider({ children: reactChildren }) {
   function deleteThread(threadId) {
     try {
       const key = threadId != null ? String(threadId) : '';
-      const isConversationKey = key.startsWith('user:') || key.startsWith('thread:');
-      const shouldDeleteMessage = (message) => {
-        if (!key) return false;
-        if (isConversationKey && getConversationKey(message, user) === key) return true;
-        const messageKeys = getMessageConversationKeys(message);
-        if (messageKeys.includes(key)) return true;
-        if (!isConversationKey) return false;
-        return messageKeys.some((messageKey) => key === `thread:${messageKey}`);
-      };
+      const deletionKeys = Array.from(new Set([
+        key,
+        ...(messages || []).filter((message) => matchesThreadKey(message, key, user)).flatMap((message) => collectThreadKeys(message, user)),
+      ].map((value) => String(value || '').trim()).filter(Boolean)));
+      const shouldDeleteMessage = (message) => deletionKeys.some((candidate) => matchesThreadKey(message, candidate, user));
+      const deletedAt = new Date().toISOString();
+      setDeletedThreads((s) => {
+        const next = { ...normalizeDeletedThreadsMap(s) };
+        deletionKeys.forEach((value) => {
+          next[String(value)] = deletedAt;
+        });
+        AsyncStorage.setItem(storageKeys.deletedThreads, JSON.stringify(next)).catch(() => {});
+        return next;
+      });
       setMessages((s) => {
         const next = (s || []).filter((m) => !shouldDeleteMessage(m));
         AsyncStorage.setItem(storageKeys.messages, JSON.stringify(next)).catch(() => {});
         return next;
       });
       setArchivedThreads((s) => {
-        const next = (s || []).filter((t) => String(t) !== key);
+        const next = (s || []).filter((t) => !deletionKeys.includes(String(t)));
         AsyncStorage.setItem(storageKeys.archivedThreads, JSON.stringify(next)).catch(() => {});
         return next;
       });
       setThreadReads((s) => {
         const next = { ...(s || {}) };
-        delete next[key];
+        deletionKeys.forEach((value) => { delete next[value]; });
         AsyncStorage.setItem(storageKeys.threadReads, JSON.stringify(next)).catch(() => {});
         return next;
       });
@@ -1148,9 +1221,11 @@ export function DataProvider({ children: reactChildren }) {
       setMessages([]);
       setThreadReads({});
       setArchivedThreads([]);
+      setDeletedThreads({});
       AsyncStorage.removeItem(storageKeys.messages).catch(() => {});
       AsyncStorage.removeItem(storageKeys.threadReads).catch(() => {});
       AsyncStorage.removeItem(storageKeys.archivedThreads).catch(() => {});
+      AsyncStorage.removeItem(storageKeys.deletedThreads).catch(() => {});
     } catch (e) {
       console.warn('clearMessages failed', e?.message || e);
     }

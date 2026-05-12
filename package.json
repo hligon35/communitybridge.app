@@ -51,7 +51,6 @@
     "mobile:submit:android:play-production": "npm run submit:android:production",
     "mobile:submit:ios:testflight-internal": "npm run submit:ios:testflight-internal",
     "mobile:submit:ios:production": "npm run submit:ios:production",
-
     "android": "expo run:android",
     "android:run": "npm run android",
     "run:android": "npm run android",
@@ -81,7 +80,6 @@
     "android:submit:production": "npm run submit:android:production",
     "android:submit:play-internal": "npm run submit:android:preview",
     "android:submit:play-production": "npm run submit:android:production",
-
     "ios": "expo run:ios",
     "ios:run": "npm run ios",
     "run:ios": "npm run ios",
@@ -113,7 +111,6 @@
     "submit:ios:production": "eas submit -p ios --profile production --latest --non-interactive",
     "ios:submit:testflight-internal": "npm run submit:ios:testflight-internal",
     "ios:submit:production": "npm run submit:ios:production",
-
     "dev:web": "npm run web",
     "web:dev": "npm run web",
     "web": "node ./scripts/start-web-dev.js",
@@ -122,12 +119,10 @@
     "web:build": "npm run build:web",
     "web:deploy": "npm run deploy:firebase",
     "deploy:firebase": "npm run build:web && firebase deploy --only hosting",
-
     "dev:api": "npm run api:server",
     "start": "node ./scripts/start-server.js",
     "api:server": "cross-env PORT=3005 node ./scripts/api-server.js",
     "api:mock": "cross-env PORT=3006 node ./scripts/api-mock.js",
-
     "lint": "eslint --quiet --no-error-on-unmatched-pattern App.js screens/**/*.js src/**/*.js scripts/**/*.js tests/**/*.js app.config.js babel.config.js metro.config.js postcss.config.js tailwind.config.js eslint.config.js --ignore-pattern archive/** --ignore-pattern functions/** --ignore-pattern public/** --ignore-pattern src/seed/** --ignore-pattern scripts/api-mock.js",
     "typecheck": "tsc -p tsconfig.typecheck.json --noEmit",
     "test:unit": "node --test tests/*.test.js",
@@ -146,7 +141,6 @@
     "smoke:therapy:server": "cross-env BB_BASE_URL=http://127.0.0.1:3005 node ./scripts/smoke-therapy-session.js",
     "test:smoke:therapy:server": "npm run smoke:therapy:server",
     "validate:full": "node ./scripts/validate-full-stack.js",
-
     "generate:icons": "node ./scripts/generate_icon_sets.js",
     "check:secrets": "node ./scripts/check-secrets.js",
     "db:dups": "node ./scripts/find-duplicate-users.js",
@@ -175,6 +169,7 @@
     "@react-navigation/bottom-tabs": "^6.5.7",
     "@react-navigation/native": "^6.1.18",
     "@react-navigation/native-stack": "^6.11.0",
+    "@sentry/node": "^10.53.1",
     "@sentry/react-native": "~7.2.0",
     "axios": "^1.13.2",
     "babel-preset-expo": "~54.0.9",
