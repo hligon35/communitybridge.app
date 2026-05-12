@@ -555,6 +555,30 @@ function normalizeRecipients(input) {
   return Array.from(new Set(ids.filter(Boolean)));
 }
 
+async function inferThreadRecipientIds(threadId, currentUserId) {
+  const threadKey = safeString(threadId).trim();
+  const actorId = safeString(currentUserId).trim();
+  if (!threadKey || !actorId) return [];
+
+  try {
+    const rows = await pgQueryAll('SELECT sender_json, to_json FROM messages WHERE thread_id = $1 ORDER BY created_at ASC', [threadKey]);
+    const inferred = [];
+
+    for (const row of rows) {
+      const senderId = safeString(row?.sender_json?.id || row?.sender?.id).trim();
+      if (senderId && senderId !== actorId) inferred.push(senderId);
+
+      normalizeRecipients(row?.to_json || row?.to || []).forEach((id) => {
+        if (id && id !== actorId) inferred.push(id);
+      });
+    }
+
+    return Array.from(new Set(inferred));
+  } catch (_) {
+    return [];
+  }
+}
+
 function normalizeRoleTargets(input) {
   if (!Array.isArray(input)) return [];
   const roles = [];
@@ -5643,14 +5667,16 @@ app.post('/api/messages', authMiddleware, async (req, res) => {
   const id = nanoId();
   const t = new Date();
   const sender = req.user ? { id: req.user.id, name: req.user.name, avatar: req.user.avatar } : null;
+  const inferredRecipientIds = to.length ? [] : await inferThreadRecipientIds(threadId, req.user?.id);
+  const resolvedTo = to.length ? to : inferredRecipientIds.map((recipientId) => ({ id: recipientId }));
 
   await pool.query(
     'INSERT INTO messages (id, thread_id, body, sender_json, to_json, created_at) VALUES ($1,$2,$3,$4::jsonb,$5::jsonb,$6)',
-    [id, threadId, body, jsonb(sender), jsonb(to), t]
+    [id, threadId, body, jsonb(sender), jsonb(resolvedTo), t]
   );
 
   try {
-    const recipientIds = normalizeRecipients(to).filter((uid) => uid !== String(req.user?.id || ''));
+    const recipientIds = normalizeRecipients(resolvedTo).filter((uid) => uid !== String(req.user?.id || ''));
     const tokens = await getPushTokensForUsers(recipientIds, { kind: 'chats' });
     setTimeout(() => {
       sendExpoPush(tokens, {

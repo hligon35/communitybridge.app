@@ -3,17 +3,9 @@ const APP_REVIEW_EMAIL = 'appreview@communitybridge.app';
 const DEV_SWITCH_EMAILS = new Set([
   DEV_SWITCH_EMAIL,
   APP_REVIEW_EMAIL,
-  'abatech1@communitybridge.app',
-  'bcba@communitybridge.app',
-  'office@communitybridge.app',
-  'admin@communitybridge.app',
 ]);
 const DEMO_REVIEWER_EMAILS = new Set([
   ...DEV_SWITCH_EMAILS,
-  'cheyanne2448@gmail.com',
-  'abatech2@communitybridge.app',
-  'abatech3@communitybridge.app',
-  'abatech4@communitybridge.app',
 ]);
 const RESERVED_SUPER_ADMIN_EMAILS = new Set([
   'alphazonelabsllc@gmail.com',

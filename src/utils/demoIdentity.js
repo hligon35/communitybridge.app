@@ -1,25 +1,15 @@
 const { isSpecialAccessUser } = require('./authState');
 const { seededDemoRoleIdentities } = require('../seed/demoModeSeed');
 
-const DEMO_EMAIL_IDENTITIES = Object.freeze({
-  'hligon35@gmail.com': { id: 'par-dev-001', name: 'Harold Ligon', email: 'hligon35@gmail.com', role: 'parent' },
-  'cheyanne2448@gmail.com': { id: 'par-001', name: 'Cheyanne Cook', email: 'cheyanne2448@gmail.com', role: 'parent' },
-  'abatech1@communitybridge.app': { id: 'aba-101', name: 'CommunityBridge ABA Tech 1', email: 'abatech1@communitybridge.app', role: 'therapist' },
-  'abatech2@communitybridge.app': { id: 'aba-102', name: 'CommunityBridge ABA Tech 2', email: 'abatech2@communitybridge.app', role: 'therapist' },
-  'abatech3@communitybridge.app': { id: 'aba-103', name: 'CommunityBridge ABA Tech 3', email: 'abatech3@communitybridge.app', role: 'therapist' },
-  'abatech4@communitybridge.app': { id: 'aba-104', name: 'CommunityBridge ABA Tech 4', email: 'abatech4@communitybridge.app', role: 'therapist' },
-  'bcba@communitybridge.app': { id: 'bcba-001', name: 'CommunityBridge BCBA', email: 'bcba@communitybridge.app', role: 'bcba' },
-  'office@communitybridge.app': { id: 'office-001', name: 'CommunityBridge Office', email: 'office@communitybridge.app', role: 'office' },
-  'admin@communitybridge.app': { id: 'staff-001', name: 'CommunityBridge Admin', email: 'admin@communitybridge.app', role: 'admin' },
-});
+const DEMO_EMAIL_IDENTITIES = Object.freeze({});
 
 const DEMO_ROLE_IDENTITIES = Object.freeze({
   ...seededDemoRoleIdentities,
-  parent: { id: 'par-dev-001', name: 'Harold Ligon', email: 'hligon35@gmail.com', role: 'parent' },
-  therapist: { id: 'aba-101', name: 'CommunityBridge ABA Tech 1', email: 'abatech1@communitybridge.app', role: 'therapist' },
-  bcba: { id: 'bcba-001', name: 'CommunityBridge BCBA', email: 'bcba@communitybridge.app', role: 'bcba' },
-  office: { id: 'office-001', name: 'CommunityBridge Office', email: 'office@communitybridge.app', role: 'office' },
-  admin: { id: 'staff-001', name: 'CommunityBridge Admin', email: 'admin@communitybridge.app', role: 'admin' },
+  parent: seededDemoRoleIdentities.parent,
+  therapist: seededDemoRoleIdentities.therapist,
+  bcba: { id: 'bcba-demo', name: 'CommunityBridge BCBA', email: 'bcba-demo@communitybridge.app', role: 'bcba' },
+  office: { id: 'office-demo', name: 'CommunityBridge Office', email: 'office-demo@communitybridge.app', role: 'office' },
+  admin: seededDemoRoleIdentities.admin,
 });
 
 function normalizeRole(role) {

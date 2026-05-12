@@ -64,7 +64,11 @@ export default function ParentDetailScreen() {
       // Pick a recipient for meeting requests: prefer an admin-role if present, else a BCBA, else first therapist
       const adminLike = (therapists || []).find((t) => (t.role || '').toLowerCase().includes('admin'))
         || (therapists || []).find((t) => (t.role || '').toLowerCase().includes('bcba'))
-        || (therapists || [])[0] || { id: 'admin-1', name: 'Office Admin' };
+        || (therapists || [])[0] || null;
+      if (!adminLike?.id) {
+        Alert.alert('Unavailable', 'No administration contact is available for meeting requests right now.');
+        return;
+      }
       const payload = { threadId: `meeting-${Date.now()}`, body: `Request meeting on ${formatDateTimeNoSeconds(meetingDate)} for ${parent.firstName || parent.name}`, to: [{ id: adminLike.id, name: adminLike.name }] };
       await sendMessage(payload);
       Alert.alert('Requested', 'Meeting request sent to administration');

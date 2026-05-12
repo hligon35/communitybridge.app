@@ -102,11 +102,23 @@ export default function NewThreadScreen({ navigation }) {
   const isParent = role === USER_ROLES.PARENT;
 
   const { admins, connectedTherapists, connectedParents, note } = useMemo(() => {
-    const adminContacts = [{ id: 'admin-1', name: 'Office Admin', subtitle: 'Admin' }];
-
-    const normalizedTherapists = (therapists || [])
-      .map((t) => ({ id: t.id, name: normalizeName(t.name), subtitle: getDisplayRoleLabel(normalizeName(t.role)) || THERAPY_ROLE_LABELS.therapist, role: t.role }))
+    const normalizedStaff = (therapists || [])
+      .map((t) => {
+        const normalizedRole = normalizeUserRole(t.role);
+        return {
+          id: t.id,
+          name: normalizeName(t.name),
+          subtitle: getDisplayRoleLabel(normalizedRole) || THERAPY_ROLE_LABELS.therapist,
+          role: normalizedRole,
+        };
+      })
       .filter((t) => t.id && t.name);
+
+    const adminContacts = normalizedStaff
+      .filter((t) => isAdminRole(t.role) || t.role === USER_ROLES.OFFICE);
+
+    const normalizedTherapists = normalizedStaff
+      .filter((t) => t.role === USER_ROLES.THERAPIST || t.role === USER_ROLES.BCBA);
 
     const normalizedParents = (parents || [])
       .map((p) => ({ id: p.id, name: fullNameFromParent(p), subtitle: 'Parent', familyId: p.familyId }))
@@ -237,6 +249,16 @@ export default function NewThreadScreen({ navigation }) {
         showsVerticalScrollIndicator
       >
         <CenteredContainer>
+          {isAdmin ? (
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              accessibilityLabel="Cancel new message"
+              style={{ alignSelf: 'flex-start', marginBottom: 12, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1, borderColor: '#cbd5e1', backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center' }}
+            >
+              <MaterialIcons name="arrow-back" size={18} color="#334155" />
+              <Text style={{ marginLeft: 6, color: '#334155', fontWeight: '700' }}>Cancel</Text>
+            </TouchableOpacity>
+          ) : null}
           <Text style={{ fontSize: 16, fontWeight: '800', color: '#111827' }}>Choose who to message</Text>
           {note ? <Text style={{ marginTop: 8, color: '#6b7280' }}>{note}</Text> : null}
 

@@ -18,6 +18,7 @@ import useIsTabletLayout from '../hooks/useIsTabletLayout';
 
 const editIconImage = require('../../assets/icons/edit.png');
 const deleteAccountIcon = require('../../assets/icons/deleteAccount.png');
+const checkUpdatesIcon = require('../../assets/icons/checkUpdates.png');
 
 const ARRIVAL_KEY = SETTINGS_KEYS.arrivalEnabled;
 const PUSH_KEY = 'settings_push_enabled_v1';
@@ -722,8 +723,9 @@ export default function SettingsScreen({ navigation }) {
             <TouchableOpacity
               onPress={checkForOtaUpdate}
               disabled={updateBusy}
-              style={{ alignSelf: 'flex-start', borderRadius: 12, backgroundColor: '#e2e8f0', paddingVertical: 10, paddingHorizontal: 14, opacity: updateBusy ? 0.7 : 1 }}
+              style={{ alignSelf: 'flex-start', borderRadius: 12, backgroundColor: '#e2e8f0', paddingVertical: 10, paddingHorizontal: 14, opacity: updateBusy ? 0.7 : 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}
             >
+              <Image source={checkUpdatesIcon} style={{ width: 18, height: 18, opacity: updateBusy ? 0.65 : 1 }} resizeMode="contain" />
               <Text style={{ color: '#0f172a', fontWeight: '700' }}>{updateBusy ? 'Checking for updates...' : 'Check for updates'}</Text>
             </TouchableOpacity>
           </View>

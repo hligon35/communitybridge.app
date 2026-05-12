@@ -2325,6 +2325,42 @@ function normalizeRecipients(input) {
   return Array.from(new Set(ids.filter(Boolean)));
 }
 
+function inferThreadRecipientIds(threadId, currentUserId) {
+  const threadKey = safeString(threadId).trim();
+  const actorId = safeString(currentUserId).trim();
+  if (!threadKey || !actorId) return [];
+
+  const rows = db.prepare('SELECT sender_json, to_json FROM messages WHERE thread_id = ? ORDER BY datetime(created_at) ASC').all(threadKey);
+  const inferred = [];
+
+  for (const row of rows) {
+    let sender = row?.sender_json;
+    if (typeof sender === 'string') {
+      try {
+        sender = JSON.parse(sender);
+      } catch (_) {
+        sender = null;
+      }
+    }
+    const senderId = safeString(sender?.id).trim();
+    if (senderId && senderId !== actorId) inferred.push(senderId);
+
+    let recipients = row?.to_json;
+    if (typeof recipients === 'string') {
+      try {
+        recipients = JSON.parse(recipients);
+      } catch (_) {
+        recipients = [];
+      }
+    }
+    normalizeRecipients(recipients).forEach((id) => {
+      if (id && id !== actorId) inferred.push(id);
+    });
+  }
+
+  return Array.from(new Set(inferred));
+}
+
 function normalizeRoleTargets(input) {
   if (!Array.isArray(input)) return [];
   const roles = [];
@@ -5870,12 +5906,14 @@ app.post('/api/messages', authMiddleware, (req, res) => {
   const id = nanoId();
   const t = nowISO();
   const sender = req.user ? { id: req.user.id, name: req.user.name, avatar: req.user.avatar } : null;
+  const inferredRecipientIds = to.length ? [] : inferThreadRecipientIds(threadId, req.user?.id);
+  const resolvedTo = to.length ? to : inferredRecipientIds.map((recipientId) => ({ id: recipientId }));
 
   db.prepare('INSERT INTO messages (id, thread_id, body, sender_json, to_json, created_at) VALUES (?,?,?,?,?,?)')
-    .run(id, threadId, body, JSON.stringify(sender), JSON.stringify(to), t);
+    .run(id, threadId, body, JSON.stringify(sender), JSON.stringify(resolvedTo), t);
 
   try {
-    const recipientIds = normalizeRecipients(to).filter((uid) => uid !== String(req.user?.id || ''));
+    const recipientIds = normalizeRecipients(resolvedTo).filter((uid) => uid !== String(req.user?.id || ''));
     const tokens = getPushTokensForUsers(recipientIds, { kind: 'chats' });
     setTimeout(() => {
       sendExpoPush(tokens, {

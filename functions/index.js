@@ -74,6 +74,8 @@ async function sendExpoPush(tokens, { title, body, data, kind } = {}) {
     body: safeString(body || ''),
     data: (data && typeof data === 'object') ? data : {},
     sound: 'default',
+    channelId: 'communitybridge-alerts-v2',
+    priority: 'high',
     badge: 1,
   }));
 
@@ -350,10 +352,6 @@ function slugify(value) {
 
 function normalizeEmail(value) {
   return safeString(value).trim().toLowerCase();
-}
-
-function normalizePhone(value) {
-  return safeString(value).trim();
 }
 
 function normalizeProgramTypeValue(value) {
