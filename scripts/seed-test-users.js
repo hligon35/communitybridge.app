@@ -3,6 +3,7 @@
   Seed demo users for TestFlight / QA into BOTH:
     1) Firebase Auth (so mobile login via signInWithEmailAndPassword works)
     2) The Postgres `users` table (so the API has a profile + role for them)
+    3) The Firestore + Postgres directory records (so /api/directory/me returns linked data)
 
   Hardcoded demo users:
     hligon35@gmail.com            / ParentDemo123!   role=parent
@@ -619,6 +620,135 @@ async function upsertDirectoryRecords(firestore, uidByEmail) {
   }
 }
 
+function normalizeId(value) {
+  return String(value || '').trim();
+}
+
+function normalizeSession(value) {
+  const session = String(value || '').trim().toUpperCase();
+  if (session === 'AM' || session === 'PM') return session;
+  return '';
+}
+
+function deriveChildAbaAssignments(child) {
+  const childId = normalizeId(child?.id);
+  if (!childId) return [];
+
+  const rawAssigned = child?.assignedABA || child?.assigned_ABA || child?.assigned || [];
+  const assigned = (Array.isArray(rawAssigned) ? rawAssigned : [rawAssigned])
+    .map((value) => normalizeId(value))
+    .filter(Boolean);
+
+  if (!assigned.length) return [];
+
+  const session = normalizeSession(child?.session);
+  if (assigned.length === 1) {
+    return [{ childId, session: session || 'AM', abaId: assigned[0] }];
+  }
+
+  if (session === 'AM') {
+    return [
+      { childId, session: 'AM', abaId: assigned[0] },
+      { childId, session: 'PM', abaId: assigned[1] },
+    ];
+  }
+  if (session === 'PM') {
+    return [
+      { childId, session: 'PM', abaId: assigned[0] },
+      { childId, session: 'AM', abaId: assigned[1] },
+    ];
+  }
+
+  return [
+    { childId, session: 'AM', abaId: assigned[0] },
+    { childId, session: 'PM', abaId: assigned[1] },
+  ];
+}
+
+function toPostgresDirectoryJson(record, nowIso) {
+  return {
+    ...record,
+    createdAt: nowIso,
+    updatedAt: nowIso,
+  };
+}
+
+async function upsertPostgresDirectoryRecords(pool, uidByEmail) {
+  const records = buildDirectoryEntitiesByEmail(uidByEmail);
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    for (const parent of records.parentDocs) {
+      await client.query(
+        `INSERT INTO directory_parents (id, data_json, created_at, updated_at)
+         VALUES ($1, $2::jsonb, $3, $4)
+         ON CONFLICT (id) DO UPDATE SET data_json = EXCLUDED.data_json, updated_at = EXCLUDED.updated_at`,
+        [parent.id, JSON.stringify(toPostgresDirectoryJson(parent, nowIso)), now, now]
+      );
+    }
+
+    for (const therapist of records.therapistDocs) {
+      await client.query(
+        `INSERT INTO directory_therapists (id, data_json, created_at, updated_at)
+         VALUES ($1, $2::jsonb, $3, $4)
+         ON CONFLICT (id) DO UPDATE SET data_json = EXCLUDED.data_json, updated_at = EXCLUDED.updated_at`,
+        [therapist.id, JSON.stringify(toPostgresDirectoryJson(therapist, nowIso)), now, now]
+      );
+    }
+
+    for (const child of records.childDocs) {
+      await client.query(
+        `INSERT INTO directory_children (id, data_json, created_at, updated_at)
+         VALUES ($1, $2::jsonb, $3, $4)
+         ON CONFLICT (id) DO UPDATE SET data_json = EXCLUDED.data_json, updated_at = EXCLUDED.updated_at`,
+        [child.id, JSON.stringify(toPostgresDirectoryJson(child, nowIso)), now, now]
+      );
+    }
+
+    await client.query('DELETE FROM child_aba_assignments', []);
+    await client.query('DELETE FROM aba_supervision', []);
+
+    for (const therapist of records.therapistDocs) {
+      const abaId = normalizeId(therapist?.id);
+      const bcbaId = normalizeId(therapist?.supervisedBy || therapist?.supervised_by);
+      if (!abaId || !bcbaId) continue;
+      await client.query(
+        `INSERT INTO aba_supervision (aba_id, bcba_id, created_at, updated_at)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (aba_id) DO UPDATE SET bcba_id = EXCLUDED.bcba_id, updated_at = EXCLUDED.updated_at`,
+        [abaId, bcbaId, now, now]
+      );
+    }
+
+    for (const child of records.childDocs) {
+      for (const assignment of deriveChildAbaAssignments(child)) {
+        await client.query(
+          `INSERT INTO child_aba_assignments (child_id, session, aba_id, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5)
+           ON CONFLICT (child_id, session) DO UPDATE SET aba_id = EXCLUDED.aba_id, updated_at = EXCLUDED.updated_at`,
+          [assignment.childId, assignment.session, assignment.abaId, now, now]
+        );
+      }
+    }
+
+    await client.query('COMMIT');
+    console.log(`[seed][pg] upserted directory graph parents=${records.parentDocs.length} children=${records.childDocs.length} staff=${records.therapistDocs.length}`);
+  } catch (e) {
+    try {
+      await client.query('ROLLBACK');
+    } catch (_) {
+      // ignore rollback errors and surface the original failure below
+    }
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
 async function main() {
   console.log(`[seed] mode=${DRY ? 'DRY RUN' : 'WRITE'} users=${TEST_USERS.length}`);
 
@@ -629,6 +759,7 @@ async function main() {
     }
     const fakeUidByEmail = new Map(TEST_USERS.map((user, index) => [String(user.email || '').trim().toLowerCase(), `dry-run-uid-${index + 1}`]));
     await upsertDirectoryRecords(null, fakeUidByEmail);
+    console.log('[seed][dry] would upsert Postgres directory graph from the same seeded records');
     return;
   }
 
@@ -659,6 +790,7 @@ async function main() {
 
     if (uidByEmail.size === TEST_USERS.length) {
       await upsertDirectoryRecords(firestore, uidByEmail);
+      await upsertPostgresDirectoryRecords(pool, uidByEmail);
     } else {
       console.warn('[seed] Skipping directory graph because one or more user accounts failed to seed.');
     }
