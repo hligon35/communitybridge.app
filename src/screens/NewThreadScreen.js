@@ -5,6 +5,7 @@ import { ScreenWrapper, CenteredContainer } from '../components/ScreenWrapper';
 import { useAuth } from '../AuthContext';
 import { useData } from '../DataContext';
 import { logPress } from '../utils/logger';
+import { buildVisibleThreads } from '../utils/chatThreads';
 import { USER_ROLES, isAdminRole, isBcbaRole, normalizeUserRole } from '../core/tenant/models';
 import { THERAPY_ROLE_LABELS, getDisplayRoleLabel } from '../utils/roleTerminology';
 import { childHasParent, findLinkedParentId } from '../utils/directoryLinking';
@@ -78,7 +79,7 @@ function RoleSection({ title, items, selectedId, onPick }) {
 
 export default function NewThreadScreen({ navigation }) {
   const { user } = useAuth();
-  const { parents = [], therapists = [], children = [] } = useData();
+  const { parents = [], therapists = [], children = [], messages = [] } = useData();
   const [selected, setSelected] = useState(null);
 
   useLayoutEffect(() => {
@@ -235,9 +236,23 @@ export default function NewThreadScreen({ navigation }) {
 
   const start = () => {
     if (!selected) return;
+    const existingThread = buildVisibleThreads(messages, {}, user, [])
+      .find((thread) => String(thread?.participant?.id || '').trim() === String(selected.id || '').trim());
+
+    if (existingThread?.activeThreadId) {
+      logPress('NewThread:Resume', { threadId: existingThread.activeThreadId, to: selected.id });
+      navigation.navigate('ChatThread', {
+        threadId: existingThread.id,
+        threadIds: existingThread.threadIds,
+        activeThreadId: existingThread.activeThreadId,
+        conversationTitle: existingThread.title || selected.name,
+      });
+      return;
+    }
+
     const threadId = `t-${Date.now()}`;
     logPress('NewThread:Start', { threadId, to: selected.id });
-    navigation.navigate('ChatThread', { threadId, isNew: true, to: [{ id: selected.id, name: selected.name }] });
+    navigation.navigate('ChatThread', { threadId, isNew: true, to: [{ id: selected.id, name: selected.name }], conversationTitle: selected.name });
   };
 
   return (

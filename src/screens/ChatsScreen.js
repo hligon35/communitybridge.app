@@ -71,7 +71,7 @@ function MessageRow({ item, user, navigation, archiveThread, deleteThread }) {
 
   return (
     <Swipeable ref={swipeableRef} renderLeftActions={renderLeftActions} renderRightActions={renderRightActions} onSwipeableOpen={handleOpen}>
-      <TouchableOpacity style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: '#eee', flexDirection: 'row', alignItems: 'center', backgroundColor: isUnread ? '#f8fbff' : '#fff' }} onPress={() => navigation.navigate('ChatThread', { threadId: item.id, threadIds: item.threadIds, activeThreadId: item.activeThreadId })}>
+      <TouchableOpacity style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: '#eee', flexDirection: 'row', alignItems: 'center', backgroundColor: isUnread ? '#f8fbff' : '#fff' }} onPress={() => navigation.navigate('ChatThread', { threadId: item.id, threadIds: item.threadIds, activeThreadId: item.activeThreadId, conversationTitle: item.title })}>
         {avatarUri ? (
           <Image source={{ uri: avatarUri }} style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#f3f4f6', marginRight: 12 }} />
         ) : (

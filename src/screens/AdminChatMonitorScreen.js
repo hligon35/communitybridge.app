@@ -42,12 +42,30 @@ function buildThreads(messages = []) {
   const map = new Map();
   (messages || []).forEach((message, index) => {
     const key = message?.threadId || message?.id || `thread-${index}`;
-    const existing = map.get(key) || { id: key, last: message, count: 0 };
+    const existing = map.get(key) || { id: key, last: message, count: 0, recipientLabel: '', previewText: '' };
     existing.last = message;
     existing.count += 1;
+    existing.recipientLabel = getRecipientLabel(message);
+    existing.previewText = getPreviewText(message);
     map.set(key, existing);
   });
   return Array.from(map.values());
+}
+
+function getParticipantLabel(participant) {
+  return String(participant?.name || participant?.fullName || participant?.email || participant?.id || '').trim();
+}
+
+function getRecipientLabel(message) {
+  const recipients = (Array.isArray(message?.to) ? message.to : [])
+    .map((participant) => getParticipantLabel(participant))
+    .filter(Boolean);
+  if (recipients.length) return recipients.join(', ');
+  return getParticipantLabel(message?.sender) || 'Conversation';
+}
+
+function getPreviewText(message) {
+  return String(message?.subject || message?.body || 'No recent message.').trim();
 }
 
 function buildThreadMessages(messages = [], threadId) {
@@ -229,7 +247,8 @@ export default function AdminChatMonitorScreen() {
                     <Text style={styles.inboxBackText}>Inbox</Text>
                   </TouchableOpacity>
                   <View style={styles.inboxThreadHeaderText}>
-                    <Text style={styles.cardTitle}>{selectedInboxThread.last?.subject || selectedInboxThread.last?.body || 'Conversation thread'}</Text>
+                      <Text style={styles.cardTitle}>{selectedInboxThread.recipientLabel || 'Conversation'}</Text>
+                      <Text style={styles.rowText}>{selectedInboxThread.previewText || 'No recent message.'}</Text>
                     <Text style={styles.rowText}>{selectedInboxThread.count} message{selectedInboxThread.count === 1 ? '' : 's'}</Text>
                   </View>
                 </View>
@@ -251,7 +270,8 @@ export default function AdminChatMonitorScreen() {
                 <Text style={styles.cardTitle}>Inbox</Text>
                 {filteredThreads.length ? filteredThreads.slice(0, 8).map((thread) => (
                   <TouchableOpacity key={thread.id} style={styles.threadRow} onPress={() => openInboxThread(thread.id)}>
-                    <Text style={styles.threadTitle}>{thread.last?.subject || thread.last?.body || 'Thread'}</Text>
+                    <Text style={styles.threadTitle}>{thread.recipientLabel || 'Conversation'}</Text>
+                    <Text style={styles.rowText}>{thread.previewText || 'No recent message.'}</Text>
                     <Text style={styles.rowText}>{thread.count} message{thread.count === 1 ? '' : 's'}</Text>
                   </TouchableOpacity>
                 )) : <Text style={styles.rowText}>No communication threads available.</Text>}
@@ -334,8 +354,9 @@ export default function AdminChatMonitorScreen() {
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Conversation threads</Text>
             {filteredThreads.length ? filteredThreads.map((thread) => (
-              <TouchableOpacity key={thread.id} style={styles.threadRow} onPress={() => navigation.navigate('ChatThread', { threadId: thread.id })}>
-                <Text style={styles.threadTitle}>{thread.last?.subject || thread.last?.body || 'Thread'}</Text>
+              <TouchableOpacity key={thread.id} style={styles.threadRow} onPress={() => navigation.navigate('ChatThread', { threadId: thread.id, conversationTitle: thread.recipientLabel || 'Conversation' })}>
+                <Text style={styles.threadTitle}>{thread.recipientLabel || 'Conversation'}</Text>
+                <Text style={styles.rowText}>{thread.previewText || 'No recent message.'}</Text>
                 <Text style={styles.rowText}>{thread.last?.createdAt ? new Date(thread.last.createdAt).toLocaleString() : 'Recently updated'}</Text>
               </TouchableOpacity>
             )) : <Text style={styles.rowText}>No conversation threads available.</Text>}

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { InteractionManager, NativeModules, Platform, Share } from 'react-native';
+import { AppState, InteractionManager, NativeModules, Platform, Share } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Api from './Api';
 import { useAuth } from './AuthContext';
@@ -95,6 +95,7 @@ export function DataProvider({ children: reactChildren }) {
   const mfaRefreshInFlightRef = useRef(false);
   const mfaEscalatedRef = useRef(false);
   const fetchInFlightRef = useRef(null);
+  const messageRefreshInFlightRef = useRef(null);
   const lastFetchAtRef = useRef(0);
   const initialSyncDoneForUserRef = useRef(null);
   const storageScopeId = useMemo(() => getStorageScopeId(user), [user?.id, user?.uid, user?.email]);
@@ -592,6 +593,50 @@ export function DataProvider({ children: reactChildren }) {
 
     return () => { mounted = false; };
   }, [isDemoReviewer, loading, user, needsMfa]);
+
+  useEffect(() => {
+    if (loading || !user || needsMfa || isDemoReviewer) return undefined;
+
+    let active = true;
+
+    const refreshMessagesOnly = async () => {
+      if (!active) return;
+      if (messageRefreshInFlightRef.current) return messageRefreshInFlightRef.current;
+
+      const run = (async () => {
+        try {
+          const remoteMessages = await Api.getMessages();
+          if (active && Array.isArray(remoteMessages)) setMessages(remoteMessages);
+        } catch (e) {
+          console.warn('message refresh failed', e?.message || e);
+        }
+      })();
+
+      messageRefreshInFlightRef.current = run;
+      try {
+        await run;
+      } finally {
+        if (messageRefreshInFlightRef.current === run) messageRefreshInFlightRef.current = null;
+      }
+      return run;
+    };
+
+    refreshMessagesOnly().catch(() => {});
+
+    const intervalId = setInterval(() => {
+      refreshMessagesOnly().catch(() => {});
+    }, 3000);
+
+    const appStateSubscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') refreshMessagesOnly().catch(() => {});
+    });
+
+    return () => {
+      active = false;
+      clearInterval(intervalId);
+      appStateSubscription?.remove?.();
+    };
+  }, [isDemoReviewer, loading, needsMfa, user?.id, user?.uid]);
 
   async function createPost(payload) {
     if (isDemoReviewer) {

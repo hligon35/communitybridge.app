@@ -13,6 +13,7 @@ import { THERAPY_ROLE_LABELS, getDisplayRoleLabel, getWorkspaceLabel } from '../
 import { humanizeScreenLabel } from '../utils/screenLabels';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { canAccessPhoneRoute, getPhoneAccessProfile, isPhoneViewport as resolvePhoneViewport } from '../utils/mobileRoleAccess';
+import { MAIN_NAV_ROUTES } from '../utils/backNavigation';
 
 const checkUpdatesIcon = require('../../assets/icons/checkUpdates.png');
 const BREAK_OPTIONS = [5, 7, 10, 30];
@@ -109,7 +110,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
-  const { children: directoryChildren = [], therapists = [], urgentMemos = [], createStaffLog } = useData();
+  const { children: directoryChildren = [], therapists = [], urgentMemos = [], createStaffLog, unreadThreadCount = 0 } = useData();
   const tenant = useTenant();
   const labels = tenant?.labels || {};
   const [collapsed, setCollapsed] = useState(false);
@@ -159,6 +160,10 @@ export default function TabletNavigationShell({ currentRoute, children }) {
     ExportData: 'Export Data',
   };
   const currentScreenTitle = screenTitleMap[currentRoute] || humanizeScreenLabel(currentRoute) || workspaceLabel;
+  const shellBackVisible = Boolean(!showMobileAdminShell && currentRoute && !MAIN_NAV_ROUTES.has(String(currentRoute || '')) && navigationRef?.canGoBack?.());
+  const shellTitle = currentRoute === 'ChatThread'
+    ? String(activeRouteParams?.conversationTitle || '').trim() || currentScreenTitle
+    : currentScreenTitle;
   const preferredUserName = String(user?.firstName || '').trim()
     || String(user?.name || '').trim().split(/\s+/).filter(Boolean)[0]
     || String(user?.email || '').trim()
@@ -680,6 +685,8 @@ export default function TabletNavigationShell({ currentRoute, children }) {
           {!collapsedItems ? <Text style={[styles.groupLabel, mobileVariant ? styles.mobileGroupLabel : null]}>{group.label}</Text> : null}
           {group.items.map((item) => {
             const active = currentRoute === (item.target.screen || item.target.root);
+            const showsCommunicationBadge = item.key === 'messages' || item.key === 'communication';
+            const badgeCount = showsCommunicationBadge ? Math.max(0, Number(unreadThreadCount) || 0) : 0;
             return (
               <TouchableOpacity
                 key={item.key}
@@ -693,7 +700,14 @@ export default function TabletNavigationShell({ currentRoute, children }) {
                   onItemPress?.();
                 }}
               >
-                <MaterialIcons name={item.icon} size={active ? 24 : 20} color={active ? '#f8fafc' : (mobileVariant ? '#1d4ed8' : '#f8fafc')} />
+                <View style={styles.navIconWrap}>
+                  <MaterialIcons name={item.icon} size={active ? 24 : 20} color={active ? '#f8fafc' : (mobileVariant ? '#1d4ed8' : '#f8fafc')} />
+                  {badgeCount > 0 ? (
+                    <View style={[styles.navBadge, active ? styles.navBadgeActive : null, mobileVariant ? styles.mobileNavBadge : null]}>
+                      <Text style={styles.navBadgeText}>{badgeCount > 99 ? '99+' : String(badgeCount)}</Text>
+                    </View>
+                  ) : null}
+                </View>
                 {!collapsedItems ? <Text style={[styles.navLabel, mobileVariant ? styles.mobileNavLabel : null, active ? styles.navLabelActive : null]}>{item.label}</Text> : null}
               </TouchableOpacity>
             );
@@ -787,7 +801,16 @@ export default function TabletNavigationShell({ currentRoute, children }) {
     <MobileAdminShellContext.Provider value={tabletShellValue}>
       <View style={styles.shellFrame}>
         <View style={[styles.shellHeader, { paddingTop: Platform.OS !== 'web' ? Math.max(insets.top, 12) : 12 }]}> 
-          <Text style={styles.shellHeaderTitle} numberOfLines={1}>{currentScreenTitle}</Text>
+          {shellBackVisible ? (
+            <TouchableOpacity
+              style={[styles.iconOnlyButton, styles.shellHeaderBackButton]}
+              onPress={() => navigationRef?.goBack?.()}
+              accessibilityLabel="Go back"
+            >
+              <MaterialIcons name="arrow-back" size={22} color="#1d4ed8" />
+            </TouchableOpacity>
+          ) : null}
+          <Text style={styles.shellHeaderTitle} numberOfLines={1}>{shellTitle}</Text>
           {showChatComposerAction ? (
             <TouchableOpacity
               style={[styles.iconOnlyButton, styles.shellHeaderIconButton]}
@@ -940,7 +963,8 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   shellHeaderTitle: { color: '#0f172a', fontWeight: '800', fontSize: 24, lineHeight: 30, textAlign: 'center' },
-  shellHeaderIconButton: { position: 'absolute', right: 24, top: 14 },
+  shellHeaderIconButton: { position: 'absolute', right: 24, top: '50%', marginTop: -18 },
+  shellHeaderBackButton: { position: 'absolute', left: 24, top: '50%', marginTop: -18 },
   shell: { flex: 1, flexDirection: 'row', backgroundColor: '#e2e8f0' },
   drawer: { backgroundColor: '#0f172a', paddingHorizontal: 16, flexShrink: 0 },
   drawerCollapsed: { paddingHorizontal: 10 },
@@ -955,11 +979,16 @@ const styles = StyleSheet.create({
   groupLabel: { color: '#94a3b8', fontSize: 11, fontWeight: '800', textTransform: 'uppercase', marginBottom: 3 },
   mobileGroupLabel: { color: '#64748b' },
   navItem: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, paddingVertical: 10, paddingHorizontal: 12, marginBottom: 4.5, backgroundColor: '#172554' },
+  navIconWrap: { position: 'relative', width: 24, alignItems: 'center', justifyContent: 'center' },
   mobileNavItem: { backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#dbe2ea' },
   navItemActive: { backgroundColor: '#2563eb' },
   navLabel: { color: '#f8fafc', fontWeight: '700', marginLeft: 10, fontSize: 15 },
   mobileNavLabel: { color: '#0f172a' },
   navLabelActive: { color: '#f8fafc', fontSize: 16 },
+  navBadge: { position: 'absolute', top: -7, right: -11, minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 9, backgroundColor: '#dc2626', alignItems: 'center', justifyContent: 'center' },
+  mobileNavBadge: { borderWidth: 1, borderColor: '#ffffff' },
+  navBadgeActive: { backgroundColor: '#bfdbfe' },
+  navBadgeText: { color: '#ffffff', fontSize: 10, fontWeight: '800' },
   drawerQuickActionWrap: { marginBottom: 12, position: 'relative' },
   drawerQuickActionButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 14, backgroundColor: '#1d4ed8' },
   drawerQuickActionButtonActive: { backgroundColor: '#1e40af' },

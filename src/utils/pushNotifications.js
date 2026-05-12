@@ -77,6 +77,16 @@ export function configureNotificationHandling() {
       shouldSetBadge: true,
     }),
   });
+
+  if (Platform.OS === 'android' && typeof Notifications.setNotificationChannelAsync === 'function') {
+    Notifications.setNotificationChannelAsync(DEFAULT_PUSH_CHANNEL_ID, {
+      name: 'CommunityBridge alerts',
+      importance: Notifications.AndroidImportance.MAX,
+      sound: 'default',
+      vibrationPattern: [0, 250, 200, 250],
+      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+    }).catch(() => {});
+  }
 }
 
 export async function setApplicationBadgeCountAsync(count) {
@@ -161,7 +171,8 @@ async function readStoredPushPreferences() {
     PUSH_STORAGE_KEYS.token,
   ]);
   const map = new Map(values || []);
-  const enabled = map.get(PUSH_STORAGE_KEYS.enabled) === '1';
+  const enabledSetting = map.get(PUSH_STORAGE_KEYS.enabled);
+  const enabled = enabledSetting == null ? true : enabledSetting === '1';
   return {
     enabled,
     token: String(map.get(PUSH_STORAGE_KEYS.token) || '').trim(),

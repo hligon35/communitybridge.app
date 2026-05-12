@@ -5,12 +5,12 @@ import { useData } from '../DataContext';
 import { useAuth } from '../AuthContext';
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { useHeaderHeight } from '@react-navigation/elements';
-import { canViewThread, getUserParticipantTokens, isMessageFromUser } from '../utils/chatThreads';
+import { canViewThread, getConversationParticipant, getUserParticipantTokens, isMessageFromUser } from '../utils/chatThreads';
 import { MaterialIcons } from '@expo/vector-icons';
 import { HelpButton } from '../components/TopButtons';
 
 export default function ChatThreadScreen({ route, navigation }) {
-  const { threadId, threadIds: routeThreadIds, activeThreadId, isNew, to: initialTo } = route.params || {};
+  const { threadId, threadIds: routeThreadIds, activeThreadId, isNew, to: initialTo, conversationTitle } = route.params || {};
   const { messages, sendMessage, markThreadRead, chatBlockedUserIds = [] } = useData();
   const [text, setText] = useState('');
   const { user } = useAuth();
@@ -30,6 +30,22 @@ export default function ChatThreadScreen({ route, navigation }) {
       return effectiveThreadIds.includes(messageThreadId);
     })
     .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)), [effectiveThreadIds, messages]);
+
+  const derivedConversationTitle = useMemo(() => {
+    const explicitTitle = String(conversationTitle || '').trim();
+    if (explicitTitle) return explicitTitle;
+
+    const latestMessage = threadMessages[threadMessages.length - 1] || null;
+    const participant = latestMessage ? getConversationParticipant(latestMessage, user) : null;
+    const participantName = String(participant?.name || participant?.fullName || participant?.email || '').trim();
+    if (participantName) return participantName;
+
+    const initialRecipient = Array.isArray(initialTo) && initialTo.length ? initialTo[0] : null;
+    const initialName = String(initialRecipient?.name || initialRecipient?.email || '').trim();
+    if (initialName) return initialName;
+
+    return 'Conversation';
+  }, [conversationTitle, initialTo, threadMessages, user]);
 
   useEffect(() => {
     if (!threadId || !threadMessages.length || !userTokens.length) return;
@@ -52,6 +68,7 @@ export default function ChatThreadScreen({ route, navigation }) {
 
   useLayoutEffect(() => {
     navigation.setOptions({
+      title: derivedConversationTitle,
       headerLeft: Platform.OS === 'web' ? undefined : () => (
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -80,7 +97,10 @@ export default function ChatThreadScreen({ route, navigation }) {
       ),
       headerRight: Platform.OS === 'web' ? () => null : () => <HelpButton />,
     });
-  }, [navigation]);
+    if (route.params?.conversationTitle !== derivedConversationTitle) {
+      navigation.setParams({ conversationTitle: derivedConversationTitle });
+    }
+  }, [derivedConversationTitle, navigation, route.params?.conversationTitle]);
 
   async function handleSend() {
     if (!text.trim()) return;

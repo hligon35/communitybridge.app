@@ -170,12 +170,13 @@ export default function SettingsScreen({ navigation }) {
   }
 
   const [arrivalEnabled, setArrivalEnabled] = useState(false);
-  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(true);
   const [pushChats, setPushChats] = useState(true);
   const [pushTimelinePosts, setPushTimelinePosts] = useState(true);
   const [pushMentionsPosts, setPushMentionsPosts] = useState(true);
   const [pushTagsPosts, setPushTagsPosts] = useState(true);
   const [pushUpdates, setPushUpdates] = useState(true);
+  const [pushSettingsLoaded, setPushSettingsLoaded] = useState(false);
   const [showEmail, setShowEmail] = useState(true);
   const [showPhone, setShowPhone] = useState(true);
   const [parentEditModalOpen, setParentEditModalOpen] = useState(false);
@@ -219,7 +220,7 @@ export default function SettingsScreen({ navigation }) {
         const pu = await AsyncStorage.getItem(PUSH_UPDATES_KEY);
         if (!mounted) return;
         setArrivalEnabled(!!a);
-        if (p !== null) setPushEnabled(p === '1');
+        setPushEnabled(p !== '0');
         if (pc !== null) setPushChats(pc === '1');
         if (pt !== null) setPushTimelinePosts(pt === '1');
         if (pmp !== null) setPushMentionsPosts(pmp === '1');
@@ -231,6 +232,8 @@ export default function SettingsScreen({ navigation }) {
         if (sp !== null) setShowPhone(sp === '1');
       } catch (e) {
         // ignore
+      } finally {
+        if (mounted) setPushSettingsLoaded(true);
       }
     };
     load();
@@ -242,24 +245,30 @@ export default function SettingsScreen({ navigation }) {
   }, [arrivalEnabled]);
 
   useEffect(() => {
+    if (!pushSettingsLoaded) return;
     AsyncStorage.setItem(PUSH_KEY, pushEnabled ? '1' : '0').catch(() => {});
-  }, [pushEnabled]);
+  }, [pushEnabled, pushSettingsLoaded]);
 
   useEffect(() => {
+    if (!pushSettingsLoaded) return;
     AsyncStorage.setItem(PUSH_CHATS_KEY, pushChats ? '1' : '0').catch(() => {});
-  }, [pushChats]);
+  }, [pushChats, pushSettingsLoaded]);
   useEffect(() => {
+    if (!pushSettingsLoaded) return;
     AsyncStorage.setItem(PUSH_TIMELINE_POSTS_KEY, pushTimelinePosts ? '1' : '0').catch(() => {});
-  }, [pushTimelinePosts]);
+  }, [pushTimelinePosts, pushSettingsLoaded]);
   useEffect(() => {
+    if (!pushSettingsLoaded) return;
     AsyncStorage.setItem(PUSH_MENTIONS_POSTS_KEY, pushMentionsPosts ? '1' : '0').catch(() => {});
-  }, [pushMentionsPosts]);
+  }, [pushMentionsPosts, pushSettingsLoaded]);
   useEffect(() => {
+    if (!pushSettingsLoaded) return;
     AsyncStorage.setItem(PUSH_TAGS_POSTS_KEY, pushTagsPosts ? '1' : '0').catch(() => {});
-  }, [pushTagsPosts]);
+  }, [pushTagsPosts, pushSettingsLoaded]);
   useEffect(() => {
+    if (!pushSettingsLoaded) return;
     AsyncStorage.setItem(PUSH_UPDATES_KEY, pushUpdates ? '1' : '0').catch(() => {});
-  }, [pushUpdates]);
+  }, [pushUpdates, pushSettingsLoaded]);
 
   function buildPushPreferences() {
     return {
