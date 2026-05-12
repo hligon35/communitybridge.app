@@ -70,6 +70,19 @@ function getNotificationsModule() {
   }
 }
 
+function getBreakNotificationPermissionRequestOptions() {
+  if (Platform.OS === 'ios') {
+    return {
+      ios: {
+        allowAlert: true,
+        allowBadge: true,
+        allowSound: true,
+      },
+    };
+  }
+  return undefined;
+}
+
 async function ensureBreakNotificationsReady() {
   if (Platform.OS === 'web') return { ok: false, reason: 'web-unsupported' };
   const Notifications = getNotificationsModule();
@@ -78,7 +91,7 @@ async function ensureBreakNotificationsReady() {
     const existing = await Notifications.getPermissionsAsync();
     let status = existing?.status;
     if (status !== 'granted') {
-      const requested = await Notifications.requestPermissionsAsync();
+      const requested = await Notifications.requestPermissionsAsync(getBreakNotificationPermissionRequestOptions());
       status = requested?.status;
     }
     if (status !== 'granted') return { ok: false, reason: 'permission-denied' };
@@ -963,8 +976,8 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   shellHeaderTitle: { color: '#0f172a', fontWeight: '800', fontSize: 24, lineHeight: 30, textAlign: 'center' },
-  shellHeaderIconButton: { position: 'absolute', right: 24, marginTop: 18 },
-  shellHeaderBackButton: { position: 'absolute', left: 24, marginTop: 18 },
+  shellHeaderIconButton: { position: 'absolute', right: 24, top: '50%', marginTop: 18 },
+  shellHeaderBackButton: { position: 'absolute', left: 24, top: '50%', marginTop: 18 },
   shell: { flex: 1, flexDirection: 'row', backgroundColor: '#e2e8f0' },
   drawer: { backgroundColor: '#0f172a', paddingHorizontal: 16, flexShrink: 0 },
   drawerCollapsed: { paddingHorizontal: 10 },

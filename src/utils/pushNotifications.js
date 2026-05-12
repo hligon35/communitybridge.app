@@ -14,6 +14,19 @@ export const PUSH_STORAGE_KEYS = Object.freeze({
 
 const DEFAULT_PUSH_CHANNEL_ID = 'communitybridge-alerts-v2';
 
+function getNotificationPermissionRequestOptions() {
+  if (Platform.OS === 'ios') {
+    return {
+      ios: {
+        allowAlert: true,
+        allowBadge: true,
+        allowSound: true,
+      },
+    };
+  }
+  return undefined;
+}
+
 let notificationsLib = null;
 function getNotificationsLib() {
   if (notificationsLib) return notificationsLib;
@@ -133,7 +146,7 @@ export async function registerForExpoPushTokenAsync() {
   const existing = await Notifications.getPermissionsAsync();
   let status = existing?.status;
   if (status !== 'granted') {
-    const requested = await Notifications.requestPermissionsAsync();
+    const requested = await Notifications.requestPermissionsAsync(getNotificationPermissionRequestOptions());
     status = requested?.status;
   }
 
@@ -202,13 +215,18 @@ export async function syncLoggedInDevicePushRegistration({ userId } = {}) {
     return { ok: true, skipped: true, reason: 'push-disabled' };
   }
 
-  let token = stored.token;
-  if (!token) {
-    const result = await registerForExpoPushTokenAsync();
-    if (!result.ok || !result.token) return result;
-    token = String(result.token || '').trim();
+  let token = '';
+  const registration = await registerForExpoPushTokenAsync();
+  if (registration.ok && registration.token) {
+    token = String(registration.token || '').trim();
     if (!token) return { ok: false, reason: 'token-missing' };
-    await AsyncStorage.setItem(PUSH_STORAGE_KEYS.token, token).catch(() => {});
+    if (token !== stored.token) {
+      await AsyncStorage.setItem(PUSH_STORAGE_KEYS.token, token).catch(() => {});
+    }
+  } else if (stored.token) {
+    token = stored.token;
+  } else {
+    return registration;
   }
 
   await Api.registerPushToken({

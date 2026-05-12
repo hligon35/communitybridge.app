@@ -36,7 +36,7 @@ function getUserParticipantTokens(user) {
 }
 
 function addParticipantTokens(set, participant) {
-  [participant?.id, participant?.name, participant?.email]
+  [participant?.id, participant?.uid, participant?.name, participant?.email]
     .map(normalizeToken)
     .filter(Boolean)
     .forEach((value) => set.add(value));

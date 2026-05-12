@@ -29,7 +29,7 @@ import {
   seededScreenshotExportJobs,
   seededScreenshotAuditLogs,
 } from './seed/screenshotSeedData';
-import { countUnreadVisibleThreads } from './utils/chatThreads';
+import { countUnreadVisibleThreads, getConversationKey } from './utils/chatThreads';
 import { DEMO_ROLE_IDENTITIES, getEffectiveChatIdentity } from './utils/demoIdentity';
 import { isAdminRole, isBcbaRole, isOfficeAdminRole } from './core/tenant/models';
 import { attachTherapistsToChildren, mergeById } from './utils/directoryState';
@@ -40,6 +40,11 @@ const DataContext = createContext(null);
 
 export function useData() {
   return useContext(DataContext);
+}
+
+function getMessageConversationKeys(message) {
+  const rawValues = [message?.threadId, message?.id];
+  return Array.from(new Set(rawValues.map((value) => String(value || '').trim()).filter(Boolean)));
 }
 
 function deriveTherapistsFromChildren(childrenArr) {
@@ -955,15 +960,31 @@ export function DataProvider({ children: reactChildren }) {
   function deleteThread(threadId) {
     try {
       const key = threadId != null ? String(threadId) : '';
-      setMessages((s) => (s || []).filter((m) => String(m.threadId || m.id) !== key));
-      setArchivedThreads((s) => (s || []).filter((t) => t !== threadId));
+      const isConversationKey = key.startsWith('user:') || key.startsWith('thread:');
+      const shouldDeleteMessage = (message) => {
+        if (!key) return false;
+        if (isConversationKey && getConversationKey(message, user) === key) return true;
+        const messageKeys = getMessageConversationKeys(message);
+        if (messageKeys.includes(key)) return true;
+        if (!isConversationKey) return false;
+        return messageKeys.some((messageKey) => key === `thread:${messageKey}`);
+      };
+      setMessages((s) => {
+        const next = (s || []).filter((m) => !shouldDeleteMessage(m));
+        AsyncStorage.setItem(storageKeys.messages, JSON.stringify(next)).catch(() => {});
+        return next;
+      });
+      setArchivedThreads((s) => {
+        const next = (s || []).filter((t) => String(t) !== key);
+        AsyncStorage.setItem(storageKeys.archivedThreads, JSON.stringify(next)).catch(() => {});
+        return next;
+      });
       setThreadReads((s) => {
         const next = { ...(s || {}) };
         delete next[key];
+        AsyncStorage.setItem(storageKeys.threadReads, JSON.stringify(next)).catch(() => {});
         return next;
       });
-      AsyncStorage.setItem(storageKeys.messages, JSON.stringify((messages || []).filter((m) => String(m.threadId || m.id) !== key))).catch(() => {});
-      AsyncStorage.setItem(storageKeys.archivedThreads, JSON.stringify((archivedThreads || []).filter((t) => t !== threadId))).catch(() => {});
     } catch (e) {
       console.warn('deleteThread failed', e?.message || e);
     }
