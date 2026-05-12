@@ -12,6 +12,8 @@ export const PUSH_STORAGE_KEYS = Object.freeze({
   token: 'push_expo_token_v1',
 });
 
+const DEFAULT_PUSH_CHANNEL_ID = 'communitybridge-alerts-v2';
+
 let notificationsLib = null;
 function getNotificationsLib() {
   if (notificationsLib) return notificationsLib;
@@ -131,9 +133,12 @@ export async function registerForExpoPushTokenAsync() {
 
   // Android: channel required for visible notifications.
   if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('default', {
-      name: 'default',
-      importance: Notifications.AndroidImportance.DEFAULT,
+    await Notifications.setNotificationChannelAsync(DEFAULT_PUSH_CHANNEL_ID, {
+      name: 'CommunityBridge alerts',
+      importance: Notifications.AndroidImportance.MAX,
+      sound: 'default',
+      vibrationPattern: [0, 250, 200, 250],
+      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
     });
   }
 

@@ -2047,6 +2047,8 @@ async function sendExpoPush(tokens, { title, body, data } = {}) {
       body: safeString(body || ''),
       data: (data && typeof data === 'object') ? data : {},
       sound: 'default',
+      channelId: 'communitybridge-alerts-v2',
+      priority: 'high',
       badge: 1,
     }));
 
