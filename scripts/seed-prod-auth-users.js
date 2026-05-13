@@ -23,7 +23,7 @@ const DEFAULT_SERVER_URL = 'https://communitybridge.app';
 const USERS = [
   // NOTE: Fill in the passwords before running this script.
   { name: 'Harold Ligon', email: 'hligon35@gmail.com', password: 'Zing@r088', role: 'parent', twoFaMethod: 'email' },
-  { name: 'App Review', email: 'appreview@communitybridge.app', password: 'Approved123!', role: 'parent', twoFaMethod: 'email' },
+  { name: 'App Reviewer', email: 'appreview@communitybridge.app', password: 'Approved123!', role: 'parent', twoFaMethod: 'email' },
 ];
 
 function postJson(fullUrl, json) {

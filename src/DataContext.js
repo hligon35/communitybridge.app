@@ -169,7 +169,7 @@ function cloneSeedValue(value) {
 // Directory seed data is provided from `src/seed/directorySeed.js` (imported above)
 
 export function DataProvider({ children: reactChildren }) {
-  const { user, loading, needsMfa, refreshMfaState, markMfaRequired, isDemoReviewer } = useAuth();
+  const { user, loading, needsMfa, refreshMfaState, markMfaRequired } = useAuth();
   const needsMfaRef = useRef(Boolean(needsMfa));
   const mfaRefreshInFlightRef = useRef(false);
   const mfaEscalatedRef = useRef(false);
@@ -378,30 +378,6 @@ export function DataProvider({ children: reactChildren }) {
         await AsyncStorage.multiRemove(sensitiveStorageKeys).catch(() => {});
         if (!mounted) return;
 
-        if (isDemoReviewer) {
-          const seedStatus = String(seedStatusRaw || '').trim().toLowerCase();
-          if (seedStatus === 'cleared') {
-            resetLocalState();
-            return;
-          }
-
-          const screenshotState = buildScreenshotSeedState();
-          if (blockedRaw) {
-            try {
-              const parsed = JSON.parse(blockedRaw);
-              screenshotState.blockedUserIds = Array.isArray(parsed) ? parsed : [];
-            } catch (_) {}
-          }
-          if (chatBlockedRaw) {
-            try {
-              const parsed = JSON.parse(chatBlockedRaw);
-              screenshotState.chatBlockedUserIds = Array.isArray(parsed) ? parsed : [];
-            } catch (_) {}
-          }
-          applyLocalStateSnapshot(screenshotState);
-          return;
-        }
-
         setPosts([]);
         setMessages([]);
         setThreadReads({});
@@ -442,7 +418,7 @@ export function DataProvider({ children: reactChildren }) {
       // after auth finishes loading to ensure requests include auth token.
     })();
     return () => { mounted = false; };
-  }, [isDemoReviewer, sensitiveStorageKeys, storageKeys, storageScopeId]);
+  }, [sensitiveStorageKeys, storageKeys, storageScopeId]);
 
   useEffect(() => {
     if (!storageReady) return;
@@ -546,8 +522,6 @@ export function DataProvider({ children: reactChildren }) {
   async function fetchAndSync(options = {}) {
     const opts = options && typeof options === 'object' ? options : {};
     const force = Boolean(opts.force);
-
-    if (isDemoReviewer) return;
 
     // Avoid Firestore reads while MFA is required but not verified.
     if (!user || needsMfaRef.current) return;
@@ -662,7 +636,7 @@ export function DataProvider({ children: reactChildren }) {
   // Trigger network fetch once auth has finished loading and a user is signed in.
   useEffect(() => {
     let mounted = true;
-    if (loading || !user || needsMfa || isDemoReviewer) return () => { mounted = false; };
+    if (loading || !user || needsMfa) return () => { mounted = false; };
 
     const userKey = [
       user?.id || user?.uid || user?.email || '',
@@ -686,10 +660,10 @@ export function DataProvider({ children: reactChildren }) {
     }
 
     return () => { mounted = false; };
-  }, [isDemoReviewer, loading, user, needsMfa]);
+  }, [loading, user, needsMfa]);
 
   useEffect(() => {
-    if (loading || !user || needsMfa || isDemoReviewer) return undefined;
+    if (loading || !user || needsMfa) return undefined;
 
     let active = true;
 
@@ -730,22 +704,9 @@ export function DataProvider({ children: reactChildren }) {
       clearInterval(intervalId);
       appStateSubscription?.remove?.();
     };
-  }, [deletedThreads, isDemoReviewer, loading, needsMfa, user?.id, user?.uid]);
+  }, [deletedThreads, loading, needsMfa, user?.id, user?.uid]);
 
   async function createPost(payload) {
-    if (isDemoReviewer) {
-      const created = {
-        ...(payload || {}),
-        id: `demo-post-${Date.now()}`,
-        createdAt: new Date().toISOString(),
-        author: payload?.author || { id: user?.id || 'reviewer-1', name: user?.name || 'App Review', avatar: null },
-        likes: 0,
-        shares: 0,
-        comments: [],
-      };
-      setPosts((s) => [created, ...(s || [])]);
-      return created;
-    }
     const temp = { ...payload, id: `temp-${Date.now()}`, createdAt: new Date().toISOString(), pending: true };
     setPosts((s) => [temp, ...s]);
     try {
@@ -771,15 +732,6 @@ export function DataProvider({ children: reactChildren }) {
   }
 
   async function like(postId) {
-    if (isDemoReviewer) {
-      let updated = null;
-      setPosts((s) => (s || []).map((p) => {
-        if (p.id !== postId) return p;
-        updated = { ...p, likes: (p.likes || 0) + 1 };
-        return updated;
-      }));
-      return updated;
-    }
     try {
       const updated = await Api.likePost(postId);
       setPosts((s) => s.map((p) => (p.id === postId ? { ...p, ...updated } : p)));
@@ -790,19 +742,6 @@ export function DataProvider({ children: reactChildren }) {
   }
 
   async function comment(postId, commentBody) {
-    if (isDemoReviewer) {
-      const created = {
-        id: `demo-comment-${Date.now()}`,
-        body: String(commentBody?.body || commentBody || '').trim(),
-        author: { id: user?.id || 'reviewer-1', name: user?.name || 'App Review' },
-        createdAt: new Date().toISOString(),
-        reactions: {},
-        userReactions: {},
-        replies: [],
-      };
-      setPosts((s) => (s || []).map((p) => (p.id === postId ? { ...p, comments: [...(p.comments || []), created] } : p)));
-      return created;
-    }
     try {
       const created = await Api.commentPost(postId, commentBody);
       setPosts((s) => s.map((p) => (p.id === postId ? { ...p, comments: [...(p.comments || []), created] } : p)));
@@ -1010,7 +949,6 @@ export function DataProvider({ children: reactChildren }) {
       });
     }
     setMessages((s) => [temp, ...s]);
-    if (isDemoReviewer) return temp;
     try {
       const sent = await Api.sendMessage(payloadWithSender);
       setMessages((s) => [sent, ...s.filter((m) => m.id !== temp.id)]);
@@ -1117,7 +1055,6 @@ export function DataProvider({ children: reactChildren }) {
         createdAt: new Date().toISOString(),
       };
       setUrgentMemos((s) => [temp, ...(s || [])]);
-      if (isDemoReviewer) return temp;
       // Attempt server send; if server returns canonical memo, replace temp
       if (Api.sendUrgentMemo) {
         try {
@@ -1156,8 +1093,6 @@ export function DataProvider({ children: reactChildren }) {
       // Optimistically add to local urgent memos so admins can see it immediately
       setUrgentMemos((s) => [temp, ...(s || [])]);
 
-      if (isDemoReviewer) return temp;
-
       // Attempt server send if API supports it
       if (Api.sendUrgentMemo) {
         try {
@@ -1195,8 +1130,6 @@ export function DataProvider({ children: reactChildren }) {
       };
       setUrgentMemos((s) => [temp, ...(s || [])]);
 
-      if (isDemoReviewer) return temp;
-
       if (Api.sendUrgentMemo) {
         try {
           const created = await Api.sendUrgentMemo(temp);
@@ -1222,7 +1155,7 @@ export function DataProvider({ children: reactChildren }) {
       // Find memo locally
       const localMemo = (urgentMemos || []).find((m) => m.id === memoId);
       setUrgentMemos((s) => (s || []).map((m) => (m.id === memoId ? { ...m, status: action, respondedAt: new Date().toISOString() } : m)));
-      if (!isDemoReviewer && Api.respondUrgentMemo) {
+      if (Api.respondUrgentMemo) {
         try {
           await Api.respondUrgentMemo(memoId, action);
         } catch (e) {

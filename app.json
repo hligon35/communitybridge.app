@@ -21,6 +21,37 @@
         "NSCameraUsageDescription": "CommunityBridge needs camera access to let you capture photos for posts and messages.",
         "NSPhotoLibraryUsageDescription": "CommunityBridge needs photo library access to let you choose images for posts and messages.",
         "NSPhotoLibraryAddUsageDescription": "CommunityBridge needs permission to save images to your photo library when you choose to download media."
+      },
+      "privacyManifests": {
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "CA92.1"
+            ]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryFileTimestamp",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "C617.1",
+              "0A2A.1",
+              "3B52.1"
+            ]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryDiskSpace",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "E174.1",
+              "85F4.1"
+            ]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategorySystemBootTime",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "35F9.1"
+            ]
+          }
+        ]
       }
     },
     "platforms": [
@@ -45,6 +76,14 @@
         {
           "isIosBackgroundLocationEnabled": true,
           "isAndroidBackgroundLocationEnabled": true
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "privacyManifestAggregationEnabled": true
+          }
         }
       ],
       "@react-native-community/datetimepicker",

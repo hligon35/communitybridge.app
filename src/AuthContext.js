@@ -7,7 +7,7 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { navigationRef, resetToLogin, resetToTwoFactor } from './navigationRef';
 import { logger, setDebugContext } from './utils/logger';
 import { reportErrorToSentry } from './utils/reportError';
-import { normalizeRoleOverride, isDevSwitcherUser, isDemoReviewerUser, isSpecialAccessUser, isReservedSuperAdminEmail, getMfaFreshnessWindowMs } from './utils/authState';
+import { normalizeRoleOverride, isDevSwitcherUser, isSpecialAccessUser, isReservedSuperAdminEmail, getMfaFreshnessWindowMs } from './utils/authState';
 import { configureNotificationHandling, syncLoggedInDevicePushRegistration, unregisterLoggedInDevicePushRegistration } from './utils/pushNotifications';
 import { getDemoRoleIdentity } from './utils/demoIdentity';
 
@@ -609,7 +609,6 @@ export function AuthProvider({ children }) {
       // Master 2FA bypass for the controlled dev account so we can navigate
       // hierarchy/paths without going through the org-level MFA gate.
       const isDevBypass = isSpecialAccessUser(user?.email);
-      const isDemoReviewer = isDemoReviewerUser(user?.email);
       return ({
         token,
         user,
@@ -629,7 +628,6 @@ export function AuthProvider({ children }) {
         mfaVerified: isDevBypass ? true : mfaVerified,
         mfaLoading,
         needsMfa: isDevBypass ? false : Boolean(mfaRequired && !mfaVerified),
-        isDemoReviewer,
         markMfaRequired,
         refreshMfaState,
       });

@@ -6,20 +6,19 @@ import { useData } from '../DataContext';
 import { useTenant } from '../core/tenant/TenantContext';
 import { MaterialIcons } from '@expo/vector-icons';
 import { logPress } from '../utils/logger';
-import { isDevSwitcherUser, isDemoReviewerUser } from '../utils/authState';
+import { isDevSwitcherUser } from '../utils/authState';
 import { THERAPY_ROLE_LABELS } from '../utils/roleTerminology';
 import { ENABLE_DEV_SWITCHER } from '../config';
 
 const DEV_SWITCHER_VISIBILITY_KEY = '@communitybridge/dev-switcher-visible';
 
 export default function DevRoleSwitcher() {
-  const { setRole, user, isDemoReviewer, devRoleBehavior = 'remember', setDevStartupBehavior } = useAuth();
+  const { setRole, user, devRoleBehavior = 'remember', setDevStartupBehavior } = useAuth();
   const { clearAllData, resetScreenshotSeed } = useData();
   const tenant = useTenant() || {};
   const isDevAccount = isDevSwitcherUser(user?.email);
-  const isReviewAccount = isDemoReviewer || isDemoReviewerUser(user?.email);
   const canChangeRole = isDevAccount;
-  const isAllowed = ENABLE_DEV_SWITCHER && (__DEV__ || isDevAccount || isReviewAccount);
+  const isAllowed = ENABLE_DEV_SWITCHER && (__DEV__ || isDevAccount);
   const [open, setOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [visibilityReady, setVisibilityReady] = useState(false);
@@ -168,17 +167,11 @@ export default function DevRoleSwitcher() {
         activeOpacity={0.95}
       >
         <View style={styles.badge}>
-          <Text style={styles.badgeText}>{isReviewAccount ? 'DEMO' : ((user && user.role) ? user.role.toString().toUpperCase() : 'DEV')}</Text>
+          <Text style={styles.badgeText}>{(user && user.role) ? user.role.toString().toUpperCase() : 'DEV'}</Text>
         </View>
       </TouchableOpacity>
       {open && (
         <ScrollView style={styles.menu} contentContainerStyle={{ paddingBottom: 4 }} showsVerticalScrollIndicator={false}>
-          {isReviewAccount ? (
-            <View style={styles.demoBanner}>
-              <Text style={styles.demoBannerTitle}>App Review Demo Mode</Text>
-              <Text style={styles.demoBannerText}>This panel is only available to the review account and drives a seeded local walkthrough.</Text>
-            </View>
-          ) : null}
           <Text style={styles.sectionLabel}>Review Data</Text>
           <TouchableOpacity onPress={seedScreenshotMode} style={styles.menuBtn}>
             <Text>Demo View</Text>

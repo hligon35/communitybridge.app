@@ -8,6 +8,7 @@
   Hardcoded demo users:
     hligon35@gmail.com            / ParentDemo123!   role=parent
     cheyanne2448@gmail.com        / ParentDemo123!   role=parent
+    appreview@communitybridge.app / Approved123!     role=parent
     abatech1@communitybridge.app  / AbaTech123!      role=therapist
     abatech2@communitybridge.app  / AbaTech123!      role=therapist
     abatech3@communitybridge.app  / AbaTech123!      role=therapist
@@ -72,6 +73,7 @@ loadEnvFile(path.join(process.cwd(), 'env', 'cloudrun.env'));
 const TEST_USERS = [
   { name: 'Jason Bridgeport',             email: 'hligon35@gmail.com',          password: 'ParentDemo123!', role: 'parent' },
   { name: 'Chelsey Bridgeport',            email: 'cheyanne2448@gmail.com',      password: 'ParentDemo123!', role: 'parent' },
+  { name: 'App Reviewer',                  email: 'appreview@communitybridge.app', password: 'Approved123!', role: 'parent' },
   { name: 'CB ABA Tech 1', email: 'abatech1@communitybridge.app', password: 'AbaTech123!', role: 'therapist' },
   { name: 'CB ABA Tech 2', email: 'abatech2@communitybridge.app', password: 'AbaTech123!', role: 'therapist' },
   { name: 'CB ABA Tech 3', email: 'abatech3@communitybridge.app', password: 'AbaTech123!', role: 'therapist' },
@@ -106,6 +108,7 @@ function loadTenantSeedData() {
 
 const TENANT_SEED = loadTenantSeedData();
 const DEMO_FAMILY_ID = 'family-cook-demo';
+const REVIEW_FAMILY_ID = 'family-app-reviewer';
 
 function splitName(name) {
   const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
@@ -177,6 +180,7 @@ function buildDirectoryEntitiesByEmail(uidByEmail) {
 
   const parent1 = DEMO_EMAIL_MAP['hligon35@gmail.com'];
   const parent2 = DEMO_EMAIL_MAP['cheyanne2448@gmail.com'];
+  const reviewParent = DEMO_EMAIL_MAP['appreview@communitybridge.app'];
   const tech1 = DEMO_EMAIL_MAP['abatech1@communitybridge.app'];
   const tech2 = DEMO_EMAIL_MAP['abatech2@communitybridge.app'];
   const tech3 = DEMO_EMAIL_MAP['abatech3@communitybridge.app'];
@@ -186,6 +190,14 @@ function buildDirectoryEntitiesByEmail(uidByEmail) {
   const adminUser = DEMO_EMAIL_MAP['admin@communitybridge.app'];
 
   const parentRefs = [parent1, parent2].map((user) => ({
+    id: lookupUid(user.email),
+    userId: lookupUid(user.email),
+    uid: lookupUid(user.email),
+    name: user.name,
+    email: user.email.toLowerCase(),
+    phone: '',
+  }));
+  const reviewParentRefs = [reviewParent].map((user) => ({
     id: lookupUid(user.email),
     userId: lookupUid(user.email),
     uid: lookupUid(user.email),
@@ -224,7 +236,11 @@ function buildDirectoryEntitiesByEmail(uidByEmail) {
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   }));
 
-  const parentDocs = [parent1, parent2].map((user) => ({
+  const parentDocs = [
+    { user: parent1, childIds: ['child-001', 'child-002'], familyId: DEMO_FAMILY_ID },
+    { user: parent2, childIds: ['child-001', 'child-002'], familyId: DEMO_FAMILY_ID },
+    { user: reviewParent, childIds: ['child-review-boy', 'child-review-girl'], familyId: REVIEW_FAMILY_ID },
+  ].map(({ user, childIds, familyId }) => ({
     id: lookupUid(user.email),
     userId: lookupUid(user.email),
     uid: lookupUid(user.email),
@@ -237,8 +253,8 @@ function buildDirectoryEntitiesByEmail(uidByEmail) {
     programName,
     campusId,
     campusName,
-    childIds: ['child-001', 'child-002'],
-    familyId: DEMO_FAMILY_ID,
+    childIds,
+    familyId,
     preferredContactMethod: 'app',
     relationshipType: 'Parent/Guardian',
     active: true,
@@ -261,6 +277,10 @@ function buildDirectoryEntitiesByEmail(uidByEmail) {
       assignedTechEmails: [tech1.email, tech2.email],
       amTechEmail: tech1.email,
       pmTechEmail: tech2.email,
+      parentRefs,
+      familyId: DEMO_FAMILY_ID,
+      dropoffTimeISO: '2026-05-13T08:30:00.000Z',
+      pickupTimeISO: '2026-05-13T12:15:00.000Z',
     },
     {
       id: 'child-002',
@@ -276,6 +296,50 @@ function buildDirectoryEntitiesByEmail(uidByEmail) {
       assignedTechEmails: [tech3.email, tech4.email],
       amTechEmail: tech3.email,
       pmTechEmail: tech4.email,
+      parentRefs,
+      familyId: DEMO_FAMILY_ID,
+      dropoffTimeISO: '2026-05-13T12:45:00.000Z',
+      pickupTimeISO: '2026-05-13T16:15:00.000Z',
+    },
+    {
+      id: 'child-review-boy',
+      name: 'Boy Reviewer',
+      age: '6',
+      room: 'Green-1',
+      session: 'AM',
+      notes: 'Boy Reviewer is working on transition tolerance, expressive requests, and independent routines.',
+      monthlyGoal: 'Increase independent requests and smoother transitions across the morning routine.',
+      successCriteria: 'Demonstrates the target skill in 4 of 5 opportunities across two consecutive sessions.',
+      curriculum: 'Functional Communication, Daily Living, Visual Schedules',
+      behaviorNotes: 'Responds well to first/then supports and movement breaks.',
+      assignedTechEmails: [tech1.email, tech2.email],
+      amTechEmail: tech1.email,
+      pmTechEmail: tech2.email,
+      parentRefs: reviewParentRefs,
+      familyId: REVIEW_FAMILY_ID,
+      dropoffTimeISO: '2026-05-13T08:20:00.000Z',
+      pickupTimeISO: '2026-05-13T12:10:00.000Z',
+      insurance: { provider: 'Reviewer Family Health', memberId: 'RVW-BOY-001', policyNumber: 'POL-REVIEW-BOY' },
+    },
+    {
+      id: 'child-review-girl',
+      name: 'Girl Reviewer',
+      age: '8',
+      room: 'Green-2',
+      session: 'PM',
+      notes: 'Girl Reviewer is focusing on peer engagement, coping strategies, and independent work completion.',
+      monthlyGoal: 'Increase peer engagement and independent completion of structured tasks.',
+      successCriteria: 'Completes structured tasks independently in 80% of observed opportunities.',
+      curriculum: 'Peer Play, Self-Regulation, Independent Work',
+      behaviorNotes: 'Benefits from previewing schedule changes and access to calming tools.',
+      assignedTechEmails: [tech3.email, tech4.email],
+      amTechEmail: tech3.email,
+      pmTechEmail: tech4.email,
+      parentRefs: reviewParentRefs,
+      familyId: REVIEW_FAMILY_ID,
+      dropoffTimeISO: '2026-05-13T12:50:00.000Z',
+      pickupTimeISO: '2026-05-13T16:20:00.000Z',
+      insurance: { provider: 'Reviewer Family Health', memberId: 'RVW-GIRL-001', policyNumber: 'POL-REVIEW-GIRL' },
     },
   ];
 
@@ -301,21 +365,24 @@ function buildDirectoryEntitiesByEmail(uidByEmail) {
     campusId,
     campusName,
     enrollmentCode,
-    familyId: DEMO_FAMILY_ID,
-    parents: parentRefs,
-    parentIds: parentRefs.map((parent) => parent.id),
+    familyId: child.familyId || DEMO_FAMILY_ID,
+    parents: child.parentRefs || parentRefs,
+    parentIds: (child.parentRefs || parentRefs).map((parent) => parent.id),
     assignedABA: child.assignedTechEmails.map((email) => lookupUid(email)),
     assigned_ABA: child.assignedTechEmails.map((email) => lookupUid(email)),
     amTherapistId: lookupUid(child.amTechEmail),
     pmTherapistId: lookupUid(child.pmTechEmail),
     bcaTherapistId: lookupUid(bcba.email),
+    insurance: child.insurance || null,
+    dropoffTimeISO: child.dropoffTimeISO || null,
+    pickupTimeISO: child.pickupTimeISO || null,
     active: true,
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   }));
 
   const directoryLinks = [
-    ...[parent1, parent2].map((user) => ({
+    ...[parent1, parent2, reviewParent].map((user) => ({
       uid: lookupUid(user.email),
       data: {
         role: 'parent',
@@ -749,6 +816,290 @@ async function upsertPostgresDirectoryRecords(pool, uidByEmail) {
   }
 }
 
+function buildReviewSessionSummary({ childName, therapistName, sessionDate, moodScore, progressLevel, independenceLevel, programsWorkedOn, successCriteriaMet, interferingBehaviors, narrative }) {
+  return {
+    sessionDate,
+    childName,
+    moodScore: { selectedValue: moodScore, label: String(moodScore) },
+    dailyRecap: {
+      progressLevel,
+      independenceLevel,
+      therapistNarrative: narrative,
+    },
+    programsWorkedOn,
+    successCriteriaMet,
+    interferingBehaviors,
+    careTeamHighlights: [
+      `${therapistName} documented a stable routine and measurable progress during this session.`,
+    ],
+  };
+}
+
+async function upsertReviewExperienceData(pool, uidByEmail) {
+  const lookupUid = (email) => {
+    const key = String(email || '').trim().toLowerCase();
+    const uid = String(uidByEmail.get(key) || '').trim();
+    if (!uid) throw new Error(`Missing seeded uid for ${email}`);
+    return uid;
+  };
+
+  const reviewParent = DEMO_EMAIL_MAP['appreview@communitybridge.app'];
+  const office = DEMO_EMAIL_MAP['office@communitybridge.app'];
+  const adminUser = DEMO_EMAIL_MAP['admin@communitybridge.app'];
+  const bcba = DEMO_EMAIL_MAP['bcba@communitybridge.app'];
+  const tech1 = DEMO_EMAIL_MAP['abatech1@communitybridge.app'];
+  const tech3 = DEMO_EMAIL_MAP['abatech3@communitybridge.app'];
+  const reviewParentId = lookupUid(reviewParent.email);
+  const officeId = lookupUid(office.email);
+  const adminId = lookupUid(adminUser.email);
+  const bcbaId = lookupUid(bcba.email);
+  const tech1Id = lookupUid(tech1.email);
+  const tech3Id = lookupUid(tech3.email);
+  const organizationId = String(TENANT_SEED.organization.id || '').trim();
+  const programId = String(TENANT_SEED.program.id || '').trim();
+  const campusId = String(TENANT_SEED.campus.id || '').trim();
+
+  const makeActor = (id, name, role) => ({ id, name, role, avatar: '' });
+  const reviewActor = makeActor(reviewParentId, reviewParent.name, reviewParent.role);
+  const officeActor = makeActor(officeId, office.name, office.role);
+  const adminActor = makeActor(adminId, adminUser.name, adminUser.role);
+  const bcbaActor = makeActor(bcbaId, bcba.name, bcba.role);
+
+  const posts = [
+    {
+      id: 'post-review-welcome',
+      author: officeActor,
+      title: 'Welcome to CommunityBridge',
+      body: 'This review account includes sample schedules, care team contacts, parent messaging, urgent updates, and approved session summaries for Boy Reviewer and Girl Reviewer.',
+      likes: 4,
+      shares: 1,
+      comments: [],
+      createdAt: '2026-05-10T14:00:00.000Z',
+      updatedAt: '2026-05-10T14:00:00.000Z',
+    },
+    {
+      id: 'post-review-documents',
+      author: adminActor,
+      title: 'Family Reminder',
+      body: 'Insurance information, attendance history, and recent progress summaries are available in this review account for App Store testing.',
+      likes: 2,
+      shares: 0,
+      comments: [],
+      createdAt: '2026-05-11T16:30:00.000Z',
+      updatedAt: '2026-05-11T16:30:00.000Z',
+    },
+  ];
+
+  const messages = [
+    {
+      id: 'msg-review-office-1',
+      threadId: 'thread-review-office',
+      body: 'Hi App Reviewer, Boy Reviewer is set for an 8:20 AM arrival tomorrow. Let us know if pickup needs to move.',
+      sender: officeActor,
+      to: [reviewActor],
+      createdAt: '2026-05-12T13:15:00.000Z',
+    },
+    {
+      id: 'msg-review-office-2',
+      threadId: 'thread-review-office',
+      body: 'Thanks. We are on time for the usual pickup window.',
+      sender: reviewActor,
+      to: [officeActor],
+      createdAt: '2026-05-12T13:22:00.000Z',
+    },
+    {
+      id: 'msg-review-bcba-1',
+      threadId: 'thread-review-bcba',
+      body: 'Girl Reviewer had a strong afternoon session today. I posted an updated summary with peer engagement notes.',
+      sender: bcbaActor,
+      to: [reviewActor],
+      createdAt: '2026-05-12T18:05:00.000Z',
+    },
+  ];
+
+  const urgentMemos = [
+    {
+      id: 'memo-review-admin',
+      type: 'admin_memo',
+      status: 'sent',
+      proposerId: adminId,
+      actorRole: 'admin',
+      childId: 'child-review-boy',
+      title: 'Pickup Reminder',
+      body: 'Boy Reviewer will be ready for pickup at the front desk at 12:10 PM.',
+      note: '',
+      recipients: [reviewParentId],
+      ack: 0,
+      createdAt: '2026-05-12T15:00:00.000Z',
+      updatedAt: '2026-05-12T15:00:00.000Z',
+    },
+    {
+      id: 'memo-review-urgent',
+      type: 'urgent_memo',
+      status: 'sent',
+      proposerId: officeId,
+      actorRole: 'office',
+      childId: 'child-review-girl',
+      title: 'Schedule Update',
+      body: 'Girl Reviewer will use the Green-2 classroom entrance for the afternoon program this week.',
+      note: 'Please use the side entrance sign-in station.',
+      recipients: [reviewParentId],
+      ack: 0,
+      createdAt: '2026-05-11T17:20:00.000Z',
+      updatedAt: '2026-05-11T17:20:00.000Z',
+    },
+  ];
+
+  const timeChangeProposals = [
+    {
+      id: 'proposal-review-girl-pickup',
+      childId: 'child-review-girl',
+      type: 'pickup',
+      proposedIso: '2026-05-14T16:35:00.000Z',
+      note: 'Requesting a 15-minute later pickup for Girl Reviewer on Thursday.',
+      proposerId: reviewParentId,
+      action: 'pending',
+      createdAt: '2026-05-12T19:10:00.000Z',
+    },
+  ];
+
+  const attendanceRecords = [
+    { id: 'attendance-review-boy-2026-05-12', childId: 'child-review-boy', recordedFor: '2026-05-12', status: 'present', note: 'On time', actorId: officeId, actorRole: 'office', createdAt: '2026-05-12T08:25:00.000Z', updatedAt: '2026-05-12T08:25:00.000Z' },
+    { id: 'attendance-review-boy-2026-05-13', childId: 'child-review-boy', recordedFor: '2026-05-13', status: 'present', note: 'Smooth arrival', actorId: officeId, actorRole: 'office', createdAt: '2026-05-13T08:18:00.000Z', updatedAt: '2026-05-13T08:18:00.000Z' },
+    { id: 'attendance-review-girl-2026-05-12', childId: 'child-review-girl', recordedFor: '2026-05-12', status: 'present', note: 'Ready for PM session', actorId: officeId, actorRole: 'office', createdAt: '2026-05-12T12:47:00.000Z', updatedAt: '2026-05-12T12:47:00.000Z' },
+    { id: 'attendance-review-girl-2026-05-13', childId: 'child-review-girl', recordedFor: '2026-05-13', status: 'tardy', note: 'Arrived 10 minutes late', actorId: officeId, actorRole: 'office', createdAt: '2026-05-13T13:00:00.000Z', updatedAt: '2026-05-13T13:00:00.000Z' },
+  ];
+
+  const moodEntries = [
+    { id: 'mood-review-boy-1', childId: 'child-review-boy', score: 4, note: 'Engaged and responsive.', actorId: tech1Id, actorRole: 'therapist', recordedAt: '2026-05-12T11:45:00.000Z', createdAt: '2026-05-12T11:45:00.000Z' },
+    { id: 'mood-review-boy-2', childId: 'child-review-boy', score: 5, note: 'Strong transition morning.', actorId: tech1Id, actorRole: 'therapist', recordedAt: '2026-05-13T11:50:00.000Z', createdAt: '2026-05-13T11:50:00.000Z' },
+    { id: 'mood-review-girl-1', childId: 'child-review-girl', score: 4, note: 'Good participation with peers.', actorId: tech3Id, actorRole: 'therapist', recordedAt: '2026-05-12T15:40:00.000Z', createdAt: '2026-05-12T15:40:00.000Z' },
+    { id: 'mood-review-girl-2', childId: 'child-review-girl', score: 3, note: 'Needed extra regulation support after arrival.', actorId: tech3Id, actorRole: 'therapist', recordedAt: '2026-05-13T15:35:00.000Z', createdAt: '2026-05-13T15:35:00.000Z' },
+  ];
+
+  const therapySessions = [
+    { id: 'session-review-boy-1', childId: 'child-review-boy', childName: 'Boy Reviewer', therapistId: tech1Id, therapistRole: 'therapist', organizationId, programId, campusId, sessionDate: '2026-05-12', sessionType: 'am', startedAt: '2026-05-12T08:35:00.000Z', endedAt: '2026-05-12T11:30:00.000Z', status: 'submitted', summaryGeneratedAt: '2026-05-12T11:35:00.000Z', approvedAt: '2026-05-12T12:05:00.000Z', createdAt: '2026-05-12T08:35:00.000Z', updatedAt: '2026-05-12T12:05:00.000Z' },
+    { id: 'session-review-girl-1', childId: 'child-review-girl', childName: 'Girl Reviewer', therapistId: tech3Id, therapistRole: 'therapist', organizationId, programId, campusId, sessionDate: '2026-05-12', sessionType: 'pm', startedAt: '2026-05-12T13:00:00.000Z', endedAt: '2026-05-12T15:45:00.000Z', status: 'submitted', summaryGeneratedAt: '2026-05-12T15:50:00.000Z', approvedAt: '2026-05-12T16:10:00.000Z', createdAt: '2026-05-12T13:00:00.000Z', updatedAt: '2026-05-12T16:10:00.000Z' },
+  ];
+
+  const summaryBoy = buildReviewSessionSummary({
+    childName: 'Boy Reviewer',
+    therapistName: tech1.name,
+    sessionDate: '2026-05-12',
+    moodScore: 5,
+    progressLevel: 'Moderate progress',
+    independenceLevel: 'Moderate independence',
+    programsWorkedOn: ['Functional Communication', 'Transition Practice', 'Following Directions'],
+    successCriteriaMet: ['Requested break with prompt', 'Transitioned with visual schedule'],
+    interferingBehaviors: [{ label: 'Task refusal', frequency: 1 }],
+    narrative: 'Boy Reviewer completed his morning routine with fewer prompts and used a verbal request during two transitions.',
+  });
+  const summaryGirl = buildReviewSessionSummary({
+    childName: 'Girl Reviewer',
+    therapistName: tech3.name,
+    sessionDate: '2026-05-12',
+    moodScore: 4,
+    progressLevel: 'Moderate progress',
+    independenceLevel: 'Minimal independence',
+    programsWorkedOn: ['Peer Play', 'Independent Work', 'Coping Skills'],
+    successCriteriaMet: ['Joined peer game for 10 minutes', 'Completed two independent tasks'],
+    interferingBehaviors: [{ label: 'Avoidance', frequency: 2 }],
+    narrative: 'Girl Reviewer re-engaged after arrival support and completed structured work with one verbal prompt.',
+  });
+
+  const therapySessionSummaries = [
+    { id: 'summary-review-boy-1', sessionId: 'session-review-boy-1', childId: 'child-review-boy', therapistId: tech1Id, status: 'approved', version: 1, summary: summaryBoy, summaryText: 'Boy Reviewer showed moderate progress in communication and transitions.', generatedAt: '2026-05-12T11:35:00.000Z', updatedAt: '2026-05-12T12:05:00.000Z', approvedAt: '2026-05-12T12:05:00.000Z' },
+    { id: 'summary-review-girl-1', sessionId: 'session-review-girl-1', childId: 'child-review-girl', therapistId: tech3Id, status: 'approved', version: 1, summary: summaryGirl, summaryText: 'Girl Reviewer showed moderate progress in peer engagement and structured task completion.', generatedAt: '2026-05-12T15:50:00.000Z', updatedAt: '2026-05-12T16:10:00.000Z', approvedAt: '2026-05-12T16:10:00.000Z' },
+  ];
+
+  for (const post of posts) {
+    await pool.query(
+      `INSERT INTO posts (id, author_json, title, body, image, likes, shares, comments_json, created_at, updated_at)
+       VALUES ($1, $2::jsonb, $3, $4, $5, $6, $7, $8::jsonb, $9, $10)
+       ON CONFLICT (id) DO UPDATE SET author_json = EXCLUDED.author_json, title = EXCLUDED.title, body = EXCLUDED.body, image = EXCLUDED.image, likes = EXCLUDED.likes, shares = EXCLUDED.shares, comments_json = EXCLUDED.comments_json, updated_at = EXCLUDED.updated_at`,
+      [post.id, JSON.stringify(post.author), post.title, post.body, null, post.likes, post.shares, JSON.stringify(post.comments), new Date(post.createdAt), new Date(post.updatedAt)]
+    );
+  }
+
+  for (const message of messages) {
+    await pool.query(
+      `INSERT INTO messages (id, thread_id, body, sender_json, to_json, created_at)
+       VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6)
+       ON CONFLICT (id) DO UPDATE SET thread_id = EXCLUDED.thread_id, body = EXCLUDED.body, sender_json = EXCLUDED.sender_json, to_json = EXCLUDED.to_json, created_at = EXCLUDED.created_at`,
+      [message.id, message.threadId, message.body, JSON.stringify(message.sender), JSON.stringify(message.to), new Date(message.createdAt)]
+    );
+  }
+
+  for (const memo of urgentMemos) {
+    const memoJson = {
+      id: memo.id,
+      type: memo.type,
+      title: memo.title,
+      body: memo.body,
+      note: memo.note,
+      recipients: memo.recipients,
+      proposerId: memo.proposerId,
+      childId: memo.childId,
+      status: memo.status,
+      createdAt: memo.createdAt,
+      date: memo.createdAt,
+    };
+    await pool.query(
+      `INSERT INTO urgent_memos (id, type, status, proposer_id, actor_role, child_id, title, body, note, meta_json, memo_json, responded_at, ack, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11::jsonb, $12, $13, $14, $15)
+       ON CONFLICT (id) DO UPDATE SET type = EXCLUDED.type, status = EXCLUDED.status, proposer_id = EXCLUDED.proposer_id, actor_role = EXCLUDED.actor_role, child_id = EXCLUDED.child_id, title = EXCLUDED.title, body = EXCLUDED.body, note = EXCLUDED.note, meta_json = EXCLUDED.meta_json, memo_json = EXCLUDED.memo_json, responded_at = EXCLUDED.responded_at, ack = EXCLUDED.ack, updated_at = EXCLUDED.updated_at`,
+      [memo.id, memo.type, memo.status, memo.proposerId, memo.actorRole, memo.childId, memo.title, memo.body, memo.note, JSON.stringify({ seeded: true }), JSON.stringify(memoJson), null, memo.ack, new Date(memo.createdAt), new Date(memo.updatedAt)]
+    );
+  }
+
+  for (const proposal of timeChangeProposals) {
+    await pool.query(
+      `INSERT INTO time_change_proposals (id, child_id, type, proposed_iso, note, proposer_id, action, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       ON CONFLICT (id) DO UPDATE SET child_id = EXCLUDED.child_id, type = EXCLUDED.type, proposed_iso = EXCLUDED.proposed_iso, note = EXCLUDED.note, proposer_id = EXCLUDED.proposer_id, action = EXCLUDED.action, created_at = EXCLUDED.created_at`,
+      [proposal.id, proposal.childId, proposal.type, proposal.proposedIso, proposal.note, proposal.proposerId, proposal.action, new Date(proposal.createdAt)]
+    );
+  }
+
+  for (const record of attendanceRecords) {
+    await pool.query(
+      `INSERT INTO attendance_records (id, child_id, recorded_for, status, note, actor_id, actor_role, created_at, updated_at)
+       VALUES ($1, $2, $3::date, $4, $5, $6, $7, $8, $9)
+       ON CONFLICT (child_id, recorded_for) DO UPDATE SET id = EXCLUDED.id, status = EXCLUDED.status, note = EXCLUDED.note, actor_id = EXCLUDED.actor_id, actor_role = EXCLUDED.actor_role, updated_at = EXCLUDED.updated_at`,
+      [record.id, record.childId, record.recordedFor, record.status, record.note, record.actorId, record.actorRole, new Date(record.createdAt), new Date(record.updatedAt)]
+    );
+  }
+
+  for (const mood of moodEntries) {
+    await pool.query(
+      `INSERT INTO mood_entries (id, child_id, score, note, actor_id, actor_role, recorded_at, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       ON CONFLICT (id) DO UPDATE SET child_id = EXCLUDED.child_id, score = EXCLUDED.score, note = EXCLUDED.note, actor_id = EXCLUDED.actor_id, actor_role = EXCLUDED.actor_role, recorded_at = EXCLUDED.recorded_at, created_at = EXCLUDED.created_at`,
+      [mood.id, mood.childId, mood.score, mood.note, mood.actorId, mood.actorRole, new Date(mood.recordedAt), new Date(mood.createdAt)]
+    );
+  }
+
+  for (const session of therapySessions) {
+    await pool.query(
+      `INSERT INTO therapy_sessions (id, child_id, child_name, therapist_id, therapist_role, organization_id, program_id, campus_id, session_date, session_type, started_at, ended_at, status, summary_generated_at, approved_at, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::date, $10, $11, $12, $13, $14, $15, $16, $17)
+       ON CONFLICT (id) DO UPDATE SET child_id = EXCLUDED.child_id, child_name = EXCLUDED.child_name, therapist_id = EXCLUDED.therapist_id, therapist_role = EXCLUDED.therapist_role, organization_id = EXCLUDED.organization_id, program_id = EXCLUDED.program_id, campus_id = EXCLUDED.campus_id, session_date = EXCLUDED.session_date, session_type = EXCLUDED.session_type, started_at = EXCLUDED.started_at, ended_at = EXCLUDED.ended_at, status = EXCLUDED.status, summary_generated_at = EXCLUDED.summary_generated_at, approved_at = EXCLUDED.approved_at, updated_at = EXCLUDED.updated_at`,
+      [session.id, session.childId, session.childName, session.therapistId, session.therapistRole, session.organizationId, session.programId, session.campusId, session.sessionDate, session.sessionType, new Date(session.startedAt), new Date(session.endedAt), session.status, new Date(session.summaryGeneratedAt), new Date(session.approvedAt), new Date(session.createdAt), new Date(session.updatedAt)]
+    );
+  }
+
+  for (const summary of therapySessionSummaries) {
+    await pool.query(
+      `INSERT INTO therapy_session_summaries (id, session_id, child_id, therapist_id, status, version, summary_json, summary_text, generated_at, updated_at, approved_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11)
+       ON CONFLICT (session_id) DO UPDATE SET id = EXCLUDED.id, child_id = EXCLUDED.child_id, therapist_id = EXCLUDED.therapist_id, status = EXCLUDED.status, version = EXCLUDED.version, summary_json = EXCLUDED.summary_json, summary_text = EXCLUDED.summary_text, generated_at = EXCLUDED.generated_at, updated_at = EXCLUDED.updated_at, approved_at = EXCLUDED.approved_at`,
+      [summary.id, summary.sessionId, summary.childId, summary.therapistId, summary.status, summary.version, JSON.stringify(summary.summary), summary.summaryText, new Date(summary.generatedAt), new Date(summary.updatedAt), new Date(summary.approvedAt)]
+    );
+  }
+
+  console.log('[seed][pg] upserted App Reviewer experience data');
+}
+
 async function main() {
   console.log(`[seed] mode=${DRY ? 'DRY RUN' : 'WRITE'} users=${TEST_USERS.length}`);
 
@@ -791,6 +1142,7 @@ async function main() {
     if (uidByEmail.size === TEST_USERS.length) {
       await upsertDirectoryRecords(firestore, uidByEmail);
       await upsertPostgresDirectoryRecords(pool, uidByEmail);
+      await upsertReviewExperienceData(pool, uidByEmail);
     } else {
       console.warn('[seed] Skipping directory graph because one or more user accounts failed to seed.');
     }
