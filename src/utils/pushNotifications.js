@@ -40,6 +40,11 @@ function getNotificationPermissionRequestOptions() {
   return undefined;
 }
 
+function hasGrantedPushSoundPermission(permission) {
+  if (Platform.OS !== 'ios') return true;
+  return permission?.ios?.allowsSound !== false;
+}
+
 let notificationsLib = null;
 function getNotificationsLib() {
   if (notificationsLib) return notificationsLib;
@@ -158,22 +163,26 @@ export async function registerForExpoPushTokenAsync() {
   // iOS will prompt; Android depends on OS version.
   const existing = await Notifications.getPermissionsAsync();
   let status = existing?.status;
+  let hasSoundPermission = hasGrantedPushSoundPermission(existing);
   let requested = null;
-  if (status !== 'granted') {
+  const shouldRequestPermissions = status !== 'granted' || !hasSoundPermission;
+  if (shouldRequestPermissions) {
     requested = await Notifications.requestPermissionsAsync(getNotificationPermissionRequestOptions());
     status = requested?.status;
+    hasSoundPermission = hasGrantedPushSoundPermission(requested);
   }
 
-  if (status !== 'granted') {
+  if (status !== 'granted' || !hasSoundPermission) {
     reportPushIssue(new Error('Push notification permission not granted.'), {
       action: 'push_permission',
       permissionStatus: String(status || ''),
+      reason: status === 'granted' && !hasSoundPermission ? 'sound-disabled' : 'permission-denied',
       canAskAgain: Boolean(requested?.canAskAgain ?? existing?.canAskAgain),
       hasIosSoundPermission: Boolean(requested?.ios?.allowsSound ?? existing?.ios?.allowsSound),
       hasIosAlertPermission: Boolean(requested?.ios?.allowsAlert ?? existing?.ios?.allowsAlert),
       hasIosBadgePermission: Boolean(requested?.ios?.allowsBadge ?? existing?.ios?.allowsBadge),
     });
-    return { ok: false, reason: 'permission-denied' };
+    return { ok: false, reason: status === 'granted' && !hasSoundPermission ? 'sound-disabled' : 'permission-denied' };
   }
 
   // Android: channel required for visible notifications.

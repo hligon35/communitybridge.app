@@ -11,9 +11,9 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { HelpButton } from '../components/TopButtons';
 
 export default function ChatThreadScreen({ route, navigation }) {
-  const { threadId, threadIds: routeThreadIds, activeThreadId, isNew, to: initialTo, conversationTitle } = route.params || {};
+  const { threadId, threadIds: routeThreadIds, activeThreadId, isNew, to: initialTo, conversationTitle, initialDraft } = route.params || {};
   const { messages, sendMessage, markThreadRead, chatBlockedUserIds = [] } = useData();
-  const [text, setText] = useState('');
+  const [text, setText] = useState(String(initialDraft || ''));
   const { user } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
   const headerHeight = useHeaderHeight ? useHeaderHeight() : 0;
@@ -48,6 +48,33 @@ export default function ChatThreadScreen({ route, navigation }) {
 
     return 'Conversation';
   }, [conversationTitle, initialTo, threadMessages, user]);
+
+  const replyTargets = useMemo(() => {
+    if (Array.isArray(initialTo) && initialTo.length) {
+      return initialTo
+        .filter(Boolean)
+        .map((target) => ({
+          id: target?.id,
+          uid: target?.uid,
+          name: target?.name,
+          email: target?.email,
+          avatar: target?.avatar,
+        }))
+        .filter((target) => target.id || target.uid || target.name || target.email);
+    }
+
+    const latestMessage = threadMessages[threadMessages.length - 1] || null;
+    const participant = latestMessage ? getConversationParticipant(latestMessage, user) : null;
+    if (!participant) return [];
+
+    return [{
+      id: participant?.id,
+      uid: participant?.uid,
+      name: participant?.name || participant?.fullName,
+      email: participant?.email,
+      avatar: participant?.avatar,
+    }].filter((target) => target.id || target.uid || target.name || target.email);
+  }, [initialTo, threadMessages, user]);
 
   useEffect(() => {
     if (!threadId || !threadMessages.length || !userTokens.length) return;
@@ -112,7 +139,7 @@ export default function ChatThreadScreen({ route, navigation }) {
       return;
     }
     try {
-      await sendMessage({ threadId: sendThreadId, body: text, to: (Array.isArray(initialTo) && initialTo.length) ? initialTo : undefined });
+      await sendMessage({ threadId: sendThreadId, body: text, to: replyTargets.length ? replyTargets : undefined });
       setText('');
       Keyboard.dismiss();
     } catch (e) {
@@ -182,6 +209,10 @@ export default function ChatThreadScreen({ route, navigation }) {
               <Text style={{ color: '#b91c1c', fontWeight: '600', marginBottom: 8 }}>
                 Messaging has been disabled for this account by an administrator.
               </Text>
+            ) : (!replyTargets.length && !threadMessages.length) ? (
+              <Text style={{ color: '#92400e', fontWeight: '600', marginBottom: 8 }}>
+                Waiting for conversation details before you can reply.
+              </Text>
             ) : null}
             <View style={{ flexDirection: 'row' }}>
             <TextInput
@@ -191,10 +222,10 @@ export default function ChatThreadScreen({ route, navigation }) {
               style={{ flex: 1, padding: 8, borderWidth: 1, borderColor: '#ddd', marginRight: 8, backgroundColor: isChatBlocked ? '#f8fafc' : '#fff', color: isChatBlocked ? '#94a3b8' : '#111827' }}
               onSubmitEditing={handleSend}
               returnKeyType="send"
-              editable={!isChatBlocked}
+              editable={!isChatBlocked && (!!threadMessages.length || !!replyTargets.length)}
               maxLength={5000}
             />
-            <Button title="Send" onPress={handleSend} disabled={isChatBlocked} />
+            <Button title="Send" onPress={handleSend} disabled={isChatBlocked || (!threadMessages.length && !replyTargets.length)} />
             </View>
           </View>
         </KeyboardAvoidingView>

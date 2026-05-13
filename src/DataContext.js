@@ -38,8 +38,39 @@ import { buildScopedStorageKeys, getStorageScopeId } from './utils/storageScope'
 
 const DataContext = createContext(null);
 
+const NON_ACTIONABLE_URGENT_MEMO_TYPES = new Set(['clock_event', 'quick_note', 'incident_log', 'unexpected_data']);
+
 export function useData() {
   return useContext(DataContext);
+}
+
+function shouldCountPendingUrgentMemo(memo, { role = '', uid = '' } = {}) {
+  if (!memo || memo?.ack) return false;
+
+  const type = String(memo?.type || '').trim().toLowerCase();
+  if (NON_ACTIONABLE_URGENT_MEMO_TYPES.has(type)) return false;
+
+  const status = String(memo?.status || '').trim().toLowerCase();
+  if (status && status !== 'pending') return false;
+
+  const recipientIds = Array.from(new Set([
+    ...(Array.isArray(memo?.recipients) ? memo.recipients.map((item) => String(item?.id || item || '').trim()) : []),
+    ...(Array.isArray(memo?.recipientIds) ? memo.recipientIds.map((item) => String(item || '').trim()) : []),
+  ].filter(Boolean)));
+  const proposerId = String(memo?.proposerId || memo?.proposerUid || '').trim();
+  const isAdminWorkspaceRole = role === 'admin'
+    || role === 'administrator'
+    || role === 'orgadmin'
+    || role === 'org_admin'
+    || role === 'campusadmin'
+    || role === 'campus_admin'
+    || role === 'superadmin'
+    || role === 'super_admin';
+
+  if (isAdminWorkspaceRole) return true;
+  if (uid && recipientIds.includes(uid)) return true;
+  if (role === 'parent') return proposerId === uid;
+  return false;
 }
 
 function getMessageConversationKeys(message) {
@@ -1299,29 +1330,7 @@ export function DataProvider({ children: reactChildren }) {
     const uid = String(user?.id || user?.uid || '').trim();
     const items = Array.isArray(urgentMemos) ? urgentMemos : [];
 
-    return items.filter((memo) => {
-      if (memo?.ack) return false;
-
-      const status = String(memo?.status || '').trim().toLowerCase();
-      const recipients = Array.isArray(memo?.recipients) ? memo.recipients : [];
-      const recipientIds = recipients.map((item) => String(item?.id || item || '').trim()).filter(Boolean);
-      const proposerId = String(memo?.proposerId || memo?.proposerUid || '').trim();
-      const isAdminRole = role === 'admin' || role === 'administrator' || role === 'orgadmin' || role === 'org_admin' || role === 'campusadmin' || role === 'campus_admin' || role === 'superadmin' || role === 'super_admin';
-
-      if (isAdminRole) {
-        return !status || status === 'pending';
-      }
-
-      if (uid && recipientIds.includes(uid)) {
-        return true;
-      }
-
-      if (role === 'parent') {
-        return proposerId === uid && (!status || status === 'pending');
-      }
-
-      return false;
-    }).length;
+    return items.filter((memo) => shouldCountPendingUrgentMemo(memo, { role, uid })).length;
   }, [urgentMemos, user]);
 
   useEffect(() => {

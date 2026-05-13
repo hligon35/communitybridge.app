@@ -4,6 +4,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useData } from '../DataContext';
 import { useAuth } from '../AuthContext';
+import { findVisibleThreadForParticipant } from '../utils/chatThreads';
 import { MaterialIcons } from '@expo/vector-icons';
 import AppIconButton from '../components/AppIconButton';
 // header provided by ScreenWrapper
@@ -290,20 +291,24 @@ export default function FacultyDetailScreen() {
         <View style={styles.iconColFaculty}>
           <AppIconButton accessibilityLabel="Chat with staff" name="chat" style={styles.iconButtonFaculty} onPress={async () => {
             try {
-              const adminId = user?.id || (user?.name || 'admin');
-              const threadMatch = (messages || []).find(m => {
-                const senderId = m.sender?.id || m.sender?.name;
-                const toIds = (m.to || []).map(t => t.id || t.name).filter(Boolean);
-                const participants = new Set([String(senderId), ...toIds.map(String)]);
-                return participants.has(String(adminId)) && participants.has(String(faculty.id));
-              });
-              if (threadMatch && (threadMatch.threadId || threadMatch.threadId === 0)) {
-                navigation.navigate('ChatThread', { threadId: threadMatch.threadId });
-              } else if (threadMatch && threadMatch.id) {
-                navigation.navigate('ChatThread', { threadId: threadMatch.id });
+              const recipient = { id: faculty.id, name: faculty.name, email: faculty.email };
+              const threadMatch = findVisibleThreadForParticipant(messages, {}, user, [], recipient);
+              if (threadMatch?.activeThreadId) {
+                navigation.navigate('ChatThread', {
+                  threadId: threadMatch.id,
+                  threadIds: threadMatch.threadIds,
+                  activeThreadId: threadMatch.activeThreadId,
+                  conversationTitle: threadMatch.title || faculty.name,
+                  to: [recipient],
+                });
               } else {
                 const newThreadId = `t-${Date.now()}`;
-                navigation.navigate('ChatThread', { threadId: newThreadId });
+                navigation.navigate('ChatThread', {
+                  threadId: newThreadId,
+                  isNew: true,
+                  conversationTitle: faculty.name,
+                  to: [recipient],
+                });
               }
             } catch (e) { console.warn('open chat failed', e); }
           }} />

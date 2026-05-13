@@ -55,6 +55,13 @@ function isParticipantMatch(participant, userTokens) {
   return userTokens.some((token) => Array.from(participantTokens).some((participantToken) => participantTokenMatches(token, participantToken)));
 }
 
+function doesParticipantMatchTarget(participant, target) {
+  if (!participant || !target) return false;
+  const targetTokens = getParticipantTokens(target);
+  if (!targetTokens.length) return false;
+  return isParticipantMatch(participant, targetTokens);
+}
+
 function getConversationParticipant(message, user) {
   const userTokens = getUserParticipantTokens(user);
   if (!userTokens.length) return null;
@@ -173,10 +180,16 @@ function countUnreadVisibleThreads(messages, threadReads, user, archivedThreads)
   return buildVisibleThreads(messages, threadReads, user, archivedThreads).filter((thread) => thread.isUnread).length;
 }
 
+function findVisibleThreadForParticipant(messages, threadReads, user, archivedThreads, target) {
+  return buildVisibleThreads(messages, threadReads, user, archivedThreads)
+    .find((thread) => doesParticipantMatchTarget(thread?.participant, target));
+}
+
 module.exports = {
   buildVisibleThreads,
   canViewThread,
   countUnreadVisibleThreads,
+  findVisibleThreadForParticipant,
   getConversationParticipant,
   getUserParticipantTokens,
   getConversationKey,

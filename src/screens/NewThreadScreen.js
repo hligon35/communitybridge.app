@@ -1,11 +1,12 @@
 import React, { useLayoutEffect, useMemo, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, TextInput } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { ScreenWrapper, CenteredContainer } from '../components/ScreenWrapper';
 import { useAuth } from '../AuthContext';
 import { useData } from '../DataContext';
 import { logPress } from '../utils/logger';
 import { buildVisibleThreads } from '../utils/chatThreads';
+import { findVisibleThreadForParticipant } from '../utils/chatThreads';
 import { USER_ROLES, isAdminRole, isBcbaRole, normalizeUserRole } from '../core/tenant/models';
 import { THERAPY_ROLE_LABELS, getDisplayRoleLabel } from '../utils/roleTerminology';
 import { childHasParent, findLinkedParentId } from '../utils/directoryLinking';
@@ -28,6 +29,13 @@ function sameName(a, b) {
 function normalizeEmail(email) {
   const e = (email || '').toString().trim().toLowerCase();
   return e.includes('@') ? e : '';
+}
+
+function displayNameFromStaff(staff) {
+  return normalizeName(staff?.name)
+    || normalizeName(`${staff?.firstName || ''} ${staff?.lastName || ''}`)
+    || normalizeEmail(staff?.email)
+    || '';
 }
 
 function sameEmail(a, b) {
@@ -81,6 +89,7 @@ export default function NewThreadScreen({ navigation }) {
   const { user } = useAuth();
   const { parents = [], therapists = [], children = [], messages = [] } = useData();
   const [selected, setSelected] = useState(null);
+  const [draftMessage, setDraftMessage] = useState('');
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -106,11 +115,13 @@ export default function NewThreadScreen({ navigation }) {
     const normalizedStaff = (therapists || [])
       .map((t) => {
         const normalizedRole = normalizeUserRole(t.role);
+        const name = displayNameFromStaff(t);
         return {
           id: t.id,
-          name: normalizeName(t.name),
+          name,
           subtitle: getDisplayRoleLabel(normalizedRole) || THERAPY_ROLE_LABELS.therapist,
           role: normalizedRole,
+          email: normalizeEmail(t.email),
         };
       })
       .filter((t) => t.id && t.name);
@@ -236,8 +247,7 @@ export default function NewThreadScreen({ navigation }) {
 
   const start = () => {
     if (!selected) return;
-    const existingThread = buildVisibleThreads(messages, {}, user, [])
-      .find((thread) => String(thread?.participant?.id || '').trim() === String(selected.id || '').trim());
+    const existingThread = findVisibleThreadForParticipant(messages, {}, user, [], selected);
 
     if (existingThread?.activeThreadId) {
       logPress('NewThread:Resume', { threadId: existingThread.activeThreadId, to: selected.id });
@@ -246,13 +256,14 @@ export default function NewThreadScreen({ navigation }) {
         threadIds: existingThread.threadIds,
         activeThreadId: existingThread.activeThreadId,
         conversationTitle: existingThread.title || selected.name,
+        initialDraft: draftMessage,
       });
       return;
     }
 
     const threadId = `t-${Date.now()}`;
     logPress('NewThread:Start', { threadId, to: selected.id });
-    navigation.navigate('ChatThread', { threadId, isNew: true, to: [{ id: selected.id, name: selected.name }], conversationTitle: selected.name });
+    navigation.navigate('ChatThread', { threadId, isNew: true, to: [{ id: selected.id, name: selected.name, email: selected.email }], conversationTitle: selected.name, initialDraft: draftMessage });
   };
 
   return (
@@ -280,6 +291,28 @@ export default function NewThreadScreen({ navigation }) {
           <RoleSection title={isParent ? 'Office / Admin' : 'Admin'} items={admins} selectedId={selected?.id} onPick={pick} />
           <RoleSection title={isParent ? 'BCBA' : THERAPY_ROLE_LABELS.therapists} items={connectedTherapists} selectedId={selected?.id} onPick={pick} />
           {!isParent ? <RoleSection title="Parents" items={connectedParents} selectedId={selected?.id} onPick={pick} /> : null}
+
+          <View style={{ marginTop: 18 }}>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#6b7280', marginBottom: 8 }}>Message</Text>
+            <TextInput
+              value={draftMessage}
+              onChangeText={(value) => setDraftMessage(String(value || '').slice(0, 5000))}
+              placeholder={selected ? `Write a message to ${selected.name}` : 'Choose a recipient, then write your message'}
+              multiline
+              textAlignVertical="top"
+              maxLength={5000}
+              style={{
+                minHeight: 120,
+                borderWidth: 1,
+                borderColor: '#dbe2ea',
+                borderRadius: 12,
+                paddingHorizontal: 12,
+                paddingVertical: 12,
+                backgroundColor: '#fff',
+                color: '#111827',
+              }}
+            />
+          </View>
 
           <TouchableOpacity
             onPress={start}

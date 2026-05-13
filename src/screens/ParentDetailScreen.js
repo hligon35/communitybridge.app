@@ -8,6 +8,7 @@ import { useAuth } from '../AuthContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { avatarSourceFor, formatIdForDisplay } from '../utils/idVisibility';
+import { findVisibleThreadForParticipant } from '../utils/chatThreads';
 import { THERAPY_ROLE_LABELS, getDisplayRoleLabel } from '../utils/roleTerminology';
 import { childHasParent } from '../utils/directoryLinking';
 
@@ -134,23 +135,25 @@ export default function ParentDetailScreen() {
           <View style={styles.iconCol}>
             <AppIconButton accessibilityLabel="Chat with parent" name="chat" style={styles.iconButton} onPress={async () => {
               try {
-                const adminId = user?.id || (user?.name || 'admin');
-                // find existing thread where both admin and parent are participants
-                const threadMatch = (messages || []).find(m => {
-                  const senderId = m.sender?.id || m.sender?.name;
-                  const toIds = (m.to || []).map(t => t.id || t.name).filter(Boolean);
-                  const participants = new Set([String(senderId), ...toIds.map(String)]);
-                  return participants.has(String(adminId)) && participants.has(String(parent.id));
-                });
-                if (threadMatch && (threadMatch.threadId || threadMatch.threadId === 0)) {
-                  navigation.navigate('ChatThread', { threadId: threadMatch.threadId });
-                } else if (threadMatch && threadMatch.id) {
-                  // fallback when threadId absent
-                  navigation.navigate('ChatThread', { threadId: threadMatch.id });
+                const recipient = { id: parent.id, name: parent.firstName ? `${parent.firstName} ${parent.lastName || ''}`.trim() : parent.name, email: parent.email };
+                const threadMatch = findVisibleThreadForParticipant(messages, {}, user, [], recipient);
+                if (threadMatch?.activeThreadId) {
+                    navigation.navigate('ChatThread', {
+                      threadId: threadMatch.id,
+                      threadIds: threadMatch.threadIds,
+                      activeThreadId: threadMatch.activeThreadId,
+                      conversationTitle: threadMatch.title || recipient.name,
+                      to: [recipient],
+                    });
                 } else {
                   // no existing thread — create a new thread id and open it so admin can send the first message
                   const newThreadId = `t-${Date.now()}`;
-                  navigation.navigate('ChatThread', { threadId: newThreadId });
+                    navigation.navigate('ChatThread', {
+                      threadId: newThreadId,
+                      isNew: true,
+                      conversationTitle: recipient.name,
+                      to: [recipient],
+                    });
                 }
               } catch (e) { console.warn('open chat failed', e); }
             }} />

@@ -2209,6 +2209,7 @@ async function sendExpoPush(tokens, { title, body, data } = {}) {
       sound: 'default',
       channelId: 'communitybridge-alerts-v2',
       priority: 'high',
+      interruptionLevel: 'active',
       badge: 1,
     }));
 
@@ -2278,6 +2279,16 @@ async function sendExpoPush(tokens, { title, body, data } = {}) {
     console.warn('[api] push send failed', e && e.message ? e.message : String(e));
     return { ok: false, error: e && e.message ? e.message : String(e) };
   }
+}
+
+function buildChatPushPreview(body) {
+  const normalized = safeString(body)
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!normalized) return 'New message';
+  const limit = 110;
+  if (normalized.length <= limit) return normalized;
+  return `${normalized.slice(0, limit - 1).trimEnd()}...`;
 }
 
 function getAdminUserIds() {
@@ -5966,7 +5977,7 @@ app.post('/api/messages', authMiddleware, (req, res) => {
     setTimeout(() => {
       sendExpoPush(tokens, {
         title: 'New message',
-        body: 'Open Chats to view it.',
+        body: buildChatPushPreview(body),
         data: { kind: 'chat_message', messageId: id, threadId: threadId || id },
       }).catch(() => {});
     }, 0);
@@ -5974,7 +5985,7 @@ app.post('/api/messages', authMiddleware, (req, res) => {
     // ignore push failures
   }
 
-  res.status(201).json({ id, threadId: threadId || undefined, body, sender, to, createdAt: t });
+  res.status(201).json({ id, threadId: threadId || undefined, body, sender, to: resolvedTo, createdAt: t });
 });
 
 // Urgent memos
