@@ -38,6 +38,12 @@ function Convert-EnvFileToCloudRunYaml {
     'CB_FIREBASE_SERVICE_ACCOUNT_JSON', 'BB_FIREBASE_SERVICE_ACCOUNT_JSON',
     'CB_RECAPTCHA_SECRET_KEY', 'BB_RECAPTCHA_SECRET_KEY'
   )
+  $reservedKeys = @(
+    'PORT',
+    'K_SERVICE',
+    'K_REVISION',
+    'K_CONFIGURATION'
+  )
 
   $lines = @()
   foreach ($rawLine in Get-Content -LiteralPath $SourcePath) {
@@ -46,7 +52,7 @@ function Convert-EnvFileToCloudRunYaml {
     if ($line -notmatch '^\s*([^=]+?)\s*=\s*(.*)\s*$') { continue }
     $key = [string]$Matches[1].Trim()
     $value = [string]$Matches[2]
-    if (-not $key -or $secretKeys -contains $key) { continue }
+    if (-not $key -or $secretKeys -contains $key -or $reservedKeys -contains $key) { continue }
     $escaped = $value.Replace("'", "''")
     $lines += ($key + ": '" + $escaped + "'")
   }
