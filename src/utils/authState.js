@@ -6,6 +6,9 @@ const DEV_SWITCH_EMAILS = new Set([
 const RESERVED_SUPER_ADMIN_EMAILS = new Set([
   'alphazonelabsllc@gmail.com',
 ]);
+const RESERVED_PARENT_EMAILS = new Set([
+  APP_REVIEW_EMAIL,
+]);
 const DEFAULT_MFA_WINDOW_MS = 24 * 60 * 60 * 1000;
 const DEV_MFA_WINDOW_MS = 4 * 60 * 60 * 1000;
 
@@ -35,6 +38,29 @@ function isReservedSuperAdminEmail(email) {
   return RESERVED_SUPER_ADMIN_EMAILS.has(String(email || '').trim().toLowerCase());
 }
 
+/** @param {string | null | undefined} email */
+function isReservedParentEmail(email) {
+  return RESERVED_PARENT_EMAILS.has(String(email || '').trim().toLowerCase());
+}
+
+/** @param {{ email?: string | null | undefined, name?: string | null | undefined, role?: string | null | undefined } | null | undefined} user */
+function applyReservedUserOverrides(user) {
+  const item = user && typeof user === 'object' ? { ...user } : user;
+  if (!item || typeof item !== 'object') return item;
+  if (isReservedSuperAdminEmail(item.email)) {
+    return {
+      ...item,
+      role: 'superAdmin',
+    };
+  }
+  if (!isReservedParentEmail(item.email)) return item;
+  return {
+    ...item,
+    name: String(item.name || '').trim() || 'App Reviewer',
+    role: 'parent',
+  };
+}
+
 /** @param {{ email?: string | null | undefined, devUser?: boolean | null | undefined } | null | undefined} profile */
 function getMfaFreshnessWindowMs(profile) {
   const email = String(profile?.email || '').trim().toLowerCase();
@@ -50,6 +76,8 @@ module.exports = {
   normalizeRoleOverride,
   isDevSwitcherUser,
   isSpecialAccessUser,
+  isReservedParentEmail,
   isReservedSuperAdminEmail,
+  applyReservedUserOverrides,
   getMfaFreshnessWindowMs,
 };

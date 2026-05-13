@@ -48,7 +48,7 @@ function Convert-EnvFileToCloudRunYaml {
     $value = [string]$Matches[2]
     if (-not $key -or $secretKeys -contains $key) { continue }
     $escaped = $value.Replace("'", "''")
-    $lines += "$key: '$escaped'"
+    $lines += ($key + ": '" + $escaped + "'")
   }
 
   if (-not $lines.Count) {

@@ -703,6 +703,8 @@ if (NODE_ENV === 'production' && ALLOW_DEV_TOKEN) {
 const ADMIN_EMAIL = process.env.CB_ADMIN_EMAIL || process.env.BB_ADMIN_EMAIL || '';
 const ADMIN_PASSWORD = process.env.CB_ADMIN_PASSWORD || process.env.BB_ADMIN_PASSWORD || '';
 const ADMIN_NAME = process.env.CB_ADMIN_NAME || process.env.BB_ADMIN_NAME || 'Admin';
+const APP_REVIEW_EMAIL = 'appreview@communitybridge.app';
+const APP_REVIEW_NAME = 'App Reviewer';
 const RESERVED_SUPER_ADMIN_EMAILS = new Set([
   String(ADMIN_EMAIL || '').trim().toLowerCase(),
   'alphazonelabsllc@gmail.com',
@@ -712,6 +714,10 @@ function isReservedSuperAdminEmail(email) {
   return RESERVED_SUPER_ADMIN_EMAILS.has(String(email || '').trim().toLowerCase());
 }
 
+function isAppReviewEmail(email) {
+  return String(email || '').trim().toLowerCase() === APP_REVIEW_EMAIL;
+}
+
 function applyReservedSuperAdminRole(user) {
   const item = user && typeof user === 'object' ? { ...user } : {};
   if (!isReservedSuperAdminEmail(item.email)) return item;
@@ -719,6 +725,43 @@ function applyReservedSuperAdminRole(user) {
     ...item,
     role: 'superAdmin',
   };
+}
+
+function applyReservedUserOverrides(user) {
+  const item = applyReservedSuperAdminRole(user);
+  if (!isAppReviewEmail(item.email)) return item;
+  return {
+    ...item,
+    name: safeString(item.name).trim() || APP_REVIEW_NAME,
+    role: 'parent',
+  };
+}
+
+async function ensureReservedAuthUserRow(userId, decodedToken) {
+  const normalizedUserId = safeString(userId).trim();
+  const normalizedEmail = safeString(decodedToken?.email).trim().toLowerCase();
+  if (!normalizedUserId || !isAppReviewEmail(normalizedEmail)) return null;
+
+  const now = nowISO();
+  const existing = db.prepare('SELECT * FROM users WHERE id = ? OR lower(email) = ? ORDER BY updated_at DESC, created_at DESC LIMIT 1').get(normalizedUserId, normalizedEmail) || null;
+  const resolvedName = safeString(decodedToken?.name).trim() || safeString(existing?.name).trim() || APP_REVIEW_NAME;
+
+  if (existing) {
+    const needsUpdate = safeString(existing.id).trim() !== normalizedUserId
+      || safeString(existing.email).trim().toLowerCase() !== normalizedEmail
+      || safeString(existing.role).trim().toLowerCase() !== 'parent'
+      || safeString(existing.name).trim() !== resolvedName;
+
+    if (needsUpdate) {
+      db.prepare('UPDATE users SET id = ?, email = ?, name = ?, role = ?, updated_at = ? WHERE id = ?')
+        .run(normalizedUserId, normalizedEmail, resolvedName, 'parent', now, safeString(existing.id).trim());
+    }
+  } else {
+    db.prepare('INSERT INTO users (id,email,password_hash,name,role,created_at,updated_at) VALUES (?,?,?,?,?,?,?)')
+      .run(normalizedUserId, normalizedEmail, bcrypt.hashSync(generateBootstrapPassword(), 12), resolvedName, 'parent', now, now);
+  }
+
+  return db.prepare('SELECT id,email,name,avatar,phone,address,role FROM users WHERE id = ?').get(normalizedUserId) || null;
 }
 
 function ensureDir(p) {
@@ -2619,10 +2662,12 @@ async function authMiddleware(req, res, next) {
 
   try {
     let userId = '';
+    let decodedToken = null;
     if (JWT_SECRET) {
       try {
         const payload = jwt.verify(token, JWT_SECRET);
         userId = payload && payload.sub ? String(payload.sub) : '';
+        decodedToken = payload || null;
       } catch (_) {
         userId = '';
       }
@@ -2630,16 +2675,21 @@ async function authMiddleware(req, res, next) {
 
     if (!userId) {
       const admin = getFirebaseAdmin();
-      const decoded = await admin.auth().verifyIdToken(token);
-      userId = decoded && decoded.uid ? String(decoded.uid) : '';
+      decodedToken = await admin.auth().verifyIdToken(token);
+      userId = decodedToken && decodedToken.uid ? String(decodedToken.uid) : '';
     }
 
     if (!userId) return res.status(401).json({ ok: false, error: 'invalid token' });
 
-    const row = db.prepare('SELECT id,email,name,avatar,phone,address,role FROM users WHERE id = ?').get(userId);
+    let row = db.prepare('SELECT id,email,name,avatar,phone,address,role FROM users WHERE id = ?').get(userId) || null;
+    if (!row) {
+      row = await ensureReservedAuthUserRow(userId, decodedToken).catch(() => null);
+    } else if (isAppReviewEmail(row.email) && safeString(row.role).trim().toLowerCase() !== 'parent') {
+      row = await ensureReservedAuthUserRow(userId, { ...(decodedToken || {}), email: row.email, name: row.name }).catch(() => row);
+    }
     if (!row) return res.status(401).json({ ok: false, error: 'user not found' });
     return Promise.resolve(getFirebaseManagedProfiles([userId]).catch(() => new Map())).then((firebaseProfile) => {
-      req.user = normalizeScopedUser(applyReservedSuperAdminRole({ ...userToClient(row), ...(firebaseProfile.get(userId) || {}) }));
+      req.user = normalizeScopedUser(applyReservedUserOverrides({ ...userToClient(row), ...(firebaseProfile.get(userId) || {}) }));
       return next();
     });
   } catch (e) {

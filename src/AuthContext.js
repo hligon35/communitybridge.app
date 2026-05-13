@@ -7,7 +7,7 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { navigationRef, resetToLogin, resetToTwoFactor } from './navigationRef';
 import { logger, setDebugContext } from './utils/logger';
 import { reportErrorToSentry } from './utils/reportError';
-import { normalizeRoleOverride, isDevSwitcherUser, isSpecialAccessUser, isReservedSuperAdminEmail, getMfaFreshnessWindowMs } from './utils/authState';
+import { normalizeRoleOverride, isDevSwitcherUser, isSpecialAccessUser, isReservedSuperAdminEmail, applyReservedUserOverrides, getMfaFreshnessWindowMs } from './utils/authState';
 import { configureNotificationHandling, syncLoggedInDevicePushRegistration, unregisterLoggedInDevicePushRegistration } from './utils/pushNotifications';
 import { getDemoRoleIdentity } from './utils/demoIdentity';
 
@@ -374,12 +374,12 @@ export function AuthProvider({ children }) {
           profile = null;
         }
 
-        const profileForState = profile || {
+        const profileForState = applyReservedUserOverrides(profile || {
           id: fbUser.uid,
           name: fbUser.displayName || '',
           email: fbUser.email || '',
           role: isReservedSuperAdminEmail(fbUser.email) ? 'superAdmin' : (isSpecialAccessUser(fbUser.email) ? 'admin' : 'parent'),
-        };
+        });
         const storedOverride = isSpecialAccessUser(fbUser.email) ? await readDevRoleOverride() : '';
         const storedBehavior = isSpecialAccessUser(fbUser.email) ? await readDevRoleBehavior() : 'remember';
         setDevRoleOverride(storedOverride);
@@ -538,12 +538,12 @@ export function AuthProvider({ children }) {
     }
 
     const nextToken = String(_?.token || '') || await fbUser.getIdToken(false).catch(() => '');
-    const nextUser = _?.user || await Api.me().catch(() => null) || {
+    const nextUser = applyReservedUserOverrides(_?.user || await Api.me().catch(() => null) || {
       id: fbUser.uid,
       name: fbUser.displayName || '',
       email: fbUser.email || '',
       role: isReservedSuperAdminEmail(fbUser.email) ? 'superAdmin' : (isSpecialAccessUser(fbUser.email) ? 'admin' : 'parent'),
-    };
+    });
     const override = isSpecialAccessUser(nextUser?.email) ? await readDevRoleOverride() : '';
     const behavior = isSpecialAccessUser(nextUser?.email) ? await readDevRoleBehavior() : 'remember';
     setDevRoleOverride(override);

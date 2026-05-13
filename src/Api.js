@@ -4,6 +4,7 @@ import { getAuthInstance, getAuthInitError, getFirebaseConfigDebugInfo, probeFir
 import { BASE_URL } from './config';
 import { DEFAULT_AVATAR_TOKEN } from './utils/idVisibility';
 import { isAdminRole } from './core/tenant/models';
+import { applyReservedUserOverrides } from './utils/authState';
 
 import {
   signInWithCustomToken,
@@ -482,14 +483,14 @@ async function getUserProfile(uid) {
   if (!snap.exists()) return null;
   const data = snap.data() || {};
   const mfaIsTimestamp = Boolean(data.mfaVerifiedAt && typeof data.mfaVerifiedAt.toDate === 'function');
-  return {
+  return applyReservedUserOverrides({
     id: uid,
     ...data,
     createdAt: isoFromMaybeTimestamp(data.createdAt) || data.createdAt || null,
     updatedAt: isoFromMaybeTimestamp(data.updatedAt) || data.updatedAt || null,
     mfaVerifiedAt: isoFromMaybeTimestamp(data.mfaVerifiedAt) || data.mfaVerifiedAt || null,
     mfaVerifiedAtIsTimestamp: mfaIsTimestamp,
-  };
+  });
 }
 
 async function upsertUserProfile(uid, fields) {
@@ -1048,7 +1049,14 @@ export async function me() {
         },
       });
       const json = await resp.json().catch(() => null);
-      if (resp.ok && json?.ok === true && json?.user) return json.user;
+      if (resp.ok && json?.ok === true && json?.user) return applyReservedUserOverrides(json.user);
+      const explicitProfileFailure = Number(resp.status || 0) === 401 || Number(resp.status || 0) === 403;
+      const explicitProfileMessage = String(json?.error || json?.message || '').toLowerCase();
+      if (explicitProfileFailure || explicitProfileMessage.includes('user not found') || explicitProfileMessage.includes('invalid token') || explicitProfileMessage.includes('missing auth token')) {
+        const err = new Error(String(json?.error || json?.message || resp.statusText || 'Could not load account profile.'));
+        err.httpStatus = resp.status;
+        throw err;
+      }
       if (!shouldFallbackFromReadApi({ resp, json }) && !isLikelyNetworkError({ message: resp.statusText })) {
         const err = new Error(String(json?.error || json?.message || resp.statusText || 'Could not load account profile.'));
         err.httpStatus = resp.status;

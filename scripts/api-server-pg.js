@@ -51,6 +51,7 @@ function getFirebaseAdminCredential() {
   } catch (_) {
     return null;
   }
+      let decodedToken = null;
 }
 
 function getFirebaseAdmin() {
@@ -62,16 +63,12 @@ function getFirebaseAdmin() {
       const projectId = safeString(
         process.env.CB_FIREBASE_PROJECT_ID ||
         process.env.BB_FIREBASE_PROJECT_ID ||
-        process.env.FIREBASE_PROJECT_ID ||
-        process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID ||
         process.env.GCLOUD_PROJECT ||
         process.env.GCP_PROJECT ||
         'communitybridge-26apr'
       ).trim();
-      const credential = getFirebaseAdminCredential();
       firebaseAdminLib.initializeApp({
         ...(projectId ? { projectId } : {}),
-        ...(credential ? { credential } : {}),
       });
     }
   } catch (_) {
@@ -778,6 +775,8 @@ const ALLOW_DEV_TOKEN = envFlag(process.env.CB_ALLOW_DEV_TOKEN || process.env.BB
 const ADMIN_EMAIL = process.env.CB_ADMIN_EMAIL || process.env.BB_ADMIN_EMAIL || '';
 const ADMIN_PASSWORD = process.env.CB_ADMIN_PASSWORD || process.env.BB_ADMIN_PASSWORD || '';
 const ADMIN_NAME = process.env.CB_ADMIN_NAME || process.env.BB_ADMIN_NAME || 'Admin';
+const APP_REVIEW_EMAIL = 'appreview@communitybridge.app';
+const APP_REVIEW_NAME = 'App Reviewer';
 const RESERVED_SUPER_ADMIN_EMAILS = new Set([
   String(ADMIN_EMAIL || '').trim().toLowerCase(),
   'alphazonelabsllc@gmail.com',
@@ -787,6 +786,10 @@ function isReservedSuperAdminEmail(email) {
   return RESERVED_SUPER_ADMIN_EMAILS.has(String(email || '').trim().toLowerCase());
 }
 
+function isAppReviewEmail(email) {
+  return String(email || '').trim().toLowerCase() === APP_REVIEW_EMAIL;
+}
+
 function applyReservedSuperAdminRole(user) {
   const item = user && typeof user === 'object' ? { ...user } : {};
   if (!isReservedSuperAdminEmail(item.email)) return item;
@@ -794,6 +797,50 @@ function applyReservedSuperAdminRole(user) {
     ...item,
     role: 'superAdmin',
   };
+}
+
+function applyReservedUserOverrides(user) {
+  const item = applyReservedSuperAdminRole(user);
+  if (!isAppReviewEmail(item.email)) return item;
+  return {
+    ...item,
+    name: safeString(item.name).trim() || APP_REVIEW_NAME,
+    role: 'parent',
+  };
+}
+
+async function ensureReservedAuthUserRow(userId, decodedToken) {
+  const normalizedUserId = safeString(userId).trim();
+  const normalizedEmail = safeString(decodedToken?.email).trim().toLowerCase();
+  if (!normalizedUserId || !isAppReviewEmail(normalizedEmail)) return null;
+
+  const now = new Date();
+  const existing = await pgQueryOne(
+    'SELECT * FROM users WHERE id = $1 OR lower(email) = $2 ORDER BY updated_at DESC NULLS LAST, created_at DESC NULLS LAST LIMIT 1',
+    [normalizedUserId, normalizedEmail]
+  );
+  const resolvedName = safeString(decodedToken?.name).trim() || safeString(existing?.name).trim() || APP_REVIEW_NAME;
+
+  if (existing) {
+    const needsUpdate = safeString(existing.id).trim() !== normalizedUserId
+      || safeString(existing.email).trim().toLowerCase() !== normalizedEmail
+      || safeString(existing.role).trim().toLowerCase() !== 'parent'
+      || safeString(existing.name).trim() !== resolvedName;
+
+    if (needsUpdate) {
+      await pool.query(
+        'UPDATE users SET id = $1, email = $2, name = $3, role = $4, updated_at = $5 WHERE id = $6',
+        [normalizedUserId, normalizedEmail, resolvedName, 'parent', now, safeString(existing.id).trim()]
+      );
+    }
+  } else {
+    await pool.query(
+      'INSERT INTO users (id,email,password_hash,name,role,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+      [normalizedUserId, normalizedEmail, bcrypt.hashSync(generateBootstrapPassword(), 12), resolvedName, 'parent', now, now]
+    );
+  }
+
+  return pgQueryOne('SELECT id,email,name,avatar,phone,address,role FROM users WHERE id = $1', [normalizedUserId]);
 }
 
 function userToClient(row) {
@@ -2237,10 +2284,12 @@ async function authMiddleware(req, res, next) {
 
   try {
     let userId = '';
+    let decodedToken = null;
     if (JWT_SECRET) {
       try {
         const payload = jwt.verify(token, JWT_SECRET);
         userId = payload && payload.sub ? String(payload.sub) : '';
+        decodedToken = payload || null;
       } catch (_) {
         userId = '';
       }
@@ -2248,16 +2297,21 @@ async function authMiddleware(req, res, next) {
 
     if (!userId) {
       const admin = getFirebaseAdmin();
-      const decoded = await admin.auth().verifyIdToken(token);
-      userId = decoded && decoded.uid ? String(decoded.uid) : '';
+      decodedToken = await admin.auth().verifyIdToken(token);
+      userId = decodedToken && decodedToken.uid ? String(decodedToken.uid) : '';
     }
 
     if (!userId) return res.status(401).json({ ok: false, error: 'invalid token' });
 
-    const row = await pgQueryOne('SELECT id,email,name,avatar,phone,address,role FROM users WHERE id = $1', [userId]);
+    let row = await pgQueryOne('SELECT id,email,name,avatar,phone,address,role FROM users WHERE id = $1', [userId]);
+    if (!row) {
+      row = await ensureReservedAuthUserRow(userId, decodedToken).catch(() => null);
+    } else if (isAppReviewEmail(row.email) && safeString(row.role).trim().toLowerCase() !== 'parent') {
+      row = await ensureReservedAuthUserRow(userId, { ...(decodedToken || {}), email: row.email, name: row.name }).catch(() => row);
+    }
     if (!row) return res.status(401).json({ ok: false, error: 'user not found' });
     const firebaseProfile = await getFirebaseManagedProfiles([userId]).catch(() => new Map());
-    req.user = normalizeScopedUser(applyReservedSuperAdminRole({ ...userToClient(row), ...(firebaseProfile.get(userId) || {}) }));
+    req.user = normalizeScopedUser(applyReservedUserOverrides({ ...userToClient(row), ...(firebaseProfile.get(userId) || {}) }));
     return next();
   } catch (e) {
     return res.status(401).json({ ok: false, error: 'invalid token' });
