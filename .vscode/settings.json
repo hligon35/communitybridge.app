@@ -9,5 +9,16 @@
         "*.after8app.com",
         "*.alphazonelabs.com",
         "*.hldesignedit.com"
+    ],
+    "npm.scriptExplorerExclude": [
+        "^prestart:expo$",
+        "^start:expo:fast$",
+        "^(android|ios|start)$",
+        "^deploy:firebase$",
+        "^(validate:full|generate:icons|check:secrets|db:dups|db:migrate:pg)$",
+        "^smoke:therapy(?::(mock|server))?$",
+        "^(cleanup:retain-dev-appreview|seed:(tenant-directory|test-users)|role:grant|dev:user:sync)(:dry)?$",
+        "^cloudrun:(secrets|update|sync)$",
+        ":(dry|interactive)$"
     ]
 }
