@@ -13,6 +13,9 @@ import { isInviteAccessCode } from '../src/utils/passwordPolicy';
 import { storeApprovalAccessIntent } from '../src/utils/approvalAccessIntent';
 const faceIdIconImage = require('../assets/icons/faceID.png');
 const loginLogoImage = require('../assets/titlelogo.png');
+const BIOMETRIC_ENABLED_KEY = 'bb_bio_enabled';
+const BIOMETRIC_USER_KEY = 'bb_bio_user';
+const BIOMETRIC_CREDENTIALS_KEY = 'bb_bio_credentials_v1';
 
 function AuthButtonImage({ source, style, imageStyle }) {
   return <Image source={source} style={[styles.authButtonImage, style, imageStyle]} resizeMode="contain" />;
@@ -191,6 +194,7 @@ export default function LoginScreen({ navigation, suppressAutoRedirect = false }
     try{
       logger.debug('auth', 'Login submit', { hasEmail: !!cleanedEmail });
       let res;
+      let loginMethod = 'password';
       try {
         res = await auth.login(cleanedEmail, cleanedPassword);
       } catch (loginError) {
@@ -199,13 +203,21 @@ export default function LoginScreen({ navigation, suppressAutoRedirect = false }
         const canTryInviteCode = isInviteAccessCode(cleanedPassword)
           && (code === 'auth/invalid-credential' || code === 'auth/invalid-login-credentials' || /invalid email or password|invalid credential/i.test(message));
         if (!canTryInviteCode) throw loginError;
+        loginMethod = 'inviteCode';
         res = await auth.loginWithInviteCode(cleanedEmail, cleanedPassword);
       }
       const requiresPasswordSetup = Boolean(res?.user?.passwordSetupRequired);
       try {
-        await SecureStore.setItemAsync('bb_bio_enabled', '1');
-        await SecureStore.setItemAsync('bb_bio_user', JSON.stringify(res?.user || auth?.user || {}));
-        setHasBiometricAuthStored(true);
+        if (!requiresPasswordSetup) {
+          await SecureStore.setItemAsync(BIOMETRIC_ENABLED_KEY, '1');
+          await SecureStore.setItemAsync(BIOMETRIC_USER_KEY, JSON.stringify(res?.user || auth?.user || {}));
+          await SecureStore.setItemAsync(BIOMETRIC_CREDENTIALS_KEY, JSON.stringify({
+            email: cleanedEmail,
+            secret: cleanedPassword,
+            method: loginMethod,
+          }));
+          setHasBiometricAuthStored(true);
+        }
       } catch (_) {}
       await finishLoginNavigation({ passwordSetupRequired: requiresPasswordSetup });
     } catch (e) {
@@ -233,10 +245,25 @@ export default function LoginScreen({ navigation, suppressAutoRedirect = false }
   async function doBiometricUnlock() {
     setBiometricBusy(true);
     try {
-      const storedEnabled = await SecureStore.getItemAsync('bb_bio_enabled');
-      const storedUser = await SecureStore.getItemAsync('bb_bio_user');
-      if (!storedEnabled || !storedUser) {
+      const storedEnabled = await SecureStore.getItemAsync(BIOMETRIC_ENABLED_KEY);
+      const storedCredentialsRaw = await SecureStore.getItemAsync(BIOMETRIC_CREDENTIALS_KEY);
+      const storedUser = await SecureStore.getItemAsync(BIOMETRIC_USER_KEY);
+      if (!storedEnabled || !storedCredentialsRaw || !storedUser) {
         showToast({ title: 'Biometric sign-in', message: 'No saved sign-in found. Please sign in with email and password first.', tone: 'info' });
+        return;
+      }
+
+      let storedCredentials = null;
+      try {
+        storedCredentials = JSON.parse(storedCredentialsRaw);
+      } catch (_) {
+        storedCredentials = null;
+      }
+      const biometricEmail = String(storedCredentials?.email || '').trim();
+      const biometricSecret = String(storedCredentials?.secret || '');
+      const biometricMethod = String(storedCredentials?.method || 'password').trim();
+      if (!biometricEmail || !biometricSecret) {
+        showToast({ title: 'Biometric sign-in', message: 'Your saved biometric sign-in is incomplete. Please sign in with email and password again.', tone: 'info' });
         return;
       }
 
@@ -247,11 +274,14 @@ export default function LoginScreen({ navigation, suppressAutoRedirect = false }
       });
 
       if (result?.success) {
-        if (!auth?.token) {
-          showToast({ title: 'Biometric unlock', message: 'Please sign in with email and password.' });
-          return;
-        }
-        await finishLoginNavigation();
+        setEmail(biometricEmail);
+        const response = biometricMethod === 'inviteCode'
+          ? await auth.loginWithInviteCode(biometricEmail, biometricSecret)
+          : await auth.login(biometricEmail, biometricSecret);
+        const requiresPasswordSetup = Boolean(response?.user?.passwordSetupRequired);
+        await SecureStore.setItemAsync(BIOMETRIC_USER_KEY, JSON.stringify(response?.user || auth?.user || {}));
+        setHasBiometricAuthStored(true);
+        await finishLoginNavigation({ passwordSetupRequired: requiresPasswordSetup });
         return;
       }
 
@@ -261,6 +291,17 @@ export default function LoginScreen({ navigation, suppressAutoRedirect = false }
         showToast({ title: 'Biometric unlock failed', message: 'Please sign in with email and password.' });
       }
     } catch (e) {
+      const code = String(e?.code || '');
+      if (code === 'auth/invalid-credential' || code === 'auth/invalid-login-credentials' || code === 'auth/wrong-password') {
+        try {
+          await SecureStore.deleteItemAsync(BIOMETRIC_ENABLED_KEY);
+          await SecureStore.deleteItemAsync(BIOMETRIC_USER_KEY);
+          await SecureStore.deleteItemAsync(BIOMETRIC_CREDENTIALS_KEY);
+        } catch (_) {}
+        setHasBiometricAuthStored(false);
+        showToast({ title: 'Biometric sign-in expired', message: 'Please sign in with email and password again to save a new biometric login.' });
+        return;
+      }
       showToast({ title: 'Biometric unlock failed', message: e?.message || 'Please sign in with email and password.' });
     } finally {
       setBiometricBusy(false);
@@ -329,9 +370,9 @@ export default function LoginScreen({ navigation, suppressAutoRedirect = false }
     let mounted = true;
     (async () => {
       try {
-        const storedEnabled = await SecureStore.getItemAsync('bb_bio_enabled');
-        const storedUser = await SecureStore.getItemAsync('bb_bio_user');
-        if (mounted) setHasBiometricAuthStored(!!storedEnabled && !!storedUser);
+        const storedEnabled = await SecureStore.getItemAsync(BIOMETRIC_ENABLED_KEY);
+        const storedCredentials = await SecureStore.getItemAsync(BIOMETRIC_CREDENTIALS_KEY);
+        if (mounted) setHasBiometricAuthStored(!!storedEnabled && !!storedCredentials);
       } catch (e) {
         if (mounted) setHasBiometricAuthStored(false);
       }
@@ -437,7 +478,7 @@ export default function LoginScreen({ navigation, suppressAutoRedirect = false }
               )}
             </TouchableOpacity>
 
-            {biometricAvailable ? (
+            {biometricAvailable && hasBiometricAuthStored ? (
               <TouchableOpacity
                 onPress={doBiometricUnlock}
                 accessibilityRole="button"

@@ -203,7 +203,7 @@ export function DataProvider({ children: reactChildren }) {
   const [children, setChildren] = useState([]);
   const [parents, setParents] = useState([]);
   const [therapists, setTherapists] = useState([]);
-  const [directoryLoading, setDirectoryLoading] = useState(false);
+  const [directoryLoading, setDirectoryLoading] = useState(true);
   const [directoryError, setDirectoryError] = useState('');
   const [blockedUserIds, setBlockedUserIds] = useState([]);
   const [chatBlockedUserIds, setChatBlockedUserIds] = useState([]);
@@ -282,6 +282,8 @@ export function DataProvider({ children: reactChildren }) {
   }
 
   function resetLocalState() {
+    setDirectoryLoading(true);
+    setDirectoryError('');
     setPosts([]);
     setMessages([]);
     setThreadReads({});
@@ -636,7 +638,7 @@ export function DataProvider({ children: reactChildren }) {
   // Trigger network fetch once auth has finished loading and a user is signed in.
   useEffect(() => {
     let mounted = true;
-    if (loading || !user || needsMfa) return () => { mounted = false; };
+    if (!storageReady || loading || !user || needsMfa) return () => { mounted = false; };
 
     const userKey = [
       user?.id || user?.uid || user?.email || '',
@@ -660,10 +662,10 @@ export function DataProvider({ children: reactChildren }) {
     }
 
     return () => { mounted = false; };
-  }, [loading, user, needsMfa]);
+  }, [loading, needsMfa, storageReady, user]);
 
   useEffect(() => {
-    if (loading || !user || needsMfa) return undefined;
+    if (!storageReady || loading || !user || needsMfa) return undefined;
 
     let active = true;
 
@@ -704,7 +706,7 @@ export function DataProvider({ children: reactChildren }) {
       clearInterval(intervalId);
       appStateSubscription?.remove?.();
     };
-  }, [deletedThreads, loading, needsMfa, user?.id, user?.uid]);
+  }, [deletedThreads, loading, needsMfa, storageReady, user?.id, user?.uid]);
 
   async function createPost(payload) {
     const temp = { ...payload, id: `temp-${Date.now()}`, createdAt: new Date().toISOString(), pending: true };

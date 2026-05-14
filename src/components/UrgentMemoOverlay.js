@@ -125,13 +125,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 8,
     padding: 16,
-    maxHeight: '80%',
-    width: '100%',
+    maxHeight: '50%',
+    width: 'auto',
     maxWidth: 560,
+    // height: 'auto',
   },
   cardLarge: {
     width: 'auto',
     minWidth: 360,
+    maxHeight: '60%',
     alignSelf: 'center',
   },
 });

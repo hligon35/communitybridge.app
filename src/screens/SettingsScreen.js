@@ -40,11 +40,13 @@ function passwordPolicy(pw) {
 }
 
 export default function SettingsScreen({ navigation }) {
-  const { user, logout, setRole, setAuth, refreshMfaState } = useAuth();
+  const { user, logout, setRole, setAuth, refreshMfaState, loading } = useAuth();
   const isWeb = Platform.OS === 'web';
   const isTabletLayout = useIsTabletLayout();
   const isParentSettings = normalizeUserRole(user?.role) === USER_ROLES.PARENT;
   const isParentMobileSettings = !isWeb && !isTabletLayout && normalizeUserRole(user?.role) === USER_ROLES.PARENT;
+  const showManualUpdateButton = Updates.channel === 'testflight-internal';
+  const showSignedOutProfileFallback = !loading;
 
   React.useLayoutEffect(() => {
     if (!isParentMobileSettings) {
@@ -644,10 +646,10 @@ export default function SettingsScreen({ navigation }) {
             style={{ width: 84, height: 84, borderRadius: 42, marginRight: 16 }}
           />
           <View style={{ flex: 1, justifyContent: 'center' }}>
-            <Text style={{ fontSize: 18, fontWeight: '700' }}>{user?.name || 'Guest User'}</Text>
-            <Text style={{ fontSize: 14, color: '#6b7280', marginTop: 4 }}>{user?.email || 'Not signed in'}</Text>
-            <Text style={{ fontSize: 14, color: '#374151', marginTop: 8 }}>{user?.phone || 'Phone: —'}</Text>
-            <Text style={{ fontSize: 14, color: '#374151', marginTop: 4 }}>{user?.address || 'Address: —'}</Text>
+            <Text style={{ fontSize: 18, fontWeight: '700' }}>{user?.name || (showSignedOutProfileFallback ? 'Guest User' : '')}</Text>
+            <Text style={{ fontSize: 14, color: '#6b7280', marginTop: 4 }}>{user?.email || (showSignedOutProfileFallback ? 'Not signed in' : '')}</Text>
+            <Text style={{ fontSize: 14, color: '#374151', marginTop: 8 }}>{user?.phone || (showSignedOutProfileFallback ? 'Phone: —' : '')}</Text>
+            <Text style={{ fontSize: 14, color: '#374151', marginTop: 4 }}>{user?.address || (showSignedOutProfileFallback ? 'Address: —' : '')}</Text>
           </View>
         </View>
 
@@ -725,7 +727,7 @@ export default function SettingsScreen({ navigation }) {
           <TenantSwitcher />
         </View>
 
-        {isParentSettings ? (
+        {isParentSettings && showManualUpdateButton ? (
           <View style={{ width: '100%', maxWidth: isWeb ? 980 : 720, marginTop: 12, borderTopWidth: 1, borderTopColor: '#eef2f7', paddingTop: 12 }}>
             <Text style={{ fontSize: 16, fontWeight: '700', marginBottom: 8 }}>App Updates</Text>
             <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 10 }}>Check whether a newer app update is available for this build.</Text>

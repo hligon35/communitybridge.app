@@ -651,8 +651,8 @@ export default function RoleDashboardScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   content: { padding: 16, paddingBottom: Platform.OS === 'web' ? 32 : 16 },
-  hero: { padding: 18, borderRadius: 18, backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0' },
-  heroTherapist: { padding: 0, borderRadius: 0, backgroundColor: 'transparent', borderWidth: 0 },
+  hero: { backgroundColor: 'transparent' },
+  heroTherapist: { backgroundColor: 'transparent' },
   heroTitle: { marginTop: 8, fontSize: 24, fontWeight: '800', color: '#0f172a' },
   statusPanel: { marginTop: 14, padding: 12, borderRadius: 14, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#dbeafe', flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
   statusText: { flexShrink: 1, color: '#334155', lineHeight: 18 },

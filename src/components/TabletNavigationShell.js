@@ -187,6 +187,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
   const showQuickAdd = !showAdminWorkspace && isStaff;
   const showBcbaQuickActions = showAdminWorkspace && isBcbaRole(user?.role);
   const showHeaderQuickMenu = showQuickAdd || showBcbaQuickActions;
+  const showManualUpdateButton = Updates.channel === 'testflight-internal';
   const isPhoneViewport = Platform.OS !== 'ios' || !Platform.isPad
     ? resolvePhoneViewport(width, height)
     : false;
@@ -784,10 +785,12 @@ export default function TabletNavigationShell({ currentRoute, children }) {
                         <MaterialIcons name="help-outline" size={20} color="#1d4ed8" />
                         <Text style={styles.mobileUtilityText}>Help</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity style={[styles.mobileUtilityButton, updateBusy ? styles.mobileUtilityButtonDisabled : null]} onPress={checkForOtaUpdate} disabled={updateBusy}>
-                        <Image source={checkUpdatesIcon} style={[styles.mobileUtilityIcon, updateBusy ? styles.drawerUtilityIconDisabled : null]} resizeMode="contain" />
-                        <Text style={styles.mobileUtilityText}>{updateBusy ? 'Checking for updates...' : 'Check for updates'}</Text>
-                      </TouchableOpacity>
+                      {showManualUpdateButton ? (
+                        <TouchableOpacity style={[styles.mobileUtilityButton, updateBusy ? styles.mobileUtilityButtonDisabled : null]} onPress={checkForOtaUpdate} disabled={updateBusy}>
+                          <Image source={checkUpdatesIcon} style={[styles.mobileUtilityIcon, updateBusy ? styles.drawerUtilityIconDisabled : null]} resizeMode="contain" />
+                          <Text style={styles.mobileUtilityText}>{updateBusy ? 'Checking for updates...' : 'Check for updates'}</Text>
+                        </TouchableOpacity>
+                      ) : null}
                       <TouchableOpacity style={styles.mobileLogoutButton} onPress={() => { setMobileNavOpen(false); logout?.(); }}>
                         <MaterialIcons name="logout" size={20} color="#b91c1c" />
                         <Text style={styles.mobileLogoutText}>Logout</Text>
@@ -923,10 +926,12 @@ export default function TabletNavigationShell({ currentRoute, children }) {
               <MaterialIcons name="help-outline" size={20} color="#f8fafc" />
               {!collapsed ? <Text style={styles.drawerUtilityText}>Help</Text> : null}
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.drawerUtilityButton, updateBusy ? styles.drawerUtilityButtonDisabled : null]} onPress={checkForOtaUpdate} disabled={updateBusy}>
-              <Image source={checkUpdatesIcon} style={[styles.drawerUtilityIcon, updateBusy ? styles.drawerUtilityIconDisabled : null]} resizeMode="contain" />
-              {!collapsed ? <Text style={styles.drawerUtilityText}>{updateBusy ? 'Checking…' : 'Check for updates'}</Text> : null}
-            </TouchableOpacity>
+            {showManualUpdateButton ? (
+              <TouchableOpacity style={[styles.drawerUtilityButton, updateBusy ? styles.drawerUtilityButtonDisabled : null]} onPress={checkForOtaUpdate} disabled={updateBusy}>
+                <Image source={checkUpdatesIcon} style={[styles.drawerUtilityIcon, updateBusy ? styles.drawerUtilityIconDisabled : null]} resizeMode="contain" />
+                {!collapsed ? <Text style={styles.drawerUtilityText}>{updateBusy ? 'Checking…' : 'Check for updates'}</Text> : null}
+              </TouchableOpacity>
+            ) : null}
             <TouchableOpacity style={styles.logoutButton} onPress={() => logout?.()}>
               <MaterialIcons name="logout" size={20} color="#fecaca" />
               {!collapsed ? <Text style={styles.logoutText}>Logout</Text> : null}

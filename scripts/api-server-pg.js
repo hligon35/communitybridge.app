@@ -777,6 +777,44 @@ const ADMIN_PASSWORD = process.env.CB_ADMIN_PASSWORD || process.env.BB_ADMIN_PAS
 const ADMIN_NAME = process.env.CB_ADMIN_NAME || process.env.BB_ADMIN_NAME || 'Admin';
 const APP_REVIEW_EMAIL = 'appreview@communitybridge.app';
 const APP_REVIEW_NAME = 'App Reviewer';
+const APP_REVIEW_FAMILY_ID = 'family-review-app';
+const APP_REVIEW_CHILD_IDS = Object.freeze(['child-review-boy', 'child-review-girl']);
+const APP_REVIEW_CHILD_SEEDS = Object.freeze([
+  Object.freeze({
+    id: 'child-review-boy',
+    name: 'Boy Reviewer',
+    age: '6',
+    room: 'Green-1',
+    session: 'AM',
+    notes: 'Boy Reviewer is working on transition tolerance, expressive requests, and independent routines.',
+    monthlyGoal: 'Increase independent requests and smoother transitions across the morning routine.',
+    successCriteria: 'Demonstrates the target skill in 4 of 5 opportunities across two consecutive sessions.',
+    curriculum: 'Functional Communication, Daily Living, Visual Schedules',
+    behaviorNotes: 'Responds well to first/then supports and movement breaks.',
+    amTechEmail: 'abatech1@communitybridge.app',
+    pmTechEmail: 'abatech2@communitybridge.app',
+    dropoffTimeISO: '2026-05-13T08:20:00.000Z',
+    pickupTimeISO: '2026-05-13T12:10:00.000Z',
+    insurance: { provider: 'Reviewer Family Health', memberId: 'RVW-BOY-001', policyNumber: 'POL-REVIEW-BOY' },
+  }),
+  Object.freeze({
+    id: 'child-review-girl',
+    name: 'Girl Reviewer',
+    age: '8',
+    room: 'Green-2',
+    session: 'PM',
+    notes: 'Girl Reviewer is focusing on peer engagement, coping strategies, and independent work completion.',
+    monthlyGoal: 'Increase peer engagement and independent completion of structured tasks.',
+    successCriteria: 'Completes structured tasks independently in 80% of observed opportunities.',
+    curriculum: 'Peer Play, Self-Regulation, Independent Work',
+    behaviorNotes: 'Benefits from previewing schedule changes and access to calming tools.',
+    amTechEmail: 'abatech3@communitybridge.app',
+    pmTechEmail: 'abatech4@communitybridge.app',
+    dropoffTimeISO: '2026-05-13T12:50:00.000Z',
+    pickupTimeISO: '2026-05-13T16:20:00.000Z',
+    insurance: { provider: 'Reviewer Family Health', memberId: 'RVW-GIRL-001', policyNumber: 'POL-REVIEW-GIRL' },
+  }),
+]);
 const RESERVED_SUPER_ADMIN_EMAILS = new Set([
   String(ADMIN_EMAIL || '').trim().toLowerCase(),
   'alphazonelabsllc@gmail.com',
@@ -841,6 +879,146 @@ async function ensureReservedAuthUserRow(userId, decodedToken) {
   }
 
   return pgQueryOne('SELECT id,email,name,avatar,phone,address,role FROM users WHERE id = $1', [normalizedUserId]);
+}
+
+async function ensureReservedReviewDirectoryRows(user) {
+  const normalizedUserId = safeString(user?.id).trim();
+  const normalizedEmail = safeString(user?.email).trim().toLowerCase();
+  if (!normalizedUserId || !isAppReviewEmail(normalizedEmail)) return false;
+
+  const [existingParentRow, existingChildRows, therapistRows] = await Promise.all([
+    pgQueryOne(
+      `SELECT id, data_json
+         FROM directory_parents
+        WHERE id = $1 OR lower(coalesce(data_json->>'email', '')) = $2
+        ORDER BY updated_at DESC NULLS LAST, created_at DESC NULLS LAST
+        LIMIT 1`,
+      [normalizedUserId, normalizedEmail]
+    ),
+    pgQueryAll('SELECT id, data_json FROM directory_children WHERE id = $1 OR id = $2 ORDER BY updated_at DESC NULLS LAST', APP_REVIEW_CHILD_IDS),
+    pgQueryAll('SELECT id, data_json FROM directory_therapists ORDER BY updated_at DESC NULLS LAST', []),
+  ]);
+
+  const existingParent = existingParentRow?.data_json || null;
+  const existingChildren = (existingChildRows || []).map((row) => row?.data_json).filter(Boolean);
+  const needsRefresh = !existingParent
+    || safeString(existingParent.id).trim() !== normalizedUserId
+    || APP_REVIEW_CHILD_SEEDS.some((seed) => {
+      const child = existingChildren.find((item) => safeString(item?.id).trim() === seed.id);
+      if (!child) return true;
+      return !childHasParentId(child, normalizedUserId);
+    });
+  if (!needsRefresh) return false;
+
+  const therapistRecords = (therapistRows || []).map((row) => row?.data_json).filter(Boolean);
+  const scopeSource = existingParent || existingChildren[0] || therapistRecords[0] || {};
+  const organizationId = safeString(scopeSource.organizationId).trim() || 'communitybridge';
+  const organizationName = safeString(scopeSource.organizationName).trim() || 'CommunityBridge';
+  const programId = safeString(scopeSource.programId).trim() || 'communitybridge-aba';
+  const programName = safeString(scopeSource.programName).trim() || 'Center-Based ABA';
+  const campusId = safeString(scopeSource.campusId).trim() || 'main-campus';
+  const campusName = safeString(scopeSource.campusName).trim() || 'Main Campus';
+  const resolvedName = safeString(user?.name).trim() || APP_REVIEW_NAME;
+
+  const therapistIdByEmail = new Map();
+  therapistRecords.forEach((record) => {
+    const email = safeString(record?.email).trim().toLowerCase();
+    const id = safeString(record?.id).trim();
+    if (email && id && !therapistIdByEmail.has(email)) therapistIdByEmail.set(email, id);
+  });
+
+  const parentRef = {
+    id: normalizedUserId,
+    userId: normalizedUserId,
+    uid: normalizedUserId,
+    name: resolvedName,
+    email: normalizedEmail,
+    emailNormalized: normalizedEmail,
+    phone: '',
+  };
+  const parentRecord = {
+    ...parentRef,
+    organizationId,
+    organizationName,
+    programId,
+    programName,
+    campusId,
+    campusName,
+    childIds: APP_REVIEW_CHILD_IDS.slice(),
+    familyId: APP_REVIEW_FAMILY_ID,
+    preferredContactMethod: 'app',
+    relationshipType: 'Parent/Guardian',
+    active: true,
+  };
+
+  const childRecords = APP_REVIEW_CHILD_SEEDS.map((seed) => {
+    const assignedABA = [therapistIdByEmail.get(seed.amTechEmail), therapistIdByEmail.get(seed.pmTechEmail)].filter(Boolean);
+    const [firstName, ...rest] = String(seed.name || '').trim().split(/\s+/).filter(Boolean);
+    return {
+      id: seed.id,
+      name: seed.name,
+      firstName: firstName || seed.name,
+      lastName: rest.join(' '),
+      age: seed.age,
+      room: seed.room,
+      session: seed.session,
+      notes: seed.notes,
+      monthlyGoal: seed.monthlyGoal,
+      successCriteria: seed.successCriteria,
+      curriculum: seed.curriculum,
+      behaviorNotes: seed.behaviorNotes,
+      organizationId,
+      organizationName,
+      programId,
+      programName,
+      campusId,
+      campusName,
+      familyId: APP_REVIEW_FAMILY_ID,
+      parentIds: [normalizedUserId],
+      parents: [parentRef],
+      assignedABA,
+      amTherapist: assignedABA[0] || '',
+      pmTherapist: assignedABA[1] || assignedABA[0] || '',
+      dropoffTimeISO: seed.dropoffTimeISO,
+      pickupTimeISO: seed.pickupTimeISO,
+      insurance: seed.insurance,
+      active: true,
+    };
+  });
+
+  const now = new Date();
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(
+      `DELETE FROM directory_parents
+        WHERE lower(coalesce(data_json->>'email', '')) = $1
+          AND id <> $2`,
+      [normalizedEmail, normalizedUserId]
+    );
+    await client.query(
+      `INSERT INTO directory_parents (id, data_json, created_at, updated_at)
+       VALUES ($1, $2::jsonb, $3, $4)
+       ON CONFLICT (id) DO UPDATE SET data_json = EXCLUDED.data_json, updated_at = EXCLUDED.updated_at`,
+      [normalizedUserId, JSON.stringify(parentRecord), now, now]
+    );
+    for (const child of childRecords) {
+      await client.query(
+        `INSERT INTO directory_children (id, data_json, created_at, updated_at)
+         VALUES ($1, $2::jsonb, $3, $4)
+         ON CONFLICT (id) DO UPDATE SET data_json = EXCLUDED.data_json, updated_at = EXCLUDED.updated_at`,
+        [child.id, JSON.stringify(child), now, now]
+      );
+    }
+    await rebuildAbaRelationshipsFromDirectoryPg(client);
+    await client.query('COMMIT');
+    return true;
+  } catch (error) {
+    try { await client.query('ROLLBACK'); } catch (_) {}
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 function userToClient(row) {
@@ -2757,6 +2935,9 @@ function enrichChildrenWithCareData(children, orgSettings, latestMoodEntriesByCh
 }
 
 async function getVisibleChildIdsForUser(user) {
+  if (isAppReviewEmail(user?.email)) {
+    await ensureReservedReviewDirectoryRows(user).catch(() => {});
+  }
   const [childrenRows, parentRows, therapistRows, assignRows, supervisionRows] = await Promise.all([
     pgQueryAll('SELECT data_json FROM directory_children ORDER BY updated_at DESC', []),
     pgQueryAll('SELECT data_json FROM directory_parents ORDER BY updated_at DESC', []),
@@ -3299,6 +3480,9 @@ app.get('/api/directory', authMiddleware, requireAdmin, async (req, res) => {
 // - Therapist: assigned children + related parents + supervisor/team therapists
 app.get('/api/directory/me', authMiddleware, async (req, res) => {
   try {
+    if (isAppReviewEmail(req.user?.email)) {
+      await ensureReservedReviewDirectoryRows(req.user).catch(() => {});
+    }
     const [childrenRows, parentRows, therapistRows, assignRows, supervisionRows, orgSettings, latestMoodEntriesByChildId] = await Promise.all([
       pgQueryAll('SELECT data_json FROM directory_children ORDER BY updated_at DESC', []),
       pgQueryAll('SELECT data_json FROM directory_parents ORDER BY updated_at DESC', []),

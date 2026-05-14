@@ -493,6 +493,7 @@ export function AuthProvider({ children }) {
     const a = getAuthInstance();
     const currentUserId = String(user?.id || '').trim();
     let signedOut = false;
+    setLoading(true);
     try {
       if (a) {
         await signOut(a);
@@ -508,23 +509,15 @@ export function AuthProvider({ children }) {
         });
       } catch (_) {}
       setAuthError(e);
+      setLoading(false);
     }
 
     if (!signedOut && a?.currentUser) return;
 
     await unregisterLoggedInDevicePushRegistration({ userId: currentUserId }).catch(() => {});
 
-    try {
-      await SecureStore.deleteItemAsync('bb_bio_enabled');
-      await SecureStore.deleteItemAsync('bb_bio_user');
-    } catch (_) {
-      // ignore
-    }
-
     await clearCachedMfaVerifiedAt();
 
-    setToken(null);
-    setUser(null);
     resetToLogin();
   }
 

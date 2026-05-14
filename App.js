@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { StatusBar, Platform, AppState, StyleSheet, TouchableOpacity, useWindowDimensions, View, Text } from 'react-native';
+import { StatusBar, Platform, AppState, StyleSheet, TouchableOpacity, useWindowDimensions, View, Text, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 // Temporarily remove TailwindProvider if not available at runtime
 import { NavigationContainer } from '@react-navigation/native';
@@ -344,7 +344,7 @@ function SettingsStack() {
 }
 
 function MainShell({ currentRoute }) {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const isTabletLayout = useIsTabletLayout();
   const { width, height } = useWindowDimensions();
   const role = normalizeUserRole(user?.role);
@@ -359,6 +359,14 @@ function MainShell({ currentRoute }) {
     && width < height
     && Math.max(width, height) >= 640
   );
+
+  if (loading || !user) {
+    return (
+      <View style={landscapeStyles.authTransitionWrap}>
+        <ActivityIndicator size="large" color="#2563eb" />
+      </View>
+    );
+  }
 
   return (
     <TenantProvider>
@@ -474,6 +482,12 @@ const landscapeStyles = StyleSheet.create({
     marginTop: 10,
     color: '#475569',
     lineHeight: 22,
+  },
+  authTransitionWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ffffff',
   },
 });
 
