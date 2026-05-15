@@ -75,11 +75,12 @@ import { addSentryBreadcrumb, initSentry, Sentry } from './src/sentry';
 import { CommonActions } from '@react-navigation/native';
 import { TenantProvider } from './src/core/tenant/TenantContext';
 import { canAccessAdminWorkspace, isAdminRole, isBcbaRole, isStaffRole, normalizeUserRole } from './src/core/tenant/models';
-import { humanizeScreenLabel } from './src/utils/screenLabels';
 import TabletNavigationShell from './src/components/TabletNavigationShell';
 import useIsTabletLayout from './src/hooks/useIsTabletLayout';
 import { consumeApprovalAccessIntent, getApprovalAccessNavigationParams } from './src/utils/approvalAccessIntent';
 import { shouldShowSubscreenBack } from './src/utils/backNavigation';
+
+const { humanizeScreenLabel } = require('./src/utils/screenLabels');
 
 const shouldSilenceNativeReleaseConsole = Platform.OS !== 'web' && !(typeof __DEV__ !== 'undefined' && __DEV__);
 if (shouldSilenceNativeReleaseConsole && typeof console !== 'undefined') {

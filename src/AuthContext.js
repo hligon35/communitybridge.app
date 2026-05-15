@@ -7,9 +7,17 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { navigationRef, resetToLogin, resetToTwoFactor } from './navigationRef';
 import { logger, setDebugContext } from './utils/logger';
 import { reportErrorToSentry } from './utils/reportError';
-import { normalizeRoleOverride, isDevSwitcherUser, isSpecialAccessUser, isReservedSuperAdminEmail, applyReservedUserOverrides, getMfaFreshnessWindowMs } from './utils/authState';
 import { configureNotificationHandling, syncLoggedInDevicePushRegistration, unregisterLoggedInDevicePushRegistration } from './utils/pushNotifications';
-import { getDemoRoleIdentity } from './utils/demoIdentity';
+
+const {
+  normalizeRoleOverride,
+  isDevSwitcherUser,
+  isSpecialAccessUser,
+  isReservedSuperAdminEmail,
+  applyReservedUserOverrides,
+  getMfaFreshnessWindowMs,
+} = require('./utils/authState');
+const { getDemoRoleIdentity } = require('./utils/demoIdentity');
 
 function getRootWorkspaceForRole(role) {
   const normalized = normalizeRoleOverride(role);

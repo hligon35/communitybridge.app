@@ -3,7 +3,11 @@ import { AppState, InteractionManager, NativeModules, Platform, Share } from 're
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Api from './Api';
 import { useAuth } from './AuthContext';
-import {
+import { isAdminRole, isBcbaRole, isOfficeAdminRole } from './core/tenant/models';
+import { setApplicationBadgeCountAsync } from './utils/pushNotifications';
+import { buildScopedStorageKeys, getStorageScopeId } from './utils/storageScope';
+
+const {
   seededScreenshotParents,
   seededScreenshotTherapists,
   seededScreenshotStaffWorkspacesById,
@@ -28,13 +32,10 @@ import {
   seededScreenshotOrgSettings,
   seededScreenshotExportJobs,
   seededScreenshotAuditLogs,
-} from './seed/screenshotSeedData';
-import { countUnreadVisibleThreads, getConversationKey } from './utils/chatThreads';
-import { DEMO_ROLE_IDENTITIES, getEffectiveChatIdentity } from './utils/demoIdentity';
-import { isAdminRole, isBcbaRole, isOfficeAdminRole } from './core/tenant/models';
-import { attachTherapistsToChildren, mergeById } from './utils/directoryState';
-import { setApplicationBadgeCountAsync } from './utils/pushNotifications';
-import { buildScopedStorageKeys, getStorageScopeId } from './utils/storageScope';
+} = require('./seed/screenshotSeedData');
+const { countUnreadVisibleThreads, getConversationKey } = require('./utils/chatThreads');
+const { DEMO_ROLE_IDENTITIES, getEffectiveChatIdentity } = require('./utils/demoIdentity');
+const { attachTherapistsToChildren, mergeById } = require('./utils/directoryState');
 
 const DataContext = createContext(null);
 

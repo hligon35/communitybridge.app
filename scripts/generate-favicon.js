@@ -2,6 +2,11 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
+function isFileLockError(error) {
+  const code = String(error?.code || '').toUpperCase();
+  return code === 'EPERM' || code === 'EBUSY' || code === 'UNKNOWN';
+}
+
 async function ensureSquarePng({ srcPng, destPng }) {
   const { Jimp } = require('jimp');
 
@@ -40,9 +45,20 @@ async function generateFaviconIco({ srcPng, destIcoPaths }) {
     await ensureSquarePng({ srcPng, destPng: squarePng });
     const icoBuffer = await pngToIco(squarePng);
 
+    let wroteAtLeastOne = false;
     for (const destIco of destIcoPaths) {
       fs.mkdirSync(path.dirname(destIco), { recursive: true });
-      fs.writeFileSync(destIco, icoBuffer);
+      try {
+        fs.writeFileSync(destIco, icoBuffer);
+        wroteAtLeastOne = true;
+      } catch (error) {
+        if (!isFileLockError(error)) throw error;
+        console.warn(`Skipping locked favicon target: ${destIco}`);
+      }
+    }
+
+    if (!wroteAtLeastOne) {
+      throw new Error('Could not write favicon.ico to any target path.');
     }
   } finally {
     try {

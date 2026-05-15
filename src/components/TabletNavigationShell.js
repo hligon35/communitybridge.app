@@ -173,6 +173,12 @@ export default function TabletNavigationShell({ currentRoute, children }) {
     ModeratePosts: 'Moderate Posts',
     ExportData: 'Export Data',
   };
+  const isPhoneViewport = Platform.OS !== 'ios' || !Platform.isPad
+    ? resolvePhoneViewport(width, height)
+    : false;
+  const showMobileAdminShell = Boolean(showAdminWorkspace && isPhoneViewport);
+  const activeRouteParams = navigationRef?.getCurrentRoute?.()?.params || null;
+  const activeRouteChildId = String(activeRouteParams?.childId || '').trim();
   const currentScreenTitle = screenTitleMap[currentRoute] || humanizeScreenLabel(currentRoute) || workspaceLabel;
   const shellBackVisible = Boolean(!showMobileAdminShell && currentRoute && !MAIN_NAV_ROUTES.has(String(currentRoute || '')) && navigationRef?.canGoBack?.());
   const shellTitle = currentRoute === 'ChatThread'
@@ -188,10 +194,6 @@ export default function TabletNavigationShell({ currentRoute, children }) {
   const showBcbaQuickActions = showAdminWorkspace && isBcbaRole(user?.role);
   const showHeaderQuickMenu = showQuickAdd || showBcbaQuickActions;
   const showManualUpdateButton = Updates.channel === 'testflight-internal';
-  const isPhoneViewport = Platform.OS !== 'ios' || !Platform.isPad
-    ? resolvePhoneViewport(width, height)
-    : false;
-  const showMobileAdminShell = Boolean(showAdminWorkspace && isPhoneViewport);
   const mobileAdminShellValue = useMemo(() => ({
     showMobileAdminShell,
     openMobileNav: () => setMobileNavOpen(true),
@@ -204,8 +206,6 @@ export default function TabletNavigationShell({ currentRoute, children }) {
     suppressScreenHeader: true,
     topInset: 0,
   }), []);
-  const activeRouteParams = navigationRef?.getCurrentRoute?.()?.params || null;
-  const activeRouteChildId = String(activeRouteParams?.childId || '').trim();
 
   useEffect(() => {
     setQuickMenuOpen(false);

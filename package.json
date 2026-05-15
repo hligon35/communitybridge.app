@@ -35,6 +35,7 @@
     "submit:ios:production": "eas submit -p ios --profile production --latest --non-interactive",
     "web": "node ./scripts/start-web-dev.js",
     "build:web": "node ./scripts/build-web.js",
+    "deployweb": "npm run deploy:firebase",
     "deploy:firebase": "npm run build:web && firebase deploy --only hosting",
     "start": "node ./scripts/start-server.js",
     "api:server": "cross-env PORT=3005 node ./scripts/api-server.js",
