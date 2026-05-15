@@ -1,6 +1,6 @@
-const STORAGE_SCOPE_FALLBACK = '__anon__';
+export const STORAGE_SCOPE_FALLBACK = '__anon__';
 
-const STORAGE_KEY_BASES = {
+export const STORAGE_KEY_BASES = {
   posts: 'bbs_posts_v1',
   messages: 'bbs_messages_v1',
   memos: 'bbs_memos_v1',
@@ -20,27 +20,19 @@ function normalizeStorageScopePart(value) {
   return normalized || STORAGE_SCOPE_FALLBACK;
 }
 
-function getStorageScopeId(user) {
+export function getStorageScopeId(user) {
   const candidate = user?.id || user?.uid || user?.email || STORAGE_SCOPE_FALLBACK;
   return normalizeStorageScopePart(candidate);
 }
 
-function buildScopedStorageKey(baseKey, scopeId) {
+export function buildScopedStorageKey(baseKey, scopeId) {
   return `${baseKey}::${normalizeStorageScopePart(scopeId)}`;
 }
 
-function buildScopedStorageKeys(user) {
+export function buildScopedStorageKeys(user) {
   const scopeId = getStorageScopeId(user);
   return Object.entries(STORAGE_KEY_BASES).reduce((acc, [name, baseKey]) => {
     acc[name] = buildScopedStorageKey(baseKey, scopeId);
     return acc;
   }, {});
 }
-
-module.exports = {
-  STORAGE_SCOPE_FALLBACK,
-  STORAGE_KEY_BASES,
-  getStorageScopeId,
-  buildScopedStorageKey,
-  buildScopedStorageKeys,
-};
