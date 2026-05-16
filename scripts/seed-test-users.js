@@ -277,8 +277,8 @@ function buildDirectoryEntitiesByEmail(uidByEmail) {
       successCriteria: 'Meets target in 80% of opportunities across two consecutive sessions.',
       curriculum: 'Functional Communication, Transitions, Visual Schedule',
       behaviorNotes: 'Responsive to prompts and visual supports.',
-      assignedTechEmails: [tech1.email, tech2.email],
-      amTechEmail: tech1.email,
+      assignedTechEmails: [aba.email, tech2.email],
+      amTechEmail: aba.email,
       pmTechEmail: tech2.email,
       parentRefs,
       familyId: DEMO_FAMILY_ID,
@@ -315,8 +315,8 @@ function buildDirectoryEntitiesByEmail(uidByEmail) {
       successCriteria: 'Demonstrates the target skill in 4 of 5 opportunities across two consecutive sessions.',
       curriculum: 'Functional Communication, Daily Living, Visual Schedules',
       behaviorNotes: 'Responds well to first/then supports and movement breaks.',
-      assignedTechEmails: [tech1.email, tech2.email],
-      amTechEmail: tech1.email,
+      assignedTechEmails: [aba.email, tech2.email],
+      amTechEmail: aba.email,
       pmTechEmail: tech2.email,
       parentRefs: reviewParentRefs,
       familyId: REVIEW_FAMILY_ID,
@@ -394,7 +394,7 @@ function buildDirectoryEntitiesByEmail(uidByEmail) {
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       },
     })),
-    ...[tech1, tech2, tech3, tech4].map((user) => ({
+    ...[aba, tech1, tech2, tech3, tech4].map((user) => ({
       uid: lookupUid(user.email),
       data: {
         role: 'therapist',
@@ -850,13 +850,14 @@ async function upsertReviewExperienceData(pool, uidByEmail) {
   const office = DEMO_EMAIL_MAP['office@communitybridge.app'];
   const adminUser = DEMO_EMAIL_MAP['admin@communitybridge.app'];
   const bcba = DEMO_EMAIL_MAP['bcba@communitybridge.app'];
+  const aba = DEMO_EMAIL_MAP['aba@communitybridge.app'];
   const tech1 = DEMO_EMAIL_MAP['abatech1@communitybridge.app'];
   const tech3 = DEMO_EMAIL_MAP['abatech3@communitybridge.app'];
   const reviewParentId = lookupUid(reviewParent.email);
   const officeId = lookupUid(office.email);
   const adminId = lookupUid(adminUser.email);
   const bcbaId = lookupUid(bcba.email);
-  const tech1Id = lookupUid(tech1.email);
+  const abaId = lookupUid(aba.email);
   const tech3Id = lookupUid(tech3.email);
   const organizationId = String(TENANT_SEED.organization.id || '').trim();
   const programId = String(TENANT_SEED.program.id || '').trim();
@@ -974,20 +975,20 @@ async function upsertReviewExperienceData(pool, uidByEmail) {
   ];
 
   const moodEntries = [
-    { id: 'mood-review-boy-1', childId: 'child-review-boy', score: 4, note: 'Engaged and responsive.', actorId: tech1Id, actorRole: 'therapist', recordedAt: '2026-05-12T11:45:00.000Z', createdAt: '2026-05-12T11:45:00.000Z' },
-    { id: 'mood-review-boy-2', childId: 'child-review-boy', score: 5, note: 'Strong transition morning.', actorId: tech1Id, actorRole: 'therapist', recordedAt: '2026-05-13T11:50:00.000Z', createdAt: '2026-05-13T11:50:00.000Z' },
+    { id: 'mood-review-boy-1', childId: 'child-review-boy', score: 4, note: 'Engaged and responsive.', actorId: abaId, actorRole: 'therapist', recordedAt: '2026-05-12T11:45:00.000Z', createdAt: '2026-05-12T11:45:00.000Z' },
+    { id: 'mood-review-boy-2', childId: 'child-review-boy', score: 5, note: 'Strong transition morning.', actorId: abaId, actorRole: 'therapist', recordedAt: '2026-05-13T11:50:00.000Z', createdAt: '2026-05-13T11:50:00.000Z' },
     { id: 'mood-review-girl-1', childId: 'child-review-girl', score: 4, note: 'Good participation with peers.', actorId: tech3Id, actorRole: 'therapist', recordedAt: '2026-05-12T15:40:00.000Z', createdAt: '2026-05-12T15:40:00.000Z' },
     { id: 'mood-review-girl-2', childId: 'child-review-girl', score: 3, note: 'Needed extra regulation support after arrival.', actorId: tech3Id, actorRole: 'therapist', recordedAt: '2026-05-13T15:35:00.000Z', createdAt: '2026-05-13T15:35:00.000Z' },
   ];
 
   const therapySessions = [
-    { id: 'session-review-boy-1', childId: 'child-review-boy', childName: 'Boy Reviewer', therapistId: tech1Id, therapistRole: 'therapist', organizationId, programId, campusId, sessionDate: '2026-05-12', sessionType: 'am', startedAt: '2026-05-12T08:35:00.000Z', endedAt: '2026-05-12T11:30:00.000Z', status: 'submitted', summaryGeneratedAt: '2026-05-12T11:35:00.000Z', approvedAt: '2026-05-12T12:05:00.000Z', createdAt: '2026-05-12T08:35:00.000Z', updatedAt: '2026-05-12T12:05:00.000Z' },
+    { id: 'session-review-boy-1', childId: 'child-review-boy', childName: 'Boy Reviewer', therapistId: abaId, therapistRole: 'therapist', organizationId, programId, campusId, sessionDate: '2026-05-12', sessionType: 'am', startedAt: '2026-05-12T08:35:00.000Z', endedAt: '2026-05-12T11:30:00.000Z', status: 'submitted', summaryGeneratedAt: '2026-05-12T11:35:00.000Z', approvedAt: '2026-05-12T12:05:00.000Z', createdAt: '2026-05-12T08:35:00.000Z', updatedAt: '2026-05-12T12:05:00.000Z' },
     { id: 'session-review-girl-1', childId: 'child-review-girl', childName: 'Girl Reviewer', therapistId: tech3Id, therapistRole: 'therapist', organizationId, programId, campusId, sessionDate: '2026-05-12', sessionType: 'pm', startedAt: '2026-05-12T13:00:00.000Z', endedAt: '2026-05-12T15:45:00.000Z', status: 'submitted', summaryGeneratedAt: '2026-05-12T15:50:00.000Z', approvedAt: '2026-05-12T16:10:00.000Z', createdAt: '2026-05-12T13:00:00.000Z', updatedAt: '2026-05-12T16:10:00.000Z' },
   ];
 
   const summaryBoy = buildReviewSessionSummary({
     childName: 'Boy Reviewer',
-    therapistName: tech1.name,
+    therapistName: aba.name,
     sessionDate: '2026-05-12',
     moodScore: 5,
     progressLevel: 'Moderate progress',
@@ -1011,7 +1012,7 @@ async function upsertReviewExperienceData(pool, uidByEmail) {
   });
 
   const therapySessionSummaries = [
-    { id: 'summary-review-boy-1', sessionId: 'session-review-boy-1', childId: 'child-review-boy', therapistId: tech1Id, status: 'approved', version: 1, summary: summaryBoy, summaryText: 'Boy Reviewer showed moderate progress in communication and transitions.', generatedAt: '2026-05-12T11:35:00.000Z', updatedAt: '2026-05-12T12:05:00.000Z', approvedAt: '2026-05-12T12:05:00.000Z' },
+    { id: 'summary-review-boy-1', sessionId: 'session-review-boy-1', childId: 'child-review-boy', therapistId: abaId, status: 'approved', version: 1, summary: summaryBoy, summaryText: 'Boy Reviewer showed moderate progress in communication and transitions.', generatedAt: '2026-05-12T11:35:00.000Z', updatedAt: '2026-05-12T12:05:00.000Z', approvedAt: '2026-05-12T12:05:00.000Z' },
     { id: 'summary-review-girl-1', sessionId: 'session-review-girl-1', childId: 'child-review-girl', therapistId: tech3Id, status: 'approved', version: 1, summary: summaryGirl, summaryText: 'Girl Reviewer showed moderate progress in peer engagement and structured task completion.', generatedAt: '2026-05-12T15:50:00.000Z', updatedAt: '2026-05-12T16:10:00.000Z', approvedAt: '2026-05-12T16:10:00.000Z' },
   ];
 
