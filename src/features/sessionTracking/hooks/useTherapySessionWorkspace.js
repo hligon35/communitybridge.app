@@ -44,6 +44,15 @@ export function useTherapySessionWorkspace({ child, preview = false, canManageSe
   const effectiveDraftSummary = preview ? previewDraftSummaryState : draftSummary;
   const effectiveLatestApprovedSummary = preview ? previewLatestApprovedSummary : latestApprovedSummary;
   const effectiveRecentEvents = preview ? previewRecentEvents : recentEvents;
+  const stableSeededRecentEvents = useMemo(() => (Array.isArray(seededRecentEvents) ? seededRecentEvents : []), [seededRecentEvents]);
+  const seededRecentEventsKey = useMemo(() => JSON.stringify(
+    stableSeededRecentEvents.map((item) => ({
+      feedId: item?.feedId || item?.id || '',
+      label: item?.label || '',
+      occurredAt: item?.occurredAt || item?.createdAt || '',
+      status: item?.status || '',
+    }))
+  ), [stableSeededRecentEvents]);
   const summarySubtitle = useMemo(() => {
     if (!effectiveLatestApprovedSummary) return '';
     const stamp = summarizeSessionStamp(effectiveLatestApprovedSummary);
@@ -60,7 +69,7 @@ export function useTherapySessionWorkspace({ child, preview = false, canManageSe
 
   useEffect(() => {
     let disposed = false;
-    const demoRecentEvents = Array.isArray(seededRecentEvents) ? seededRecentEvents : [];
+    const demoRecentEvents = stableSeededRecentEvents;
     async function loadSessionState() {
       if (preview || !child?.id || !canManageSession) {
         if (!disposed) {
@@ -100,7 +109,7 @@ export function useTherapySessionWorkspace({ child, preview = false, canManageSe
     return () => {
       disposed = true;
     };
-  }, [preview, child?.id, canManageSession, seededRecentEvents]);
+  }, [preview, child?.id, canManageSession, seededRecentEventsKey]);
 
   useEffect(() => {
     if (!preview) {
@@ -313,11 +322,12 @@ export function useTherapySessionWorkspace({ child, preview = false, canManageSe
     if (!activeSession?.id || savingSession || syncingQueuedEvents) return;
     setSavingSession(true);
     try {
+      const endingSession = activeSession;
       await flushQueuedEvents();
-      const result = await endTherapySession(activeSession.id, {});
-      const sessionId = result?.item?.id || activeSession.id;
-      const summaryResult = sessionId ? await getTherapySessionSummary(sessionId) : { item: result?.summary || null };
+      const result = await endTherapySession(endingSession.id, {});
       setActiveSession(null);
+      const sessionId = result?.item?.id || endingSession.id;
+      const summaryResult = sessionId ? await getTherapySessionSummary(sessionId).catch(() => ({ item: result?.summary || null })) : { item: result?.summary || null };
       const nextDraft = summaryResult?.item || result?.summary || null;
       setDraftSummary(nextDraft);
       setSessionNote('');

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { ScreenWrapper } from '../components/ScreenWrapper';
@@ -26,13 +26,16 @@ export default function TapTrackerScreen() {
   const preview = Boolean(sessionPreview) || !child;
   const inactivePreview = isTherapist && preview;
   const displayChild = child || PREVIEW_CHILD;
-  const seededRecentEvents = activeSeedPreset === 'screenshot' && child?.id
-    ? (Array.isArray(seededTapEventsByChild?.[child.id]) ? seededTapEventsByChild[child.id] : [])
-    : [];
+  const seededRecentEvents = useMemo(() => {
+    if (activeSeedPreset !== 'screenshot' || !child?.id) return [];
+    return Array.isArray(seededTapEventsByChild?.[child.id]) ? seededTapEventsByChild[child.id] : [];
+  }, [activeSeedPreset, child?.id, seededTapEventsByChild]);
   const workspace = useTherapySessionWorkspace({ child, preview, canManageSession, fetchAndSync, seededRecentEvents });
   const abaSession = useAbaSessionSheet({ child, activeSession: workspace.activeSession, user, preview });
   const [paused, setPaused] = useState(false);
   const [sessionSeconds, setSessionSeconds] = useState(0);
+  const activeSessionId = String(workspace.activeSession?.id || '').trim();
+  const activeSessionStartAt = String(workspace.activeSession?.startedAt || workspace.activeSession?.createdAt || '').trim();
 
   const subtitle = useMemo(() => {
     if (inactivePreview) return 'Start a sessions to activate';
@@ -46,13 +49,17 @@ export default function TapTrackerScreen() {
   }, [autoStartSession, sessionType, workspace]);
 
   useEffect(() => {
-    if (!workspace.activeSession || paused) return undefined;
-    const startedAt = Date.parse(String(workspace.activeSession.startedAt || workspace.activeSession.createdAt || new Date().toISOString()));
+    if (!activeSessionId || paused) return undefined;
+    const startedAt = Date.parse(activeSessionStartAt || new Date().toISOString());
     const tick = () => setSessionSeconds(Math.max(0, Math.floor((Date.now() - startedAt) / 1000)));
     tick();
     const timer = setInterval(tick, 1000);
     return () => clearInterval(timer);
-  }, [paused, workspace.activeSession]);
+  }, [activeSessionId, activeSessionStartAt, paused]);
+
+  useEffect(() => {
+    if (!activeSessionId) setSessionSeconds(0);
+  }, [activeSessionId]);
 
   const sessionTimerLabel = useMemo(() => {
     const hours = Math.floor(sessionSeconds / 3600);
@@ -62,21 +69,32 @@ export default function TapTrackerScreen() {
   }, [sessionSeconds]);
 
   function confirmEndSession() {
+    if (!activeSessionId || workspace.savingSession || workspace.syncingQueuedEvents) return;
+
+    const finishSession = () => {
+      const reviewSession = workspace.activeSession ? { ...workspace.activeSession } : null;
+      workspace.handleEndSession().then(async (result) => {
+        navigation.navigate('SummaryReview', {
+          childId: child?.id || null,
+          sessionPreview: preview,
+          draftSummary: result?.draftSummary || null,
+          reviewSession,
+        });
+      }).catch(() => {});
+    };
+
+    if (Platform.OS === 'web' && typeof globalThis.confirm === 'function') {
+      if (globalThis.confirm('End session? This will stop the timer and open the session report for review.')) {
+        finishSession();
+      }
+      return;
+    }
+
     Alert.alert('End session?', 'This will stop the timer and open the session report for review.', [
       { text: 'No', style: 'cancel' },
       {
         text: 'Yes',
-        onPress: () => {
-          const reviewSession = workspace.activeSession ? { ...workspace.activeSession } : null;
-          workspace.handleEndSession().then(async (result) => {
-            navigation.navigate('SummaryReview', {
-              childId: child?.id || null,
-              sessionPreview: preview,
-              draftSummary: result?.draftSummary || null,
-              reviewSession,
-            });
-          }).catch(() => {});
-        },
+        onPress: finishSession,
       },
     ]);
   }
@@ -92,13 +110,13 @@ export default function TapTrackerScreen() {
               <View style={styles.nameRow}>
                 <Text style={styles.name}>{displayChild.name}</Text>
                 <View style={styles.sessionHeaderControls}>
-                  <TouchableOpacity style={[styles.iconControl, inactivePreview ? styles.iconControlDisabled : null]} onPress={() => setPaused((value) => !value)} disabled={inactivePreview}>
+                  <TouchableOpacity style={[styles.iconControl, (inactivePreview || !activeSessionId) ? styles.iconControlDisabled : null]} onPress={() => setPaused((value) => !value)} disabled={inactivePreview || !activeSessionId}>
                     <MaterialIcons name={paused ? 'play-arrow' : 'pause'} size={22} color="#0f172a" />
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.iconControl, inactivePreview ? styles.iconControlDisabled : null]} onPress={confirmEndSession} disabled={inactivePreview}>
+                  <TouchableOpacity style={[styles.iconControl, (inactivePreview || !activeSessionId || workspace.savingSession || workspace.syncingQueuedEvents) ? styles.iconControlDisabled : null]} onPress={confirmEndSession} disabled={inactivePreview || !activeSessionId || workspace.savingSession || workspace.syncingQueuedEvents}>
                     <MaterialIcons name="stop" size={22} color="#dc2626" />
                   </TouchableOpacity>
-                  <Text style={styles.timerText}>{inactivePreview ? '00:00:00' : (workspace.activeSession ? sessionTimerLabel : '00:00:00')}</Text>
+                  <Text style={styles.timerText}>{inactivePreview ? '00:00:00' : (activeSessionId ? sessionTimerLabel : '00:00:00')}</Text>
                 </View>
               </View>
               <Text style={styles.subtitle}>{[subtitle, displayChild.gender, displayChild.medicalConditions].filter(Boolean).join(' • ') || 'Session details'}</Text>
