@@ -178,6 +178,8 @@ export function DataProvider({ children: reactChildren }) {
   const messageRefreshInFlightRef = useRef(null);
   const lastFetchAtRef = useRef(0);
   const initialSyncDoneForUserRef = useRef(null);
+  const messagesRef = useRef([]);
+  const authUserRef = useRef(user);
   const storageScopeId = useMemo(() => getStorageScopeId(user), [user?.id, user?.uid, user?.email]);
   const storageKeys = useMemo(() => buildScopedStorageKeys(user), [storageScopeId]);
   const sensitiveStorageKeys = useMemo(() => ([
@@ -227,6 +229,14 @@ export function DataProvider({ children: reactChildren }) {
   const [seededTherapistDocumentationInsights, setSeededTherapistDocumentationInsights] = useState(null);
   const [seededOrganizationInsights, setSeededOrganizationInsights] = useState(null);
   const [storageReady, setStorageReady] = useState(false);
+
+  useEffect(() => {
+    messagesRef.current = Array.isArray(messages) ? messages : [];
+  }, [messages]);
+
+  useEffect(() => {
+    authUserRef.current = user;
+  }, [user]);
 
   function buildScreenshotDirectory() {
     const screenshotParents = cloneSeedValue(seededScreenshotParents);
@@ -1000,11 +1010,13 @@ export function DataProvider({ children: reactChildren }) {
   function deleteThread(threadId) {
     try {
       const key = threadId != null ? String(threadId) : '';
+      const currentMessages = Array.isArray(messagesRef.current) ? messagesRef.current : [];
+      const currentUser = authUserRef.current;
       const deletionKeys = Array.from(new Set([
         key,
-        ...(messages || []).filter((message) => matchesThreadKey(message, key, user)).flatMap((message) => collectThreadKeys(message, user)),
+        ...currentMessages.filter((message) => matchesThreadKey(message, key, currentUser)).flatMap((message) => collectThreadKeys(message, currentUser)),
       ].map((value) => String(value || '').trim()).filter(Boolean)));
-      const shouldDeleteMessage = (message) => deletionKeys.some((candidate) => matchesThreadKey(message, candidate, user));
+      const shouldDeleteMessage = (message) => deletionKeys.some((candidate) => matchesThreadKey(message, candidate, currentUser));
       const deletedAt = new Date().toISOString();
       setDeletedThreads((s) => {
         const next = { ...normalizeDeletedThreadsMap(s) };

@@ -5771,12 +5771,13 @@ app.post('/api/auth/signup', authRateLimit, async (req, res) => {
   if (passwordPolicyError) return res.status(400).json({ ok: false, error: passwordPolicyError });
   if (!JWT_SECRET) return res.status(500).json({ ok: false, error: 'server missing BB_JWT_SECRET' });
   if (isRestrictedSignupRole(role)) return res.status(403).json({ ok: false, error: 'elevated roles must be provisioned by an existing administrator' });
+  const signupRequires2fa = REQUIRE_2FA_ON_SIGNUP && !isAppReviewEmail(email);
 
   const exists = db.prepare('SELECT id FROM users WHERE lower(email) = ?').get(email);
   if (exists) return res.status(409).json({ ok: false, error: 'email already exists' });
 
   // If 2FA is required, validate delivery configuration before creating an account.
-  if (REQUIRE_2FA_ON_SIGNUP) {
+  if (signupRequires2fa) {
     const method = (twoFaMethod === 'sms' || twoFaMethod === 'email') ? twoFaMethod : 'email';
     if (method === 'sms') {
       if (!ENABLE_SMS_2FA) return res.status(400).json({ ok: false, error: 'SMS 2FA is currently disabled' });
@@ -5815,7 +5816,7 @@ app.post('/api/auth/signup', authRateLimit, async (req, res) => {
   const user = { id, email, name, role };
 
   // For end-to-end testing, default to requiring 2FA on signup.
-  if (REQUIRE_2FA_ON_SIGNUP) {
+  if (signupRequires2fa) {
     const method = (twoFaMethod === 'sms' || twoFaMethod === 'email') ? twoFaMethod : 'email';
     if (method === 'sms' && !ENABLE_SMS_2FA) {
       return res.status(400).json({ ok: false, error: 'SMS 2FA is currently disabled' });

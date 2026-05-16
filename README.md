@@ -109,7 +109,7 @@ Configuration
 	- For EAS builds: set them in the Expo dashboard environment variables or secrets. They are no longer stored in `eas.json`.
 - The repo includes [env/expo.env.example](env/expo.env.example) as a safe reference list only. For local development, use `.env.local` instead of committing real values.
 - By default in dev (including Expo Go), the app auto-logs in with a dev token. To test the real login flow in Expo Go, set `EXPO_PUBLIC_DISABLE_DEV_AUTOLOGIN=1`.
-- The floating dev/reviewer role switcher can stay enabled during internal testing and be hidden at submission time with `EXPO_PUBLIC_ENABLE_DEV_SWITCHER=0`.
+- The floating dev/reviewer role switcher stays hidden from normal users and can remain enabled in review/store builds when App Review needs the dedicated `appreview@communitybridge.app` account to verify every role.
 - `npm run typecheck` currently covers the stable config and auth-utility slice first; expand `tsconfig.typecheck.json` over time instead of pretending the whole repo is TypeScript-clean today.
 
 Notes

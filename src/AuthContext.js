@@ -11,6 +11,7 @@ import { configureNotificationHandling, syncLoggedInDevicePushRegistration, unre
 
 const {
   normalizeRoleOverride,
+  isDemoReviewerUser,
   isDevSwitcherUser,
   isSpecialAccessUser,
   isReservedSuperAdminEmail,
@@ -110,6 +111,11 @@ export function AuthProvider({ children }) {
   }, [mfaRequired]);
 
   function markMfaRequired() {
+    if (isDemoReviewerUser(user?.email)) {
+      setMfaRequired(false);
+      setMfaVerified(true);
+      return;
+    }
     if (mfaRequiredRef.current) {
       try { console.info('[auth] markMfaRequired: already gated, skipping'); } catch (_) {}
       return;
@@ -238,6 +244,12 @@ export function AuthProvider({ children }) {
       setMfaRequired(false);
       setMfaVerified(false);
       return { required: false, verified: false, needsMfa: false };
+    }
+    if (isDemoReviewerUser(fbUser?.email)) {
+      setMfaRequired(false);
+      setMfaVerified(true);
+      await clearCachedMfaVerifiedAt();
+      return { required: false, verified: true, needsMfa: false };
     }
 
     setMfaLoading(true);
@@ -393,6 +405,13 @@ export function AuthProvider({ children }) {
         setDevRoleOverride(storedOverride);
         setDevRoleBehavior(storedBehavior);
         setUser(applyDevRoleOverride(profileForState, storedOverride, storedBehavior));
+
+        if (isDemoReviewerUser(fbUser.email)) {
+          setMfaRequired(false);
+          setMfaVerified(true);
+          await clearCachedMfaVerifiedAt();
+          return;
+        }
 
         // If the profile read was blocked by security rules, this is almost certainly
         // the MFA gate. Mark required immediately so the UI never briefly flashes Main.

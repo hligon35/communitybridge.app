@@ -62,6 +62,11 @@ function doesParticipantMatchTarget(participant, target) {
   return isParticipantMatch(participant, targetTokens);
 }
 
+function findExistingThreadKeyByParticipant(threads, participant) {
+  if (!participant || !threads || typeof threads !== 'object') return '';
+  return Object.keys(threads).find((threadKey) => doesParticipantMatchTarget(threads[threadKey]?.participant, participant)) || '';
+}
+
 function getConversationParticipant(message, user) {
   const userTokens = getUserParticipantTokens(user);
   if (!userTokens.length) return null;
@@ -122,8 +127,10 @@ function buildVisibleThreads(messages, threadReads, user, archivedThreads) {
   const archived = new Set((archivedThreads || []).map((value) => String(value)));
 
   const threads = items.reduce((acc, msg) => {
-    const key = getConversationKey(msg, user);
     const participant = getConversationParticipant(msg, user);
+    const baseKey = getConversationKey(msg, user);
+    const participantThreadKey = findExistingThreadKeyByParticipant(acc, participant);
+    const key = participantThreadKey || baseKey;
     const rawThreadId = String(msg?.threadId || msg?.id || '').trim();
     acc[key] = acc[key] || {
       id: key,

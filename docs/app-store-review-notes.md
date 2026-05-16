@@ -6,7 +6,7 @@ Use a dedicated review account, not a personal account.
 
 - Email: `appreview@communitybridge.app`
 - Password: rotate to a temporary review-only password before submission
-- Role: Parent
+- Role access: parent, caregiver/staff therapist, BCBA, office, and admin via the in-app review switcher
 - Display name: `App Reviewer`
 - Linked learners: `Boy Reviewer` and `Girl Reviewer`
 
@@ -19,7 +19,7 @@ Important:
 
 - Do not leave a long-lived review password in source control.
 - Update the password in App Store Connect after rotation.
-- In review notes, state whether OTP / MFA is expected. This repo checklist already expects reviewer notes to mention OTP / 2FA expectations.
+- The dedicated review account is exempt from OTP / MFA prompts in the review build.
 
 ## Suggested Review Notes
 
@@ -31,18 +31,19 @@ Reviewer test account:
 How to review the app:
 
 - Sign in with the review account above.
-- The review account is a parent-role account.
-- The seeded parent experience should show two linked learners: `Boy Reviewer` and `Girl Reviewer`.
-- After login, you can test announcements, chats, urgent memos, schedule views, billing/insurance views, and settings.
-- To test messaging, open Chats, tap the add button, choose BCBA or Office / Admin, enter a message, and send.
+- After login, the seeded parent experience should show two linked learners: `Boy Reviewer` and `Girl Reviewer`.
+- A floating `DEMO` / role button appears in the lower-right corner for the dedicated review account only.
+- Tap that button to open App Review Demo Mode, then switch between Parent, Therapist / Staff, BCBA, Office, and Admin workspaces.
+- Use `Demo View` first if you want to reload the local seeded walkthrough data.
+- Parent / caregiver review path: announcements, chats, urgent memos, learner schedule, billing/insurance views, and settings.
+- Therapist / staff review path: assigned learner schedule, session workflow, staff activity, chats, memos, and documentation surfaces.
+- BCBA / office / admin review path: care-team management, staff management, directory, scheduling, controls, and operational dashboards.
+- To test messaging, open Chats in any role, tap the add button, choose the destination role/contact, enter a message, and send.
+- No OTP / MFA step is required for the dedicated review account.
 - Push notifications are used only for operational messages such as chats, urgent memos, reminders, and schedule-related updates.
 - Location access is used only for arrival detection / location-based program features, not for advertising or cross-app tracking.
 - Background location is user-triggered and can be disabled by the user in the app/device settings.
 - Account deletion is available in Settings.
-
-If MFA / OTP is enabled for the review build, add:
-
-- If prompted for OTP / MFA, use the code delivered to the review inbox configured for `appreview@communitybridge.app`.
 
 ## Current Review Risk Assessment
 
@@ -65,15 +66,15 @@ If MFA / OTP is enabled for the review build, add:
 - Background location must be justified clearly in App Store Connect review notes.
 - App Store Connect privacy answers must match actual behavior for notifications, location, uploaded media, and account data.
 - The review account password should be rotated out of source before submission.
-- If a dev/reviewer role switcher is visible in production submission builds, that may create review confusion; disable it for submission if not intentionally part of the product.
+- The review switcher must stay enabled in the submitted review build, but it should remain gated to the dedicated review account so normal users never see it.
 
 ## Recommended Next Steps Before Submission
 
 1. Rotate the review account password and update App Store Connect with the temporary credential.
-2. Confirm whether the submission build has EXPO_PUBLIC_ENABLE_DEV_SWITCHER set to 0.
+2. Confirm the submission build has `EXPO_PUBLIC_ENABLE_DEV_SWITCHER=1` so the review account can open all role workspaces.
 3. Build a fresh iOS submission artifact and watch for any Apple privacy-manifest follow-up email after upload.
 4. Double-check App Store Connect privacy questionnaire answers against the live feature set.
-5. Paste the suggested review notes into the App Review Information field and adjust for the final OTP / MFA behavior.
+5. Paste the suggested review notes into the App Review Information field.
 
 ## Expo / Native Config Observed In This Repo
 

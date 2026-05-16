@@ -190,3 +190,34 @@ test('special-access chat visibility follows the active role persona instead of 
     ['parent-thread']
   );
 });
+
+test('chat threads group messages from the same participant despite mixed identifiers', () => {
+  const messages = [
+    {
+      id: 'admin-tech-thread-1',
+      threadId: 'admin-tech-thread-1',
+      createdAt: '2026-04-28T09:00:00.000Z',
+      sender: { id: 'tech-1', name: 'Taylor Tech', email: 'taylor@communitybridge.app' },
+      to: [{ id: 'admin-1', name: 'Admin One' }],
+    },
+    {
+      id: 'admin-tech-thread-2',
+      threadId: 'admin-tech-thread-2',
+      createdAt: '2026-04-28T10:00:00.000Z',
+      sender: { email: 'taylor@communitybridge.app', name: 'Taylor Tech' },
+      to: [{ id: 'admin-1', name: 'Admin One' }],
+    },
+    {
+      id: 'admin-parent-thread-1',
+      threadId: 'admin-parent-thread-1',
+      createdAt: '2026-04-28T11:00:00.000Z',
+      sender: { id: 'parent-1', name: 'Parent One' },
+      to: [{ id: 'admin-1', name: 'Admin One' }],
+    },
+  ];
+
+  const adminThreads = buildVisibleThreads(messages, {}, { id: 'admin-1', role: 'admin' }, []);
+  assert.equal(adminThreads.length, 2);
+  assert.deepEqual(adminThreads.map((thread) => thread.id), ['user:parent-1', 'user:tech-1']);
+  assert.deepEqual(adminThreads.find((thread) => thread.id === 'user:tech-1')?.threadIds.sort(), ['admin-tech-thread-1', 'admin-tech-thread-2']);
+});

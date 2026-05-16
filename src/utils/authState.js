@@ -3,6 +3,9 @@ const APP_REVIEW_EMAIL = 'appreview@communitybridge.app';
 const DEV_SWITCH_EMAILS = new Set([
   DEV_SWITCH_EMAIL,
 ]);
+const DEMO_REVIEWER_EMAILS = new Set([
+  APP_REVIEW_EMAIL,
+]);
 const RESERVED_SUPER_ADMIN_EMAILS = new Set([
   'alphazonelabsllc@gmail.com',
 ]);
@@ -29,8 +32,13 @@ function isDevSwitcherUser(email) {
 }
 
 /** @param {string | null | undefined} email */
+function isDemoReviewerUser(email) {
+  return DEMO_REVIEWER_EMAILS.has(String(email || '').trim().toLowerCase());
+}
+
+/** @param {string | null | undefined} email */
 function isSpecialAccessUser(email) {
-  return isDevSwitcherUser(email);
+  return isDevSwitcherUser(email) || isDemoReviewerUser(email);
 }
 
 /** @param {string | null | undefined} email */
@@ -75,6 +83,7 @@ module.exports = {
   DEV_MFA_WINDOW_MS,
   normalizeRoleOverride,
   isDevSwitcherUser,
+  isDemoReviewerUser,
   isSpecialAccessUser,
   isReservedParentEmail,
   isReservedSuperAdminEmail,

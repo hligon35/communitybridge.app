@@ -3,10 +3,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { View, TouchableOpacity, Text, Alert, StyleSheet, ScrollView } from 'react-native';
 import { useAuth } from '../AuthContext';
 import { useData } from '../DataContext';
-import { useTenant } from '../core/tenant/TenantContext';
 import { MaterialIcons } from '@expo/vector-icons';
 import { logPress } from '../utils/logger';
-import { isDevSwitcherUser } from '../utils/authState';
+import { isDemoReviewerUser, isSpecialAccessUser } from '../utils/authState';
 import { THERAPY_ROLE_LABELS } from '../utils/roleTerminology';
 import { ENABLE_DEV_SWITCHER } from '../config';
 
@@ -15,10 +14,11 @@ const DEV_SWITCHER_VISIBILITY_KEY = '@communitybridge/dev-switcher-visible';
 export default function DevRoleSwitcher() {
   const { setRole, user, devRoleBehavior = 'remember', setDevStartupBehavior } = useAuth();
   const { clearAllData, resetScreenshotSeed } = useData();
-  const tenant = useTenant() || {};
-  const isDevAccount = isDevSwitcherUser(user?.email);
-  const canChangeRole = isDevAccount;
-  const isAllowed = ENABLE_DEV_SWITCHER && (__DEV__ || isDevAccount);
+  const isReviewerAccount = isDemoReviewerUser(user?.email);
+  const isSpecialAccessAccount = isSpecialAccessUser(user?.email);
+  const isDevAccount = isSpecialAccessAccount && !isReviewerAccount;
+  const canChangeRole = isSpecialAccessAccount;
+  const isAllowed = ENABLE_DEV_SWITCHER && (__DEV__ || isSpecialAccessAccount);
   const [open, setOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [visibilityReady, setVisibilityReady] = useState(false);
@@ -62,9 +62,8 @@ export default function DevRoleSwitcher() {
     Alert.alert('Developer tools', nextVisible ? 'Developer button shown.' : 'Developer button hidden. Long press the lower-right corner for 3 seconds to show it again.');
   };
 
-  // Visible in __DEV__ builds for everyone, OR for the dev@communitybridge.app
-  // account in any build (controlled gate so the dev account can navigate the
-  // hierarchy/paths in production-like environments).
+  // Visible in __DEV__ builds for everyone, OR for the controlled special-access
+  // accounts used for internal QA and App Review in production-like builds.
   if (!isAllowed || !visibilityReady) return null;
 
   const changeRole = (r) => {
@@ -81,38 +80,6 @@ export default function DevRoleSwitcher() {
     setDevStartupBehavior(behavior);
     Alert.alert('Dev behavior updated', behavior === 'remember' ? 'The dev account will keep using the last selected role on launch.' : `The dev account will open as ${behavior} on launch.`);
   };
-
-  const {
-    programs = [],
-    campuses = [],
-    currentOrganization,
-    currentProgram,
-    currentProgramId,
-    currentCampus,
-    currentCampusId,
-    setSelectedProgramId,
-    setSelectedCampusId,
-  } = tenant;
-
-  function cycleProgram() {
-    if (!Array.isArray(programs) || programs.length < 2 || !setSelectedProgramId) return;
-    const idx = programs.findIndex((p) => p.id === currentProgramId);
-    const next = programs[(idx + 1) % programs.length];
-    if (next) {
-      logPress('DevTools:CycleProgram', { from: currentProgramId, to: next.id });
-      setSelectedProgramId(next.id);
-    }
-  }
-
-  function cycleCampus() {
-    if (!Array.isArray(campuses) || campuses.length < 2 || !setSelectedCampusId) return;
-    const idx = campuses.findIndex((c) => c.id === currentCampusId);
-    const next = campuses[(idx + 1) % campuses.length];
-    if (next) {
-      logPress('DevTools:CycleCampus', { from: currentCampusId, to: next.id });
-      setSelectedCampusId(next.id);
-    }
-  }
 
   function seedScreenshotMode() {
     try {
@@ -167,11 +134,17 @@ export default function DevRoleSwitcher() {
         activeOpacity={0.95}
       >
         <View style={styles.badge}>
-          <Text style={styles.badgeText}>{(user && user.role) ? user.role.toString().toUpperCase() : 'DEV'}</Text>
+          <Text style={styles.badgeText}>{isReviewerAccount ? 'DEMO' : (user && user.role) ? user.role.toString().toUpperCase() : 'DEV'}</Text>
         </View>
       </TouchableOpacity>
       {open && (
         <ScrollView style={styles.menu} contentContainerStyle={{ paddingBottom: 4 }} showsVerticalScrollIndicator={false}>
+          {isReviewerAccount ? (
+            <View style={styles.demoBanner}>
+              <Text style={styles.demoBannerTitle}>App Review Demo Mode</Text>
+              <Text style={styles.demoBannerText}>This panel is only available to the review account and unlocks the seeded caregiver, staff, BCBA, office, and admin walkthroughs.</Text>
+            </View>
+          ) : null}
           <Text style={styles.sectionLabel}>Review Data</Text>
           <TouchableOpacity onPress={seedScreenshotMode} style={styles.menuBtn}>
             <Text>Demo View</Text>
@@ -220,21 +193,6 @@ export default function DevRoleSwitcher() {
               </TouchableOpacity>
             </>
           ) : null}
-
-          {/* Tenant */}
-          <View style={styles.divider} />
-          <Text style={styles.sectionLabel}>Tenant</Text>
-          <View style={styles.menuBtn}>
-            <Text style={styles.kv}>Org: <Text style={styles.kvVal}>{currentOrganization?.name || '—'}</Text></Text>
-            <Text style={styles.kv}>Program: <Text style={styles.kvVal}>{currentProgram?.name || '—'}</Text></Text>
-            <Text style={styles.kv}>Campus: <Text style={styles.kvVal}>{currentCampus?.name || '—'}</Text></Text>
-          </View>
-          <TouchableOpacity onPress={cycleProgram} disabled={programs.length < 2} style={[styles.menuBtn, programs.length < 2 && { opacity: 0.4 }]}>
-            <Text>Next Program ({programs.length})</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={cycleCampus} disabled={campuses.length < 2} style={[styles.menuBtn, campuses.length < 2 && { opacity: 0.4 }]}>
-            <Text>Next Campus ({campuses.length})</Text>
-          </TouchableOpacity>
 
         </ScrollView>
       )}
@@ -292,8 +250,6 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  kv: { fontSize: 12, color: '#475569' },
-  kvVal: { color: '#0f172a', fontWeight: '700' },
   divider: { height: 1, backgroundColor: '#f3f4f6', marginVertical: 6 },
   demoBanner: {
     marginBottom: 8,
