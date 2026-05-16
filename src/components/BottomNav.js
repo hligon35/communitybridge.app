@@ -55,6 +55,8 @@ export default function BottomNav({ navigationRef, currentRoute }) {
   const tenant = useTenant();
   const labels = tenant?.labels || {};
   const role = normalizeUserRole(user?.role);
+  const useCompactRoleTabs = isStaffRole(role) || isAdminRole(role);
+  const compactDashboardTabKey = role === 'therapist' ? 'Home' : 'Controls';
 
   // For parents, show any pending urgent alerts they created on the MyChild tab
   const parentPendingCount = (user && role === 'parent') ? (urgentMemos || []).filter((m) => (m.proposerId === user.id) && (!m.status || m.status === 'pending')).length : 0;
@@ -63,11 +65,10 @@ export default function BottomNav({ navigationRef, currentRoute }) {
   let tabs = [
     { key: 'Chats', label: 'Chats', icon: (active) => (<NavImageIcon source={chatsIcon} active={active} />), count: unreadThreadCount },
   ];
-  if (isStaffRole(role)) {
-    tabs.unshift({ key: 'Home', label: labels.dashboard || 'Dashboard', icon: (active) => (<NavImageIcon source={controlsIcon} active={active} />) });
-  } else if (isAdminRole(role)) {
-    tabs.unshift({ key: 'Controls', label: labels.dashboard || 'Dashboard', icon: (active) => (<NavImageIcon source={controlsIcon} active={active} />), count: (urgentMemos || []).filter((m) => !m.status || m.status === 'pending').length });
-  } else {
+  if (useCompactRoleTabs) {
+    tabs.unshift({ key: compactDashboardTabKey, label: labels.dashboard || 'Dashboard', icon: (active) => (<NavImageIcon source={controlsIcon} active={active} />) });
+  }
+  if (!useCompactRoleTabs) {
     tabs.unshift({ key: 'Home', label: labels.dashboard || 'Dashboard', icon: (active) => (<NavImageIcon source={controlsIcon} active={active} />) });
     tabs.push({ key: 'MyChild', label: labels.myChild || 'My Child', icon: (active) => (<NavImageIcon source={myChildIcon} active={active} />), count: parentPendingCount });
   }

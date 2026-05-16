@@ -16,8 +16,9 @@ export default function DevRoleSwitcher() {
   const { clearAllData, resetScreenshotSeed } = useData();
   const isReviewerAccount = isDemoReviewerUser(user?.email);
   const isSpecialAccessAccount = isSpecialAccessUser(user?.email);
+  const canUseDevRoleTools = __DEV__ || isSpecialAccessAccount;
   const isDevAccount = isSpecialAccessAccount && !isReviewerAccount;
-  const canChangeRole = isSpecialAccessAccount;
+  const canChangeRole = canUseDevRoleTools;
   const isAllowed = ENABLE_DEV_SWITCHER && (__DEV__ || isSpecialAccessAccount);
   const [open, setOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);

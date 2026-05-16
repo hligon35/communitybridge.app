@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -34,6 +34,8 @@ export default function TapTrackerScreen() {
   const abaSession = useAbaSessionSheet({ child, activeSession: workspace.activeSession, user, preview });
   const [paused, setPaused] = useState(false);
   const [sessionSeconds, setSessionSeconds] = useState(0);
+  const autoStartRequestKey = `${route.key}:${String(childId || '')}:${String(sessionType || '')}:${autoStartSession ? '1' : '0'}`;
+  const consumedAutoStartRequestRef = useRef('');
   const activeSessionId = String(workspace.activeSession?.id || '').trim();
   const activeSessionStartAt = String(workspace.activeSession?.startedAt || workspace.activeSession?.createdAt || '').trim();
 
@@ -45,8 +47,14 @@ export default function TapTrackerScreen() {
 
   useEffect(() => {
     if (!autoStartSession || workspace.activeSession || workspace.loadingSession || workspace.savingSession) return;
-    workspace.handleStartSession(sessionType || 'AM').catch?.(() => {});
-  }, [autoStartSession, sessionType, workspace]);
+    if (consumedAutoStartRequestRef.current === autoStartRequestKey) return;
+    consumedAutoStartRequestRef.current = autoStartRequestKey;
+    workspace.handleStartSession(sessionType || 'AM').catch?.(() => {
+      if (consumedAutoStartRequestRef.current === autoStartRequestKey) {
+        consumedAutoStartRequestRef.current = '';
+      }
+    });
+  }, [autoStartRequestKey, autoStartSession, sessionType, workspace.activeSession, workspace.handleStartSession, workspace.loadingSession, workspace.savingSession]);
 
   useEffect(() => {
     if (!activeSessionId || paused) return undefined;

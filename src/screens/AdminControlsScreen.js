@@ -2,11 +2,13 @@ import React, { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import AnnouncementFeed from '../components/AnnouncementFeed';
+import MobileRoleWelcomeShiftCard from '../components/MobileRoleWelcomeShiftCard';
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { useAuth } from '../AuthContext';
 import { useData } from '../DataContext';
 import { isBcbaRole } from '../core/tenant/models';
 import useIsTabletLayout from '../hooks/useIsTabletLayout';
+import { isPhoneViewport as resolvePhoneViewport } from '../utils/mobileRoleAccess';
 
 function formatStaffUtilizationLabel(staff) {
   const fullName = String(staff?.name || '').trim();
@@ -131,14 +133,25 @@ function TrendCard({ title, items, accent = '#2563eb', horizontalInset = 26 }) {
 }
 
 export default function AdminControlsScreen() {
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const { user } = useAuth();
   const { children = [], therapists = [], urgentMemos = [], activeSeedPreset = '', seededDashboardMetrics = {} } = useData();
   const isBcba = isBcbaRole(user?.role);
   const isTabletLayout = useIsTabletLayout();
+  const isPhoneWorkspace = !isTabletLayout && resolvePhoneViewport(width, height);
   const estimatedContentWidth = Math.max(320, width - (isTabletLayout ? 320 : 48));
   const useCompactTiles = estimatedContentWidth < 860;
   const showChartGrid = estimatedContentWidth >= 900;
+
+  if (isPhoneWorkspace) {
+    return (
+      <ScreenWrapper style={styles.container}>
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <MobileRoleWelcomeShiftCard user={user} role={user?.role} children={children} />
+        </ScrollView>
+      </ScreenWrapper>
+    );
+  }
 
   const summary = useMemo(() => {
     if (activeSeedPreset === 'screenshot' && seededDashboardMetrics && typeof seededDashboardMetrics === 'object' && Object.keys(seededDashboardMetrics).length) {

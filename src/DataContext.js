@@ -593,11 +593,11 @@ export function DataProvider({ children: reactChildren }) {
         await maybeRefreshMfaOnPermissionDenied(proposalsResult.reason);
       }
 
-      // Directory sync. Admins can read/seed the full directory; non-admins use /api/directory/me.
+      // Directory sync. Only full admins can read/seed the full directory; BCBA and office use scoped directory access.
       setDirectoryLoading(true);
       setDirectoryError('');
       try {
-        const isAdmin = Boolean(user && (isAdminRole(user.role) || isBcbaRole(user.role) || isOfficeAdminRole(user.role)));
+        const isAdmin = Boolean(user && isAdminRole(user.role));
         let dir = isAdmin ? await Api.getDirectory() : await Api.getDirectoryMe();
         if (dir && dir.ok) {
           let remoteChildren = Array.isArray(dir.children) ? dir.children : [];

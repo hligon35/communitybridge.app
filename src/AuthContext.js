@@ -51,6 +51,10 @@ function resolveDevRoleOverride(overrideRole, behavior) {
   return normalizeRoleOverride(overrideRole);
 }
 
+function canUseDevRoleOverride(email) {
+  return __DEV__ || isSpecialAccessUser(email);
+}
+
 function readWebDevSessionBootstrap() {
   if (!__DEV__) return null;
   try {
@@ -215,10 +219,10 @@ export function AuthProvider({ children }) {
 
   function applyDevRoleOverride(nextUser, overrideRole, behavior = 'remember') {
     if (!nextUser) return nextUser;
-    if (!isSpecialAccessUser(nextUser.email)) return nextUser;
+    if (!canUseDevRoleOverride(nextUser.email)) return nextUser;
     const normalized = resolveDevRoleOverride(overrideRole, behavior);
     if (!normalized) return nextUser;
-    const roleIdentity = getDemoRoleIdentity(normalized, nextUser) || nextUser;
+    const roleIdentity = isSpecialAccessUser(nextUser.email) ? (getDemoRoleIdentity(normalized, nextUser) || nextUser) : nextUser;
     return {
       ...nextUser,
       id: roleIdentity?.id || nextUser.id,
@@ -400,8 +404,8 @@ export function AuthProvider({ children }) {
           email: fbUser.email || '',
           role: isReservedSuperAdminEmail(fbUser.email) ? 'superAdmin' : (isSpecialAccessUser(fbUser.email) ? 'admin' : 'parent'),
         });
-        const storedOverride = isSpecialAccessUser(fbUser.email) ? await readDevRoleOverride() : '';
-        const storedBehavior = isSpecialAccessUser(fbUser.email) ? await readDevRoleBehavior() : 'remember';
+        const storedOverride = canUseDevRoleOverride(fbUser.email) ? await readDevRoleOverride() : '';
+        const storedBehavior = canUseDevRoleOverride(fbUser.email) ? await readDevRoleBehavior() : 'remember';
         setDevRoleOverride(storedOverride);
         setDevRoleBehavior(storedBehavior);
         setUser(applyDevRoleOverride(profileForState, storedOverride, storedBehavior));
@@ -564,8 +568,8 @@ export function AuthProvider({ children }) {
       email: fbUser.email || '',
       role: isReservedSuperAdminEmail(fbUser.email) ? 'superAdmin' : (isSpecialAccessUser(fbUser.email) ? 'admin' : 'parent'),
     });
-    const override = isSpecialAccessUser(nextUser?.email) ? await readDevRoleOverride() : '';
-    const behavior = isSpecialAccessUser(nextUser?.email) ? await readDevRoleBehavior() : 'remember';
+    const override = canUseDevRoleOverride(nextUser?.email) ? await readDevRoleOverride() : '';
+    const behavior = canUseDevRoleOverride(nextUser?.email) ? await readDevRoleBehavior() : 'remember';
     setDevRoleOverride(override);
     setDevRoleBehavior(behavior);
     setToken(nextToken);
@@ -576,10 +580,9 @@ export function AuthProvider({ children }) {
   async function setRole(nextRole) {
     // Allow role override in any build for the controlled special-access
     // accounts; for everyone else, restrict to __DEV__ builds.
-    if (!__DEV__ && !isSpecialAccessUser(user?.email)) return;
+    if (!canUseDevRoleOverride(user?.email)) return;
     const normalized = normalizeRoleOverride(nextRole);
     if (!normalized) return;
-    if (!isSpecialAccessUser(user?.email)) return;
 
     setDevRoleOverride(normalized);
     await writeDevRoleOverride(normalized);
@@ -595,8 +598,7 @@ export function AuthProvider({ children }) {
   }
 
   async function setDevStartupBehavior(nextBehavior) {
-    if (!__DEV__ && !isSpecialAccessUser(user?.email)) return;
-    if (!isSpecialAccessUser(user?.email)) return;
+    if (!canUseDevRoleOverride(user?.email)) return;
 
     const normalizedBehavior = normalizeDevRoleBehavior(nextBehavior);
     setDevRoleBehavior(normalizedBehavior);

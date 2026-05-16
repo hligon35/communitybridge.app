@@ -83,6 +83,11 @@ function getBreakNotificationPermissionRequestOptions() {
   return undefined;
 }
 
+function hasGrantedBreakSoundPermission(permission) {
+  if (Platform.OS !== 'ios') return true;
+  return permission?.ios?.allowsSound !== false;
+}
+
 async function ensureBreakNotificationsReady() {
   if (Platform.OS === 'web') return { ok: false, reason: 'web-unsupported' };
   const Notifications = getNotificationsModule();
@@ -90,11 +95,15 @@ async function ensureBreakNotificationsReady() {
   try {
     const existing = await Notifications.getPermissionsAsync();
     let status = existing?.status;
+    let hasSoundPermission = hasGrantedBreakSoundPermission(existing);
     if (status !== 'granted') {
       const requested = await Notifications.requestPermissionsAsync(getBreakNotificationPermissionRequestOptions());
       status = requested?.status;
+      hasSoundPermission = hasGrantedBreakSoundPermission(requested);
     }
-    if (status !== 'granted') return { ok: false, reason: 'permission-denied' };
+    if (status !== 'granted' || !hasSoundPermission) {
+      return { ok: false, reason: status === 'granted' ? 'sound-disabled' : 'permission-denied' };
+    }
     if (Platform.OS === 'android' && typeof Notifications.setNotificationChannelAsync === 'function') {
       await Notifications.setNotificationChannelAsync(BREAK_NOTIFICATION_CHANNEL_ID, {
         name: 'Break alerts',
@@ -328,6 +337,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
     if (!setup.ok || !setup.Notifications) return;
 
     const Notifications = setup.Notifications;
+    const timeIntervalTriggerType = Notifications?.SchedulableTriggerInputTypes?.TIME_INTERVAL || 'timeInterval';
     const warningIds = [];
 
     if (durationMinutes > 2) {
@@ -339,7 +349,11 @@ export default function TabletNavigationShell({ currentRoute, children }) {
           channelId: BREAK_NOTIFICATION_CHANNEL_ID,
           data: { type: 'break-warning', minutes: durationMinutes },
         },
-        trigger: { seconds: Math.max(1, durationMinutes * 60 - 120) },
+        trigger: {
+          type: timeIntervalTriggerType,
+          seconds: Math.max(1, durationMinutes * 60 - 120),
+          repeats: false,
+        },
       }).catch(() => null);
       if (warningId) warningIds.push(warningId);
     }
@@ -352,7 +366,11 @@ export default function TabletNavigationShell({ currentRoute, children }) {
         channelId: BREAK_NOTIFICATION_CHANNEL_ID,
         data: { type: 'break-end', minutes: durationMinutes },
       },
-      trigger: { seconds: Math.max(1, durationMinutes * 60) },
+      trigger: {
+        type: timeIntervalTriggerType,
+        seconds: Math.max(1, durationMinutes * 60),
+        repeats: false,
+      },
     }).catch(() => null);
     breakNotificationIdsRef.current = { warningIds, endId: endId || null };
   }

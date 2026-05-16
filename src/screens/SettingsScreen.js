@@ -13,7 +13,7 @@ import { registerForExpoPushTokenAsync } from '../utils/pushNotifications';
 import * as Api from '../Api';
 import { SETTINGS_KEYS, readBooleanSetting, writeBooleanSetting } from '../utils/appSettings';
 import { formatPhoneInput } from '../utils/inputFormat';
-import { isAdminRole, normalizeUserRole, USER_ROLES } from '../core/tenant/models';
+import { isAdminRole, isStaffRole, normalizeUserRole, USER_ROLES } from '../core/tenant/models';
 import useIsTabletLayout from '../hooks/useIsTabletLayout';
 
 const editIconImage = require('../../assets/icons/edit.png');
@@ -43,13 +43,14 @@ export default function SettingsScreen({ navigation }) {
   const { user, logout, setRole, setAuth, refreshMfaState, loading } = useAuth();
   const isWeb = Platform.OS === 'web';
   const isTabletLayout = useIsTabletLayout();
-  const isParentSettings = normalizeUserRole(user?.role) === USER_ROLES.PARENT;
-  const isParentMobileSettings = !isWeb && !isTabletLayout && normalizeUserRole(user?.role) === USER_ROLES.PARENT;
+  const normalizedRole = normalizeUserRole(user?.role);
+  const isParentSettings = normalizedRole === USER_ROLES.PARENT;
+  const showMobileSettingsLogout = !isWeb && !isTabletLayout && (normalizedRole === USER_ROLES.PARENT || isStaffRole(normalizedRole) || isAdminRole(normalizedRole));
   const showManualUpdateButton = Updates.channel === 'testflight-internal';
   const showSignedOutProfileFallback = !loading;
 
   React.useLayoutEffect(() => {
-    if (!isParentMobileSettings) {
+    if (!showMobileSettingsLogout) {
       navigation.setOptions({
         headerLeft: undefined,
       });
@@ -77,7 +78,7 @@ export default function SettingsScreen({ navigation }) {
         </TouchableOpacity>
       ),
     });
-  }, [isParentMobileSettings, logout, navigation]);
+  }, [showMobileSettingsLogout, logout, navigation]);
 
   const openEditProfile = React.useCallback(() => {
     if (isParentSettings) {
@@ -634,7 +635,7 @@ export default function SettingsScreen({ navigation }) {
           <Image source={editIconImage} style={{ width: 20, height: 20, resizeMode: 'contain' }} />
         </TouchableOpacity>
 
-        {!isWeb && !isParentMobileSettings ? (
+        {!isWeb && !showMobileSettingsLogout ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16, paddingRight: 56 }}>
             <Text style={{ fontSize: 22, fontWeight: '800', color: '#0f172a' }}>Profile Settings</Text>
           </View>

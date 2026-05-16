@@ -4,6 +4,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AnnouncementFeed from '../components/AnnouncementFeed';
+import MobileRoleWelcomeShiftCard from '../components/MobileRoleWelcomeShiftCard';
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import TenantSwitcher from '../components/TenantSwitcher';
 import { useAuth } from '../AuthContext';
@@ -269,6 +270,16 @@ export default function RoleDashboardScreen({ navigation }) {
   }, [activeSeedPreset, isTherapist, readItemsNeededIds, seededItemsNeededByChild, selectedChild?.id, urgentMemos]);
 
   const unreadItemsNeededCount = useMemo(() => parentItemsNeededEntries.length, [parentItemsNeededEntries]);
+
+  if (isTherapist && isPhoneWorkspace) {
+    return (
+      <ScreenWrapper bannerShowBack={false} hideBanner={isTabletLayout} style={styles.container}>
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <MobileRoleWelcomeShiftCard user={user} role={role} children={relevantChildren} />
+        </ScrollView>
+      </ScreenWrapper>
+    );
+  }
 
   const markItemsNeededRead = async () => {
     if (!parentItemsNeededEntries.length) {
