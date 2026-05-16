@@ -59,6 +59,8 @@
     "db:migrate:pg": "node ./scripts/migrate-sqlite-to-postgres.js",
     "seed:tenant-directory": "node ./scripts/seed-tenant-directory.js",
     "seed:tenant-directory:dry": "node ./scripts/seed-tenant-directory.js --dry",
+    "seed:aba": "node ./scripts/seed-test-users.js",
+    "seed:aba:dry": "node ./scripts/seed-test-users.js --dry",
     "seed:test-users": "node ./scripts/seed-test-users.js",
     "seed:test-users:dry": "node ./scripts/seed-test-users.js --dry",
     "role:grant": "node ./scripts/grant-admin-role.js",

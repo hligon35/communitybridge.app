@@ -136,7 +136,7 @@ const DEMO_THREAD_PARTICIPANT_ID_SET = new Set([
 const DEMO_USER_OVERRIDES = Object.freeze({
   'user-parent-review': { name: 'Cheyanne Cook', email: 'cheyanne2448@gmail.com', role: 'parent' },
   'user-parent-dev-switch': { name: 'Harold Ligon', email: 'hligon35@gmail.com', role: 'parent' },
-  'user-therapist-review': { name: 'CommunityBridge ABA Tech 1', email: 'abatech1@communitybridge.app', role: 'therapist' },
+  'user-therapist-review': { name: 'CommunityBridge ABA', email: 'aba@communitybridge.app', role: 'therapist' },
   'user-bcba-review': { name: 'CommunityBridge BCBA', email: 'bcba@communitybridge.app', role: 'bcba' },
   'user-office-review': { name: 'CommunityBridge Office', email: 'office@communitybridge.app', role: 'office' },
   'user-admin-review': { name: 'CommunityBridge Admin', email: 'admin@communitybridge.app', role: 'admin' },
@@ -149,7 +149,7 @@ const DEMO_PARENT_OVERRIDES = Object.freeze({
 
 const DEMO_THERAPIST_OVERRIDES = Object.freeze({
   'bcba-001': { name: 'CommunityBridge BCBA', email: 'bcba@communitybridge.app', role: 'bcba', title: 'Supervising Clinician' },
-  'aba-101': { name: 'CommunityBridge ABA Tech 1', email: 'abatech1@communitybridge.app', role: 'therapist', title: 'ABA Therapist', supervisedBy: 'bcba-001' },
+  'aba-101': { name: 'CommunityBridge ABA', email: 'aba@communitybridge.app', role: 'therapist', title: 'ABA Therapist', supervisedBy: 'bcba-001' },
   'aba-102': { name: 'CommunityBridge ABA Tech 2', email: 'abatech2@communitybridge.app', role: 'therapist', title: 'ABA Therapist', supervisedBy: 'bcba-001' },
   'aba-103': { name: 'CommunityBridge ABA Tech 3', email: 'abatech3@communitybridge.app', role: 'therapist', title: 'ABA Therapist', supervisedBy: 'bcba-001' },
   'aba-104': { name: 'CommunityBridge ABA Tech 4', email: 'abatech4@communitybridge.app', role: 'therapist', title: 'ABA Therapist', supervisedBy: 'bcba-001' },

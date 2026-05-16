@@ -9,6 +9,7 @@
     hligon35@gmail.com            / ParentDemo123!   role=parent
     cheyanne2448@gmail.com        / ParentDemo123!   role=parent
     appreview@communitybridge.app / Approved123!     role=parent
+    aba@communitybridge.app       / AbaTech123!      role=therapist
     abatech1@communitybridge.app  / AbaTech123!      role=therapist
     abatech2@communitybridge.app  / AbaTech123!      role=therapist
     abatech3@communitybridge.app  / AbaTech123!      role=therapist
@@ -74,6 +75,7 @@ const TEST_USERS = [
   { name: 'Jason Bridgeport',             email: 'hligon35@gmail.com',          password: 'ParentDemo123!', role: 'parent' },
   { name: 'Chelsey Bridgeport',            email: 'cheyanne2448@gmail.com',      password: 'ParentDemo123!', role: 'parent' },
   { name: 'App Reviewer',                  email: 'appreview@communitybridge.app', password: 'Approved123!', role: 'parent' },
+  { name: 'CommunityBridge ABA', email: 'aba@communitybridge.app', password: 'AbaTech123!', role: 'therapist' },
   { name: 'CB ABA Tech 1', email: 'abatech1@communitybridge.app', password: 'AbaTech123!', role: 'therapist' },
   { name: 'CB ABA Tech 2', email: 'abatech2@communitybridge.app', password: 'AbaTech123!', role: 'therapist' },
   { name: 'CB ABA Tech 3', email: 'abatech3@communitybridge.app', password: 'AbaTech123!', role: 'therapist' },
@@ -181,6 +183,7 @@ function buildDirectoryEntitiesByEmail(uidByEmail) {
   const parent1 = DEMO_EMAIL_MAP['hligon35@gmail.com'];
   const parent2 = DEMO_EMAIL_MAP['cheyanne2448@gmail.com'];
   const reviewParent = DEMO_EMAIL_MAP['appreview@communitybridge.app'];
+  const aba = DEMO_EMAIL_MAP['aba@communitybridge.app'];
   const tech1 = DEMO_EMAIL_MAP['abatech1@communitybridge.app'];
   const tech2 = DEMO_EMAIL_MAP['abatech2@communitybridge.app'];
   const tech3 = DEMO_EMAIL_MAP['abatech3@communitybridge.app'];
@@ -206,7 +209,7 @@ function buildDirectoryEntitiesByEmail(uidByEmail) {
     phone: '',
   }));
 
-  const staffUsers = [tech1, tech2, tech3, tech4, bcba, office, adminUser];
+  const staffUsers = [aba, tech1, tech2, tech3, tech4, bcba, office, adminUser];
   const therapistDocs = staffUsers.map((user) => ({
     id: lookupUid(user.email),
     userId: lookupUid(user.email),
