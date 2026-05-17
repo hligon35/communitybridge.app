@@ -138,7 +138,7 @@ export default function AdminControlsScreen() {
   const { children = [], therapists = [], urgentMemos = [], activeSeedPreset = '', seededDashboardMetrics = {} } = useData();
   const isBcba = isBcbaRole(user?.role);
   const isTabletLayout = useIsTabletLayout();
-  const isPhoneWorkspace = !isTabletLayout && resolvePhoneViewport(width, height);
+  const isPhoneWorkspace = resolvePhoneViewport(width, height);
   const estimatedContentWidth = Math.max(320, width - (isTabletLayout ? 320 : 48));
   const useCompactTiles = estimatedContentWidth < 860;
   const showChartGrid = estimatedContentWidth >= 900;

@@ -18,8 +18,6 @@ import { logger, setDebugContext } from './src/utils/logger';
 import { registerGlobalDebugHandlers } from './src/utils/registerDebugHandlers';
 import { configureNotificationHandling } from './src/utils/pushNotifications';
 import { navigationRef, resetToLogin } from './src/navigationRef';
-import { isPhoneViewport as resolvePhoneViewport } from './src/utils/mobileRoleAccess';
-
 import RoleDashboardScreen from './src/screens/RoleDashboardScreen';
 import InsuranceBillingScreen from './src/screens/InsuranceBillingScreen';
 import TherapistItemsNeededScreen from './src/screens/TherapistItemsNeededScreen';
@@ -347,19 +345,9 @@ function SettingsStack() {
 function MainShell({ currentRoute }) {
   const { user, loading } = useAuth();
   const isTabletLayout = useIsTabletLayout();
-  const { width, height } = useWindowDimensions();
   const role = normalizeUserRole(user?.role);
-  const isPhoneViewport = resolvePhoneViewport(width, height);
-  const isPhoneAdminViewport = canAccessAdminWorkspace(role) && isPhoneViewport;
   const isParentWorkspace = !canAccessAdminWorkspace(role) && !isStaffRole(role);
-  const shouldRequireLandscape = Boolean(
-    !isPhoneViewport
-    && !isPhoneAdminViewport
-    && !isParentWorkspace
-    && !isTabletLayout
-    && width < height
-    && Math.max(width, height) >= 640
-  );
+  const shouldRequireLandscape = false;
 
   if (loading || !user) {
     return (
@@ -385,7 +373,7 @@ function MainShell({ currentRoute }) {
             <TabletNavigationShell currentRoute={currentRoute}>
               <MainRoutes />
             </TabletNavigationShell>
-            {!isTabletLayout && !isPhoneAdminViewport ? <BottomNav navigationRef={navigationRef} currentRoute={currentRoute} /> : null}
+            {!isTabletLayout ? <BottomNav navigationRef={navigationRef} currentRoute={currentRoute} /> : null}
           </>
         )}
         <UrgentMemoOverlay />
@@ -417,7 +405,7 @@ function MainRoutes() {
       // Therapists / faculty: surface the My Class workspace defined in MyClassStack.
       screens.push({ name: 'MyClass', component: MyClassStack });
     }
-  } else if (isAdminRole(role)) {
+  } else if (hasAdminWorkspace) {
     screens.push({ name: 'Controls', component: ControlsStack });
   } else {
     screens.push({ name: 'MyChild', component: MyChildStack });

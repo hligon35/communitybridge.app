@@ -416,8 +416,9 @@ export function AuthProvider({ children }) {
           email: fbUser.email || '',
           role: isReservedSuperAdminEmail(fbUser.email) ? 'superAdmin' : (isSpecialAccessUser(fbUser.email) ? 'admin' : 'parent'),
         });
-        const storedOverride = canUseDevRoleOverride(fbUser.email) ? await readDevRoleOverride() : '';
-        const storedBehavior = canUseDevRoleOverride(fbUser.email) ? await readDevRoleBehavior() : 'remember';
+        const shouldPersistReviewerRole = !isDemoReviewerUser(fbUser.email);
+        const storedOverride = canUseDevRoleOverride(fbUser.email) && shouldPersistReviewerRole ? await readDevRoleOverride() : '';
+        const storedBehavior = canUseDevRoleOverride(fbUser.email) && shouldPersistReviewerRole ? await readDevRoleBehavior() : 'remember';
         setDevRoleOverride(storedOverride);
         setDevRoleBehavior(storedBehavior);
         setUser(applyDevRoleOverride(profileForState, storedOverride, storedBehavior));
@@ -535,6 +536,7 @@ export function AuthProvider({ children }) {
   async function logout() {
     const a = getAuthInstance();
     const currentUserId = String(user?.id || '').trim();
+    const shouldClearReviewerOverride = isDemoReviewerUser(user?.email);
     let signedOut = false;
     setLoading(true);
     try {
@@ -560,6 +562,11 @@ export function AuthProvider({ children }) {
     await unregisterLoggedInDevicePushRegistration({ userId: currentUserId }).catch(() => {});
 
     await clearCachedMfaVerifiedAt();
+
+    if (shouldClearReviewerOverride) {
+      setDevRoleOverride('');
+      await writeDevRoleOverride('');
+    }
 
     resetToLogin();
   }
@@ -597,7 +604,9 @@ export function AuthProvider({ children }) {
     if (!normalized) return;
 
     setDevRoleOverride(normalized);
-    await writeDevRoleOverride(normalized);
+    if (!isDemoReviewerUser(user?.email)) {
+      await writeDevRoleOverride(normalized);
+    }
     setUser((current) => {
       if (!current) return current;
       return {

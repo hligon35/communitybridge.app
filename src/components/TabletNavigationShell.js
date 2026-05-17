@@ -12,7 +12,7 @@ import { navigationRef } from '../navigationRef';
 import { THERAPY_ROLE_LABELS, getDisplayRoleLabel, getWorkspaceLabel } from '../utils/roleTerminology';
 import { humanizeScreenLabel } from '../utils/screenLabels';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { canAccessPhoneRoute, getPhoneAccessProfile, isPhoneViewport as resolvePhoneViewport } from '../utils/mobileRoleAccess';
+import { canAccessPhoneRoute, getPhoneAccessProfile } from '../utils/mobileRoleAccess';
 import { MAIN_NAV_ROUTES } from '../utils/backNavigation';
 const { isSpecialAccessUser } = require('../utils/authState');
 
@@ -183,10 +183,7 @@ export default function TabletNavigationShell({ currentRoute, children }) {
     ModeratePosts: 'Moderate Posts',
     ExportData: 'Export Data',
   };
-  const isPhoneViewport = Platform.OS !== 'ios' || !Platform.isPad
-    ? resolvePhoneViewport(width, height)
-    : false;
-  const showMobileAdminShell = Boolean(showAdminWorkspace && isPhoneViewport);
+  const showMobileAdminShell = false;
   const activeRouteParams = navigationRef?.getCurrentRoute?.()?.params || null;
   const activeRouteChildId = String(activeRouteParams?.childId || '').trim();
   const currentScreenTitle = screenTitleMap[currentRoute] || humanizeScreenLabel(currentRoute) || workspaceLabel;

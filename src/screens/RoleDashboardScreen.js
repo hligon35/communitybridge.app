@@ -118,12 +118,15 @@ export default function RoleDashboardScreen({ navigation }) {
   const allowSpecialAccessFallback = isSpecialAccessUser(user?.email);
   const isTherapist = role === USER_ROLES.THERAPIST;
   const isPhoneWorkspace = Platform.OS !== 'web' && resolvePhoneViewport(width, height);
+  const dashboardScopeUserId = role === USER_ROLES.PARENT
+    ? (user?.reviewScopeUserId || user?.id || effectiveUser?.id)
+    : (effectiveUser?.id || user?.id);
   const labels = tenant?.labels || {};
   const dashboardPreset = tenant?.dashboardPreset || {};
   const childProfileMode = tenant?.childProfileMode || {};
   const relevantChildren = useMemo(
-    () => findRelevantChildren(role, effectiveUser?.id, children, { allowSpecialAccessFallback }),
-    [children, role, effectiveUser?.id, allowSpecialAccessFallback]
+    () => findRelevantChildren(role, dashboardScopeUserId, children, { allowSpecialAccessFallback }),
+    [children, role, dashboardScopeUserId, allowSpecialAccessFallback]
   );
   const showDashboardPlaceholder = !directoryLoading && !directoryError && !relevantChildren.length;
   const [selectedChildId, setSelectedChildId] = useState(null);
@@ -268,16 +271,6 @@ export default function RoleDashboardScreen({ navigation }) {
   }, [activeSeedPreset, isTherapist, readItemsNeededIds, seededItemsNeededByChild, selectedChild?.id, urgentMemos]);
 
   const unreadItemsNeededCount = useMemo(() => parentItemsNeededEntries.length, [parentItemsNeededEntries]);
-
-  if (isTherapist && isPhoneWorkspace) {
-    return (
-      <ScreenWrapper bannerShowBack={false} hideBanner={isTabletLayout} style={styles.container}>
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <MobileRoleWelcomeShiftCard user={user} role={role} children={relevantChildren} />
-        </ScrollView>
-      </ScreenWrapper>
-    );
-  }
 
   const markItemsNeededRead = async () => {
     if (!parentItemsNeededEntries.length) {
@@ -498,6 +491,16 @@ export default function RoleDashboardScreen({ navigation }) {
       <View style={[styles.placeholderLine, styles.placeholderLineValue]} />
     </View>
   );
+
+  if (isTherapist && isPhoneWorkspace) {
+    return (
+      <ScreenWrapper bannerShowBack={false} hideBanner={isTabletLayout} style={styles.container}>
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <MobileRoleWelcomeShiftCard user={user} role={role} children={relevantChildren} />
+        </ScrollView>
+      </ScreenWrapper>
+    );
+  }
 
   return (
     <ScreenWrapper bannerShowBack={false} hideBanner={isTabletLayout} style={styles.container}>
