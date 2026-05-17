@@ -1,10 +1,11 @@
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { logger } from './utils/logger';
 import { getAuthInstance, getAuthInitError, getFirebaseConfigDebugInfo, probeFirebaseAuthNetwork, probeFirebasePasswordSignIn, createFirebaseUserWithPasswordViaRest, db, storage, functions } from './firebase';
 import { BASE_URL } from './config';
 import { DEFAULT_AVATAR_TOKEN } from './utils/idVisibility';
 import { isAdminRole } from './core/tenant/models';
-import { applyReservedUserOverrides } from './utils/authState';
+import { applyReservedUserOverrides, isDemoReviewerUser, normalizeRoleOverride } from './utils/authState';
 
 import {
   signInWithCustomToken,
@@ -109,6 +110,8 @@ export const getOfflineQueueSize = _getOfflineQueueSize;
 
 const DEFAULT_API_TIMEOUT_MS = 15000;
 const MEDIA_FETCH_TIMEOUT_MS = 45000;
+const DEV_ROLE_OVERRIDE_STORAGE_KEY = 'bb_dev_role_override_v1';
+const REVIEWER_ROLE_OVERRIDE_HEADER = 'X-CommunityBridge-Role-Override';
 
 function normalizeEmailInput(email) {
   try {
@@ -282,9 +285,30 @@ function normalizeRecipientIds(input) {
 }
 
 async function fetchWithTimeout(resource, init = {}, timeoutMs = DEFAULT_API_TIMEOUT_MS) {
+  let requestInit = init;
+  try {
+    const headerMap = init?.headers && typeof init.headers === 'object' ? init.headers : null;
+    const authHeader = headerMap?.Authorization || headerMap?.authorization || '';
+    const currentEmail = normalizeEmailInput(getAuthInstance()?.currentUser?.email);
+    if (authHeader && isDemoReviewerUser(currentEmail)) {
+      const storedOverride = normalizeRoleOverride(await AsyncStorage.getItem(DEV_ROLE_OVERRIDE_STORAGE_KEY));
+      if (storedOverride) {
+        requestInit = {
+          ...init,
+          headers: {
+            ...headerMap,
+            [REVIEWER_ROLE_OVERRIDE_HEADER]: storedOverride,
+          },
+        };
+      }
+    }
+  } catch (_) {
+    requestInit = init;
+  }
+
   const hasAbortController = typeof AbortController === 'function';
   if (!hasAbortController || !Number.isFinite(timeoutMs) || timeoutMs <= 0) {
-    return fetch(resource, init);
+    return fetch(resource, requestInit);
   }
 
   const controller = new AbortController();
@@ -298,8 +322,8 @@ async function fetchWithTimeout(resource, init = {}, timeoutMs = DEFAULT_API_TIM
 
   try {
     return await fetch(resource, {
-      ...init,
-      signal: init?.signal || controller.signal,
+      ...requestInit,
+      signal: requestInit?.signal || controller.signal,
     });
   } catch (e) {
     if (e?.name === 'AbortError') {

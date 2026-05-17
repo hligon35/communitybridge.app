@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { isBcbaRole, normalizeUserRole, USER_ROLES } from '../core/tenant/models';
 import { getDisplayRoleLabel } from '../utils/roleTerminology';
+const { isSpecialAccessUser } = require('../utils/authState');
 
 const { isChildLinkedToTherapist } = require('../features/sessionTracking/utils/dashboardSessionTarget');
 
@@ -89,9 +90,9 @@ function resolveChildAssignedShift(role, user, children) {
   if (!isTherapist && !isBcba) return null;
 
   const now = new Date();
-  const candidates = (Array.isArray(children) ? children : [])
+  const buildCandidates = (items, allowFallback = false) => (Array.isArray(items) ? items : [])
     .filter((child) => child?.id)
-    .filter((child) => isChildAssignedToPhoneStaffSchedule(child, user, isBcba))
+    .filter((child) => allowFallback || isChildAssignedToPhoneStaffSchedule(child, user, isBcba))
     .map((child) => {
       const startAt = buildUpcomingOccurrence(child?.dropoffTimeISO, now);
       if (!(startAt instanceof Date) || !Number.isFinite(startAt.getTime())) return null;
@@ -112,7 +113,10 @@ function resolveChildAssignedShift(role, user, children) {
     .filter(Boolean)
     .sort((left, right) => left.startAt.getTime() - right.startAt.getTime());
 
-  const nextShift = candidates[0] || null;
+  const candidates = buildCandidates(children);
+  const fallbackCandidates = (!candidates.length && isSpecialAccessUser(user?.email)) ? buildCandidates(children, true) : [];
+
+  const nextShift = candidates[0] || fallbackCandidates[0] || null;
   if (!nextShift) return null;
   return {
     dayLabel: formatShiftDay(nextShift.startAt),

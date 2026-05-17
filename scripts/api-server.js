@@ -756,6 +756,22 @@ function isAppReviewEmail(email) {
   return String(email || '').trim().toLowerCase() === APP_REVIEW_EMAIL;
 }
 
+function normalizeRequestedReviewRole(role) {
+  const value = safeString(role).trim().toLowerCase();
+  if (value === 'admin' || value === 'administrator') return 'admin';
+  if (value === 'bcba') return 'bcba';
+  if (value === 'office' || value === 'officeadmin' || value === 'office admin') return 'office';
+  if (value === 'therapist') return 'therapist';
+  if (value === 'parent') return 'parent';
+  return '';
+}
+
+function getEffectiveScopedRole(user) {
+  const requestedRole = normalizeRequestedReviewRole(user?.reviewRoleOverride);
+  if (requestedRole && isAppReviewEmail(user?.email)) return requestedRole;
+  return safeString(user?.role).trim().toLowerCase();
+}
+
 function applyReservedSuperAdminRole(user) {
   const item = user && typeof user === 'object' ? { ...user } : {};
   if (!isReservedSuperAdminEmail(item.email)) return item;
@@ -921,6 +937,66 @@ function ensureReservedReviewDirectoryRows(user) {
   });
   tx();
   return true;
+}
+
+function buildReservedReviewDirectoryPayload({ children, parents, therapists, assignments, supervision }) {
+  const reviewChildIds = new Set(APP_REVIEW_CHILD_IDS.map((value) => safeString(value).trim()).filter(Boolean));
+  const outParentIds = new Set();
+  const outTherapistIds = new Set();
+  const supervisionByAba = new Map();
+  const scopedChildren = (Array.isArray(children) ? children : []).filter((child) => reviewChildIds.has(safeString(child?.id).trim()));
+
+  (Array.isArray(supervision) ? supervision : []).forEach((entry) => {
+    const abaId = safeString(entry?.abaId).trim();
+    const bcbaId = safeString(entry?.bcbaId).trim();
+    if (abaId && bcbaId) supervisionByAba.set(abaId, bcbaId);
+  });
+
+  scopedChildren.forEach((child) => {
+    const parentList = Array.isArray(child?.parents) ? child.parents : [];
+    parentList.forEach((parent) => {
+      const parentId = typeof parent === 'object' && parent?.id != null ? safeString(parent.id).trim() : safeString(parent).trim();
+      if (parentId) outParentIds.add(parentId);
+    });
+
+    const rawAssigned = (child && (child.assignedABA || child.assigned_ABA || child.assigned)) || [];
+    const assignedArr = Array.isArray(rawAssigned) ? rawAssigned : [rawAssigned];
+    assignedArr.forEach((id) => {
+      const therapistId = safeString(id).trim();
+      if (therapistId) outTherapistIds.add(therapistId);
+    });
+  });
+
+  (Array.isArray(assignments) ? assignments : []).forEach((entry) => {
+    const childId = safeString(entry?.childId).trim();
+    const abaId = safeString(entry?.abaId).trim();
+    if (reviewChildIds.has(childId) && abaId) outTherapistIds.add(abaId);
+  });
+
+  Array.from(outTherapistIds).forEach((abaId) => {
+    const bcbaId = supervisionByAba.get(abaId);
+    if (bcbaId) outTherapistIds.add(bcbaId);
+  });
+
+  (Array.isArray(therapists) ? therapists : []).forEach((staff) => {
+    const staffId = safeString(staff?.id).trim();
+    const staffRole = safeString(staff?.role).trim().toLowerCase();
+    if (!staffId) return;
+    if (isAdminRole(staffRole) || ['office', 'officeadmin', 'office admin', 'office-admin', 'office_admin', 'reception', 'receptionist', 'frontdesk', 'front desk', 'front-desk', 'front_desk'].includes(staffRole)) {
+      outTherapistIds.add(staffId);
+    }
+  });
+
+  return {
+    ok: true,
+    children: scopedChildren,
+    parents: (Array.isArray(parents) ? parents : []).filter((parent) => outParentIds.has(safeString(parent?.id).trim())),
+    therapists: (Array.isArray(therapists) ? therapists : []).filter((staff) => outTherapistIds.has(safeString(staff?.id).trim())),
+    aba: {
+      assignments: (Array.isArray(assignments) ? assignments : []).filter((entry) => reviewChildIds.has(safeString(entry?.childId).trim()) && outTherapistIds.has(safeString(entry?.abaId).trim())),
+      supervision: (Array.isArray(supervision) ? supervision : []).filter((entry) => outTherapistIds.has(safeString(entry?.abaId).trim()) && outTherapistIds.has(safeString(entry?.bcbaId).trim())),
+    },
+  };
 }
 
 function ensureDir(p) {
@@ -2849,6 +2925,8 @@ async function authMiddleware(req, res, next) {
     if (!row) return res.status(401).json({ ok: false, error: 'user not found' });
     return Promise.resolve(getFirebaseManagedProfiles([userId]).catch(() => new Map())).then((firebaseProfile) => {
       req.user = normalizeScopedUser(applyReservedUserOverrides({ ...userToClient(row), ...(firebaseProfile.get(userId) || {}) }));
+      const requestedReviewRole = normalizeRequestedReviewRole(req.headers['x-communitybridge-role-override']);
+      if (requestedReviewRole && isAppReviewEmail(req.user?.email)) req.user.reviewRoleOverride = requestedReviewRole;
       return next();
     });
   } catch (e) {
@@ -2900,7 +2978,7 @@ function childHasParentId(child, parentId) {
 }
 
 function canWriteChildCareData(user) {
-  const role = safeString(user && user.role);
+  const role = getEffectiveScopedRole(user);
   const normalizedRole = role.trim().toLowerCase();
   return isAdminRole(role)
     || isTherapistRole(role)
@@ -3212,11 +3290,19 @@ function getVisibleChildIdsForUser(user) {
   const allAssignments = (assignRows || []).map((row) => ({ childId: row.child_id, session: row.session, abaId: row.aba_id }));
   const allSupervision = (supervisionRows || []).map((row) => ({ abaId: row.aba_id, bcbaId: row.bcba_id }));
 
-  if (user && isAdminRole(user.role)) {
+  if (isAppReviewEmail(user?.email)) {
+    return allChildren
+      .map((child) => safeString(child && child.id).trim())
+      .filter((childId) => APP_REVIEW_CHILD_IDS.includes(childId));
+  }
+
+  const effectiveRole = getEffectiveScopedRole(user);
+
+  if (user && isAdminRole(effectiveRole)) {
     return allChildren.map((child) => safeString(child && child.id).trim()).filter(Boolean);
   }
 
-  const role = safeString(user && user.role);
+  const role = effectiveRole;
   const wantParent = isParentRole(role);
   const wantTherapist = isTherapistRole(role);
   const wantBcba = isBcbaRole(role);
@@ -3782,7 +3868,17 @@ app.get('/api/directory/me', authMiddleware, (req, res) => {
       return res.json({ ok: true, children: allChildren, parents: allParents, therapists: allTherapists, aba: { assignments: allAssignments, supervision: allSupervision } });
     }
 
-    const role = safeString(req.user && req.user.role);
+    if (isAppReviewEmail(req.user?.email)) {
+      return res.json(buildReservedReviewDirectoryPayload({
+        children: allChildren,
+        parents: allParents,
+        therapists: allTherapists,
+        assignments: allAssignments,
+        supervision: allSupervision,
+      }));
+    }
+
+    const role = getEffectiveScopedRole(req.user);
     const wantParent = isParentRole(role);
     const wantTherapist = isTherapistRole(role);
     const wantBcba = isBcbaRole(role);
@@ -4127,7 +4223,7 @@ app.put('/api/children/attendance', authMiddleware, requireChildCareWriteAccess,
 
     const now = nowISO();
     const actorId = safeString(req.user && (req.user.id || req.user.uid)).trim() || null;
-    const actorRole = safeString(req.user && req.user.role).trim() || null;
+    const actorRole = getEffectiveScopedRole(req.user) || null;
     const upsert = db.prepare(
       'INSERT INTO attendance_records (id, child_id, recorded_for, status, note, actor_id, actor_role, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)\n' +
       'ON CONFLICT(child_id, recorded_for) DO UPDATE SET status=excluded.status, note=excluded.note, actor_id=excluded.actor_id, actor_role=excluded.actor_role, updated_at=excluded.updated_at'
@@ -4458,7 +4554,7 @@ app.post('/api/children/:childId/mood', authMiddleware, requireChildCareWriteAcc
       score,
       note: safeString(body.note).trim(),
       actorId: safeString(req.user && (req.user.id || req.user.uid)).trim(),
-      actorRole: safeString(req.user && req.user.role).trim(),
+      actorRole: getEffectiveScopedRole(req.user),
       recordedAt: safeString(body.recordedAt).trim() || nowISO(),
       createdAt: nowISO(),
     };
@@ -4490,7 +4586,7 @@ app.post('/api/therapy-sessions', authMiddleware, requireChildCareWriteAccess, (
       childId,
       childName: safeString(body.childName).trim() || getChildDisplayNameByIdSqlite(childId),
       therapistId: safeString(req.user && (req.user.id || req.user.uid)).trim(),
-      therapistRole: safeString(req.user && req.user.role).trim(),
+      therapistRole: getEffectiveScopedRole(req.user),
       organizationId: safeString(body.organizationId).trim() || null,
       programId: safeString(body.programId).trim() || null,
       campusId: safeString(body.campusId).trim() || null,

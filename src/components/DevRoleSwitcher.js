@@ -19,7 +19,7 @@ export default function DevRoleSwitcher() {
   const canUseDevRoleTools = __DEV__ || isSpecialAccessAccount;
   const isDevAccount = isSpecialAccessAccount && !isReviewerAccount;
   const canChangeRole = canUseDevRoleTools;
-  const isAllowed = ENABLE_DEV_SWITCHER && (__DEV__ || isSpecialAccessAccount);
+  const isAllowed = (__DEV__ && ENABLE_DEV_SWITCHER) || isSpecialAccessAccount;
   const [open, setOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [visibilityReady, setVisibilityReady] = useState(false);

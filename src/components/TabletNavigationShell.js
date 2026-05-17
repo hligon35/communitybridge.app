@@ -14,6 +14,7 @@ import { humanizeScreenLabel } from '../utils/screenLabels';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { canAccessPhoneRoute, getPhoneAccessProfile, isPhoneViewport as resolvePhoneViewport } from '../utils/mobileRoleAccess';
 import { MAIN_NAV_ROUTES } from '../utils/backNavigation';
+const { isSpecialAccessUser } = require('../utils/authState');
 
 const checkUpdatesIcon = require('../../assets/icons/checkUpdates.png');
 const BREAK_OPTIONS = [5, 7, 10, 30];
@@ -504,8 +505,10 @@ export default function TabletNavigationShell({ currentRoute, children }) {
   const linkedTherapistChildren = useMemo(() => {
     const therapistId = String(user?.id || '').trim();
     if (!showQuickAdd || !therapistId) return [];
-    return (Array.isArray(directoryChildren) ? directoryChildren : []).filter((child) => isChildLinkedToTherapist(child, therapistId));
-  }, [directoryChildren, showQuickAdd, user?.id]);
+    const scopedChildren = (Array.isArray(directoryChildren) ? directoryChildren : []).filter((child) => isChildLinkedToTherapist(child, therapistId));
+    if (scopedChildren.length || !isSpecialAccessUser(user?.email)) return scopedChildren;
+    return Array.isArray(directoryChildren) ? directoryChildren : [];
+  }, [directoryChildren, showQuickAdd, user?.email, user?.id]);
 
   const activeQuickChild = useMemo(() => {
     if (!linkedTherapistChildren.length) return null;

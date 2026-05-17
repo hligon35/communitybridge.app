@@ -36,6 +36,7 @@ const {
 const { countUnreadVisibleThreads, getConversationKey } = require('./utils/chatThreads');
 const { DEMO_ROLE_IDENTITIES, getEffectiveChatIdentity } = require('./utils/demoIdentity');
 const { attachTherapistsToChildren, mergeById } = require('./utils/directoryState');
+const { isDemoReviewerUser } = require('./utils/authState');
 
 const DataContext = createContext(null);
 
@@ -598,14 +599,15 @@ export function DataProvider({ children: reactChildren }) {
       setDirectoryError('');
       try {
         const isAdmin = Boolean(user && isAdminRole(user.role));
-        let dir = isAdmin ? await Api.getDirectory() : await Api.getDirectoryMe();
+        const useScopedReviewerDirectory = isDemoReviewerUser(user?.email);
+        let dir = (isAdmin && !useScopedReviewerDirectory) ? await Api.getDirectory() : await Api.getDirectoryMe();
         if (dir && dir.ok) {
           let remoteChildren = Array.isArray(dir.children) ? dir.children : [];
           let remoteParents = Array.isArray(dir.parents) ? dir.parents : [];
           let remoteTherapists = Array.isArray(dir.therapists) ? dir.therapists : [];
 
           // If server directory is empty and this is an admin session, seed it from local (persisted + additions).
-          if (isAdmin && !remoteChildren.length && !remoteParents.length && !remoteTherapists.length) {
+          if (isAdmin && !useScopedReviewerDirectory && !remoteChildren.length && !remoteParents.length && !remoteTherapists.length) {
             const localParents = mergeById(parents || [], []);
             const localChildren = mergeById((children || []).map(stripComputedChildFields), []);
             const derivedTherapists = deriveTherapistsFromChildren(localChildren);

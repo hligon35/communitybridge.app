@@ -223,6 +223,18 @@ export function AuthProvider({ children }) {
     const normalized = resolveDevRoleOverride(overrideRole, behavior);
     if (!normalized) return nextUser;
     const roleIdentity = isSpecialAccessUser(nextUser.email) ? (getDemoRoleIdentity(normalized, nextUser) || nextUser) : nextUser;
+    if (isDemoReviewerUser(nextUser.email)) {
+      return {
+        ...nextUser,
+        devBaseRole: nextUser.role,
+        reviewScopeUserId: nextUser.id,
+        reviewScopeEmail: nextUser.email,
+        reviewPersonaId: roleIdentity?.id || nextUser.id,
+        reviewPersonaName: roleIdentity?.name || nextUser.name,
+        reviewPersonaEmail: roleIdentity?.email || nextUser.email,
+        role: normalized,
+      };
+    }
     return {
       ...nextUser,
       id: roleIdentity?.id || nextUser.id,

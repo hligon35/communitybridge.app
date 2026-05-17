@@ -23,6 +23,15 @@ function isChildLinkedToTherapist(child, therapistId) {
   return listAssignments.some((entry) => normalizeId(entry) === normalizedTherapistId);
 }
 
+function filterChildrenForTherapistScope(children, therapistId, options = {}) {
+  const items = Array.isArray(children) ? children : [];
+  const allowSpecialAccessFallback = options && options.allowSpecialAccessFallback === true;
+  if (!therapistId) return allowSpecialAccessFallback ? items : [];
+  const linkedChildren = items.filter((child) => isChildLinkedToTherapist(child, therapistId));
+  if (linkedChildren.length || !allowSpecialAccessFallback) return linkedChildren;
+  return items;
+}
+
 function resolveSelectedDashboardChild(relevantChildren, selectedChildId) {
   const items = Array.isArray(relevantChildren) ? relevantChildren : [];
   if (!items.length) return null;
@@ -41,6 +50,7 @@ function resolveTherapyWorkspaceTarget(sessionAction, childId, preview = false) 
 }
 
 module.exports = {
+  filterChildrenForTherapistScope,
   isChildLinkedToTherapist,
   resolveSelectedDashboardChild,
   resolveTherapyWorkspaceTarget,

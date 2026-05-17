@@ -14,7 +14,8 @@ import { USER_ROLES, isBcbaRole, isOfficeAdminRole, normalizeUserRole } from '..
 import { THERAPY_ROLE_LABELS } from '../utils/roleTerminology';
 import { childHasParent, findLinkedParentId } from '../utils/directoryLinking';
 import { isAggregateOnlyPhoneProfile, isPhoneViewport as resolvePhoneViewport, shouldUsePhoneSafeSchedule } from '../utils/mobileRoleAccess';
-const { isChildLinkedToTherapist } = require('../features/sessionTracking/utils/dashboardSessionTarget');
+const { isSpecialAccessUser } = require('../utils/authState');
+const { filterChildrenForTherapistScope, isChildLinkedToTherapist } = require('../features/sessionTracking/utils/dashboardSessionTarget');
 
 function todayStamp(hours = 9, minutes = 0) {
   const date = new Date();
@@ -116,6 +117,7 @@ export default function ScheduleCalendarScreen() {
   const isTherapist = role === USER_ROLES.THERAPIST;
   const isParent = role === USER_ROLES.PARENT;
   const isOffice = isOfficeAdminRole(user?.role);
+  const allowSpecialAccessFallback = isSpecialAccessUser(user?.email);
   const isPhoneWorkspace = Platform.OS !== 'web' && resolvePhoneViewport(width, height);
   const usePhoneSafeMode = isPhoneWorkspace && shouldUsePhoneSafeSchedule(user?.role);
   const aggregateOnlyPhoneMode = usePhoneSafeMode && isAggregateOnlyPhoneProfile(user?.role);
@@ -148,7 +150,9 @@ export default function ScheduleCalendarScreen() {
     if (!isTherapist) return children;
     const therapistId = user?.id;
     const normalizedName = String(user?.name || user?.displayName || user?.email || '').trim().toLowerCase();
-    return (children || []).filter((child) => {
+    const linkedChildren = filterChildrenForTherapistScope(children, therapistId, { allowSpecialAccessFallback });
+    if (linkedChildren.length === (Array.isArray(children) ? children.length : 0) && allowSpecialAccessFallback) return linkedChildren;
+    return linkedChildren.filter((child) => {
       if (isChildLinkedToTherapist(child, therapistId)) return true;
       const assignments = [child?.amTherapist, child?.pmTherapist, child?.bcaTherapist]
         .map((entry) => (typeof entry === 'string' ? entry : entry?.name || entry?.email || ''))
@@ -156,7 +160,7 @@ export default function ScheduleCalendarScreen() {
         .filter(Boolean);
       return normalizedName ? assignments.includes(normalizedName) : false;
     });
-  }, [children, isTherapist, user?.displayName, user?.email, user?.id, user?.name]);
+  }, [allowSpecialAccessFallback, children, isTherapist, user?.displayName, user?.email, user?.id, user?.name]);
 
   const parentChildren = useMemo(() => {
     if (!isParent) return [];
@@ -166,8 +170,10 @@ export default function ScheduleCalendarScreen() {
 
   const phoneScopedStaffChildren = useMemo(() => {
     if (!usePhoneSafeMode || aggregateOnlyPhoneMode || isParent) return [];
-    return (Array.isArray(children) ? children : []).filter((child) => isChildAssignedToPhoneStaffSchedule(child, user, isBcba));
-  }, [aggregateOnlyPhoneMode, children, isBcba, isParent, usePhoneSafeMode, user]);
+    const scopedChildren = (Array.isArray(children) ? children : []).filter((child) => isChildAssignedToPhoneStaffSchedule(child, user, isBcba));
+    if (scopedChildren.length || !allowSpecialAccessFallback) return scopedChildren;
+    return Array.isArray(children) ? children : [];
+  }, [aggregateOnlyPhoneMode, allowSpecialAccessFallback, children, isBcba, isParent, usePhoneSafeMode, user]);
 
   const visibleChildren = isParent
     ? parentChildren

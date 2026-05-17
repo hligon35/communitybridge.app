@@ -11,14 +11,15 @@ import { childHasParent, findLinkedParentId } from '../utils/directoryLinking';
 import { getWorkspaceLabel } from '../utils/roleTerminology';
 import { getPhoneAccessProfile, isAggregateOnlyPhoneProfile, isPhoneViewport as resolvePhoneViewport, shouldUsePhoneSafeReports } from '../utils/mobileRoleAccess';
 import * as Api from '../Api';
-const { isChildLinkedToTherapist } = require('../features/sessionTracking/utils/dashboardSessionTarget');
+const { isSpecialAccessUser } = require('../utils/authState');
+const { filterChildrenForTherapistScope } = require('../features/sessionTracking/utils/dashboardSessionTarget');
 const { getEffectiveChatIdentity } = require('../utils/demoIdentity');
 
 function findReportChildren(user, children, parents) {
   const items = Array.isArray(children) ? children : [];
   const role = normalizeUserRole(user?.role);
   const effectiveUser = getEffectiveChatIdentity(user);
-  if (role === USER_ROLES.THERAPIST) return items.filter((child) => isChildLinkedToTherapist(child, effectiveUser?.id));
+  if (role === USER_ROLES.THERAPIST) return filterChildrenForTherapistScope(items, effectiveUser?.id, { allowSpecialAccessFallback: isSpecialAccessUser(user?.email) });
   if (role === USER_ROLES.PARENT) {
     const linkedParentId = findLinkedParentId(user, parents) || user?.id;
     return items.filter((child) => childHasParent(child, linkedParentId));

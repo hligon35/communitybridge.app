@@ -13,7 +13,8 @@ import { USER_ROLES, isAdminRole, isStaffRole, normalizeUserRole } from '../core
 import TherapySessionPanel from '../features/sessionTracking/components/TherapySessionPanel';
 import { useTherapySessionWorkspace } from '../features/sessionTracking/hooks/useTherapySessionWorkspace';
 import { useAbaSessionSheet } from '../features/aba/hooks/useAbaSessionSheet';
-import { isChildLinkedToTherapist } from '../features/sessionTracking/utils/dashboardSessionTarget';
+import { filterChildrenForTherapistScope } from '../features/sessionTracking/utils/dashboardSessionTarget';
+import { isSpecialAccessUser } from '../utils/authState';
 const { PREVIEW_CHILD } = require('../features/sessionTracking/utils/previewWorkspace');
 
 export default function SummaryReviewScreen() {
@@ -52,8 +53,8 @@ export default function SummaryReviewScreen() {
   const therapistChildren = useMemo(() => {
     const therapistId = String(user?.id || '').trim();
     if (!isTherapist || !therapistId) return [];
-    return (Array.isArray(children) ? children : []).filter((entry) => isChildLinkedToTherapist(entry, therapistId));
-  }, [children, isTherapist, user?.id]);
+    return filterChildrenForTherapistScope(children, therapistId, { allowSpecialAccessFallback: isSpecialAccessUser(user?.email) });
+  }, [children, isTherapist, user?.email, user?.id]);
 
   const therapistChildNameById = useMemo(() => {
     return therapistChildren.reduce((accumulator, entry) => {

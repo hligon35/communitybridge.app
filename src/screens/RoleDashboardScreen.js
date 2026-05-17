@@ -19,7 +19,7 @@ import { isPhoneViewport as resolvePhoneViewport, shouldHideTapToolsOnPhone } fr
 const { logPress } = require('../utils/logger');
 const { isSpecialAccessUser } = require('../utils/authState');
 const { getEffectiveChatIdentity } = require('../utils/demoIdentity');
-const { isChildLinkedToTherapist, resolveSelectedDashboardChild, resolveTherapyWorkspaceTarget } = require('../features/sessionTracking/utils/dashboardSessionTarget');
+const { filterChildrenForTherapistScope, resolveSelectedDashboardChild, resolveTherapyWorkspaceTarget } = require('../features/sessionTracking/utils/dashboardSessionTarget');
 const { DEFAULT_RESOURCE_URL } = require('../config/brand');
 
 const moodGoodIcon = require('../../assets/icons/good.png');
@@ -72,9 +72,7 @@ function findRelevantChildren(role, userId, children, options = {}) {
   const allowSpecialAccessFallback = options && options.allowSpecialAccessFallback === true;
   if (!userId) return [];
   if (role === 'therapist') {
-    const linkedChildren = allChildren.filter((child) => isChildLinkedToTherapist(child, userId));
-    if (linkedChildren.length || !allowSpecialAccessFallback) return linkedChildren;
-    return allChildren;
+    return filterChildrenForTherapistScope(allChildren, userId, { allowSpecialAccessFallback });
   }
   return allChildren.filter((child) => childHasParent(child, userId));
 }
