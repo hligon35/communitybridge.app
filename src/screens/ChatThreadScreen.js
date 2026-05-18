@@ -9,6 +9,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { canViewThread, getConversationParticipant, getUserParticipantTokens, isMessageFromUser } from '../utils/chatThreads';
 import { MaterialIcons } from '@expo/vector-icons';
 import { HelpButton } from '../components/TopButtons';
+import useIsTabletLayout from '../hooks/useIsTabletLayout';
+
+const PHONE_BOTTOM_NAV_HEIGHT = 72;
+const COMPOSER_BASE_HEIGHT = 104;
 
 export default function ChatThreadScreen({ route, navigation }) {
   const { threadId, threadIds: routeThreadIds, activeThreadId, isNew, to: initialTo, conversationTitle, initialDraft } = route.params || {};
@@ -18,6 +22,7 @@ export default function ChatThreadScreen({ route, navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const headerHeight = useHeaderHeight ? useHeaderHeight() : 0;
   const insets = useSafeAreaInsets();
+  const isTabletLayout = useIsTabletLayout();
   const userTokens = useMemo(() => getUserParticipantTokens(user), [user]);
   const effectiveThreadIds = useMemo(() => {
     const raw = Array.isArray(routeThreadIds) && routeThreadIds.length ? routeThreadIds : [activeThreadId || threadId];
@@ -161,23 +166,29 @@ export default function ChatThreadScreen({ route, navigation }) {
 
   const OuterWrapper = Platform.OS === 'web' ? View : TouchableWithoutFeedback;
   const outerWrapperProps = Platform.OS === 'web' ? {} : { onPress: Keyboard.dismiss, accessible: false };
+  const phoneBottomNavInset = !isTabletLayout ? PHONE_BOTTOM_NAV_HEIGHT : 0;
+  const listBottomInset = COMPOSER_BASE_HEIGHT + Math.max(insets.bottom, 2);
+  const composerBottomPadding = Math.max(insets.bottom, 2);
+  const keyboardVerticalOffset = Platform.OS === 'ios'
+    ? (isTabletLayout ? 0 : headerHeight + Math.max(insets.top, 0))
+    : 0;
 
   return (
-    <ScreenWrapper style={{ flex: 1, backgroundColor: '#fff' }} bottomSpacerHeight={0}>
+    <ScreenWrapper style={{ flex: 1, backgroundColor: '#fff' }} bottomSpacerHeight={phoneBottomNavInset}>
       <OuterWrapper {...outerWrapperProps}>
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight + Math.max(insets.top, 0) : 0}
+          keyboardVerticalOffset={keyboardVerticalOffset}
         >
           <FlatList
+            style={{ flex: 1 }}
             data={threadMessages}
             keyExtractor={(i) => i.id}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
             keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
             keyboardShouldPersistTaps="handled"
-            automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
-            contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) + 104 }}
+            contentContainerStyle={{ paddingBottom: listBottomInset }}
             renderItem={({ item }) => {
               const isMine = isMessageFromUser(item, user);
               return (
@@ -204,7 +215,7 @@ export default function ChatThreadScreen({ route, navigation }) {
             }}
           />
 
-          <View style={{ paddingTop: 8, paddingHorizontal: 8, paddingBottom: Math.max(insets.bottom, 8), borderTopWidth: 1, borderTopColor: '#eee', backgroundColor: '#fff' }}>
+          <View style={{ paddingTop: 8, paddingHorizontal: 8, paddingBottom: composerBottomPadding, borderTopWidth: 1, borderTopColor: '#eee', backgroundColor: '#fff' }}>
             {isChatBlocked ? (
               <Text style={{ color: '#b91c1c', fontWeight: '600', marginBottom: 8 }}>
                 Messaging has been disabled for this account by an administrator.
